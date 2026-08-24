@@ -509,7 +509,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('anybuyCenter')"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.9.5 Anybuy Center</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.9.5.1 Login Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -899,8 +899,8 @@ async function applyUser(user){
     const name=getDisplayName();
     document.getElementById('memberName').textContent='您好，'+name;
     document.getElementById('memberEmail').textContent=currentMember.phone||'';
-    document.getElementById('meName').textContent=name;
-    document.getElementById('meEmail').textContent=currentMember.phone||'';
+    (document.getElementById('meName')||{}).textContent=name;
+    (document.getElementById('meEmail')||{}).textContent=currentMember.phone||'';
     document.getElementById('authScreen').classList.add('hidden');
     renderProfile();
     renderBarcodes();
@@ -973,7 +973,7 @@ async function saveProfile(){
   renderProfile();
   const name=getDisplayName();
   document.getElementById('memberName').textContent='您好，'+name;
-  document.getElementById('meName').textContent=name;
+  (document.getElementById('meName')||{}).textContent=name;
   msg.textContent='會員資料已同步到 Supabase';
   msg.className='auth-msg ok';
   setTimeout(()=>toggleProfileForm(false),700);
