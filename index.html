@@ -1,1127 +1,163 @@
-<!doctype html>
-<html lang="zh-Hant">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f7a46">
-<title>億家 App v0.6</title>
-<style>
-:root{--green:#0f7a46;--green2:#eaf6ef;--orange:#f28a2b;--orange2:#fff3e7;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--bg:#f6f8f7;--danger:#d94841}
-*{box-sizing:border-box}html,body{margin:0;background:#dfe5e2;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;color:var(--ink)}body{display:flex;justify-content:center;min-height:100vh}.phone{width:100%;max-width:430px;min-height:100vh;background:var(--bg);position:relative;overflow:hidden}.topbar{padding:calc(12px + env(safe-area-inset-top)) 18px 12px;background:linear-gradient(135deg,var(--green),#0a6b3c);color:white;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:21px}.logo{width:38px;height:38px;border-radius:12px;background:#fff;color:var(--orange);display:grid;place-items:center;font-size:24px;font-weight:900;box-shadow:0 3px 10px rgba(0,0,0,.12)}.iconbtn{width:38px;height:38px;border:0;border-radius:12px;background:rgba(255,255,255,.14);color:#fff;font-size:19px}.content{padding:16px 16px 108px}.hero{background:linear-gradient(135deg,#fff,#fff9f2);border-radius:24px;padding:18px;box-shadow:0 8px 24px rgba(31,41,55,.08);border:1px solid rgba(242,138,43,.15)}.hero-head{display:flex;justify-content:space-between;align-items:flex-start}.eyebrow{font-size:12px;color:var(--muted);margin-bottom:4px}.member-name{font-size:20px;font-weight:800}.points{text-align:right;background:var(--green2);padding:8px 10px;border-radius:14px;min-width:112px}.points b{display:block;color:var(--green);font-size:20px}.points span{font-size:11px;color:var(--muted)}.barcode{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;text-align:center;cursor:pointer}.barcode-lines{height:58px;border-radius:8px;background:repeating-linear-gradient(90deg,#111 0 2px,transparent 2px 4px,#111 4px 5px,transparent 5px 8px,#111 8px 11px,transparent 11px 13px);max-width:290px;margin:0 auto 8px}.barcode small{color:var(--muted)}.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}.q{background:#fff;border:0;border-radius:18px;padding:14px 6px 12px;box-shadow:0 4px 14px rgba(31,41,55,.05);font-size:12px;color:var(--ink)}.q .ico{font-size:25px;display:block;margin-bottom:7px}.section-title{display:flex;align-items:center;justify-content:space-between;margin:20px 2px 10px}.section-title h3{margin:0;font-size:18px}.section-title button{border:0;background:none;color:var(--green);font-weight:700}.banner{border-radius:22px;padding:18px;background:linear-gradient(120deg,var(--orange),#ffad5f);color:#fff;min-height:130px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 7px 18px rgba(242,138,43,.25)}.banner h2{margin:0 0 7px;font-size:22px}.banner p{margin:0;font-size:13px;opacity:.95}.banner .cup{font-size:62px}.cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card{background:#fff;border-radius:18px;padding:14px;border:1px solid var(--line);min-height:112px}.card b{display:block;margin-top:8px}.card small{color:var(--muted)}.badge{display:inline-block;background:var(--orange2);color:#b75a08;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:430px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);z-index:30;backdrop-filter:blur(14px)}.nav button{border:0;background:none;padding:5px 2px;font-size:11px;color:var(--muted)}.nav .ni{font-size:21px;display:block;margin-bottom:3px}.nav button.active{color:var(--green);font-weight:800}.view{display:none}.view.active{display:block}.list{display:flex;flex-direction:column;gap:10px}.row{background:#fff;border-radius:18px;padding:14px;display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line)}.row strong{display:block}.row small{color:var(--muted)}.pill{padding:6px 9px;border-radius:999px;background:var(--green2);color:var(--green);font-size:12px;font-weight:800}.product{background:#fff;border-radius:18px;padding:14px;display:grid;grid-template-columns:54px 1fr auto;gap:12px;align-items:center;border:1px solid var(--line)}.product .pic{width:54px;height:54px;border-radius:14px;background:var(--orange2);display:grid;place-items:center;font-size:28px}.redeem-btn{border:0;border-radius:12px;background:var(--green);color:white;padding:9px 10px;font-weight:800}.header2{display:flex;align-items:center;gap:10px;margin-bottom:14px}.header2 h2{margin:0}.back{border:0;background:#fff;border-radius:12px;width:38px;height:38px;font-size:20px}.bigpoints{background:linear-gradient(135deg,var(--green),#169458);color:#fff;border-radius:24px;padding:20px;margin-bottom:16px}.bigpoints .num{font-size:38px;font-weight:900;margin:4px 0}.history .row{align-items:flex-start}.plus{color:var(--green);font-weight:900}.minus{color:var(--danger);font-weight:900}.note{font-size:12px;color:var(--muted);line-height:1.5}.center{text-align:center}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;align-items:center;justify-content:center;padding:24px}.modal.open{display:flex}.modal-card{background:#fff;border-radius:24px;padding:20px;width:100%;max-width:360px;text-align:center}.modal .barcode-lines{height:110px;margin-top:14px}.close{margin-top:16px;width:100%;border:0;background:var(--green);color:#fff;border-radius:14px;padding:12px;font-weight:800}
 
-.pay-card{background:linear-gradient(135deg,#0f7a46,#15995a);color:#fff;border-radius:24px;padding:20px;text-align:left;box-shadow:0 10px 24px rgba(15,122,70,.22)}
-.pay-card-top{display:flex;justify-content:space-between;align-items:flex-start}
-.pay-brand{font-size:20px;font-weight:900}.pay-status{font-size:11px;background:rgba(255,255,255,.18);padding:5px 8px;border-radius:999px}
-.pay-balance{font-size:13px;opacity:.9;margin-top:22px}.pay-amount{font-size:34px;font-weight:900;margin-top:3px}
-.pay-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
-.pay-action{border:0;border-radius:14px;padding:12px;background:rgba(255,255,255,.16);color:#fff;font-weight:800}
-.pay-code{margin-top:14px;background:#fff;color:var(--ink);border-radius:20px;padding:18px;text-align:center;border:1px solid var(--line)}
-.qr{width:150px;height:150px;margin:8px auto 10px;background:
-conic-gradient(from 90deg at 2px 2px,#111 90deg,transparent 0) 0 0/14px 14px,
-linear-gradient(#111 0 0) 8px 8px/40px 40px no-repeat,
-linear-gradient(#fff 0 0) 15px 15px/26px 26px no-repeat,
-linear-gradient(#111 0 0) 22px 22px/12px 12px no-repeat,
-linear-gradient(#111 0 0) 102px 8px/40px 40px no-repeat,
-linear-gradient(#fff 0 0) 109px 15px/26px 26px no-repeat,
-linear-gradient(#111 0 0) 116px 22px/12px 12px no-repeat,
-linear-gradient(#111 0 0) 8px 102px/40px 40px no-repeat,
-linear-gradient(#fff 0 0) 15px 109px/26px 26px no-repeat,
-linear-gradient(#111 0 0) 22px 116px/12px 12px no-repeat;
-border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
-.pay-method{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px}
-.pay-method .method-icon{width:46px;height:46px;border-radius:14px;background:var(--green-2);display:grid;place-items:center;font-size:23px}
-.pay-method .grow{flex:1}.pay-method small{display:block;color:var(--muted);margin-top:3px}
-.switch{width:44px;height:26px;border-radius:999px;background:#d1d5db;position:relative}
-.switch.on{background:var(--green)}.switch:after{content:"";position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s}
-.switch.on:after{left:21px}
-
-
-.auth-screen{
-  position:fixed;inset:0;z-index:100;background:linear-gradient(160deg,#0f7a46 0%,#0a6b3c 42%,#f6f8f7 42%);
-  display:flex;align-items:center;justify-content:center;padding:24px;
-}
-.auth-screen.hidden{display:none}
-.auth-box{width:100%;max-width:390px;background:#fff;border-radius:26px;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.18)}
-.auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:20px}
-.auth-brand .logo{flex:0 0 auto}
-.auth-brand h1{font-size:24px;margin:0}.auth-brand p{margin:3px 0 0;color:var(--muted);font-size:12px}
-.auth-tabs{display:grid;grid-template-columns:1fr 1fr;background:#f2f4f3;border-radius:14px;padding:4px;margin-bottom:16px}
-.auth-tab{border:0;background:transparent;border-radius:11px;padding:9px;font-weight:800;color:var(--muted)}
-.auth-tab.active{background:#fff;color:var(--green);box-shadow:0 2px 7px rgba(0,0,0,.07)}
-.auth-field{margin-bottom:12px}
-.auth-field label{display:block;font-size:12px;font-weight:800;margin-bottom:6px;color:#374151}
-.auth-field input{width:100%;border:1px solid var(--line);border-radius:14px;padding:13px 14px;font-size:16px;outline:none;background:#fff}
-.auth-field input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(15,122,70,.09)}
-.auth-submit{width:100%;border:0;border-radius:14px;background:var(--green);color:#fff;padding:13px;font-size:16px;font-weight:900;margin-top:3px}
-.auth-msg{min-height:20px;font-size:12px;margin:10px 2px 0;color:var(--muted);line-height:1.45}
-.auth-msg.error{color:#c0392b}.auth-msg.ok{color:var(--green)}
-.auth-name-wrap{display:none}.auth-name-wrap.show{display:block}
-.logout-btn{border:0;background:#fff3f2;color:#c0392b;border-radius:12px;padding:9px 12px;font-weight:800}
-.member-email{font-size:11px;color:var(--muted);margin-top:3px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.real-barcode{width:100%;height:68px}
-.real-barcode-large{width:100%;height:115px}
-.shop-price{font-weight:900;color:var(--orange);margin-top:4px}
-.buy-btn{border:0;border-radius:12px;background:var(--orange);color:white;padding:9px 11px;font-weight:900}
-.data-wait{background:#fff8e9;border:1px solid #f6ddb1;border-radius:14px;padding:10px 12px;font-size:12px;color:#8a5a09;margin-top:12px;line-height:1.5}
-
-
-.profile-card{background:#fff;border-radius:22px;border:1px solid var(--line);overflow:hidden}
-.profile-title{padding:18px 18px 8px;font-size:14px;color:var(--muted)}
-.profile-row{padding:15px 18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;align-items:center}
-.profile-row:first-of-type{border-top:0}
-.profile-row label{font-weight:800}
-.profile-row .value{color:var(--muted);text-align:right;max-width:62%;word-break:break-word}
-.profile-edit-btn{display:block;margin:18px auto 20px;border:1.5px solid #1787c8;color:#1787c8;background:#fff;border-radius:999px;padding:9px 18px;font-weight:800}
-.profile-form{display:none;background:#fff;border-radius:22px;border:1px solid var(--line);padding:16px;margin-top:12px}
-.profile-form.open{display:block}
-.profile-form .auth-field{margin-bottom:12px}
-.profile-form select,.profile-form input{width:100%;border:1px solid var(--line);border-radius:14px;padding:12px 13px;font-size:16px;background:#fff}
-.profile-save{width:100%;border:0;border-radius:14px;background:var(--green);color:#fff;padding:13px;font-weight:900;font-size:16px}
-.account-block{margin-top:14px;background:#fff;border-radius:22px;border:1px solid var(--line);overflow:hidden}
-.account-row{padding:16px 18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
-.account-row:first-child{border-top:0}
-.account-row small{display:block;color:var(--muted);margin-top:3px}
-.chev{color:#9ca3af;font-size:22px}
-.danger-wide{width:100%;border:1px solid #b6b8bb;background:#fff;border-radius:999px;padding:11px;color:#555;font-size:16px;margin-top:18px}
-.phone-hint{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.4}
-
-
-.dev-badge{display:inline-block;background:#fff1c7;color:#8a5a09;border:1px solid #f2d27a;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900;margin-top:8px}
-.dev-note{background:#fff8e9;border:1px solid #f3dcab;border-radius:14px;padding:10px 12px;font-size:12px;color:#7a5411;line-height:1.5;margin-top:12px}
-
-
-.shop-toolbar{display:flex;gap:8px;margin-bottom:12px}
-.shop-search{flex:1;border:1px solid var(--line);border-radius:14px;padding:11px 13px;font-size:15px;background:#fff}
-.shop-filter{border:0;border-radius:14px;background:#fff;padding:0 13px;border:1px solid var(--line)}
-.product-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.shop-item{background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden}
-.shop-img{height:108px;background:var(--orange-2);display:grid;place-items:center;font-size:42px;overflow:hidden}
-.shop-img img{width:100%;height:100%;object-fit:cover}
-.shop-body{padding:12px}
-.shop-name{font-weight:900;line-height:1.35;min-height:38px}
-.shop-desc{font-size:11px;color:var(--muted);margin:5px 0 8px;min-height:30px}
-.shop-bottom{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.shop-price2{font-size:18px;font-weight:900;color:var(--orange)}
-.shop-buy{border:0;border-radius:11px;background:var(--green);color:#fff;padding:8px 10px;font-weight:900}
-.shop-buy:disabled{background:#c9cecb;color:#fff}
-.empty-box{background:#fff;border:1px dashed #cfd5d1;border-radius:18px;padding:28px 16px;text-align:center;color:var(--muted)}
-.empty-box .big{font-size:36px;margin-bottom:8px}
-.member-product{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px}
-.member-product-top{display:flex;gap:12px;align-items:center}
-.member-product-pic{width:58px;height:58px;border-radius:14px;background:var(--orange-2);display:grid;place-items:center;font-size:30px;overflow:hidden}
-.member-product-pic img{width:100%;height:100%;object-fit:cover}
-.member-product-main{flex:1}
-.member-product-main strong{display:block}
-.member-product-main small{color:var(--muted)}
-.qty-wrap{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
-.qty-big{font-size:22px;font-weight:900;color:var(--green)}
-.expiry{font-size:11px;color:var(--muted)}
-.redeem-open{border:0;border-radius:12px;background:var(--green);color:#fff;padding:9px 12px;font-weight:900}
-.history-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px}
-.history-card strong{display:block}
-.history-card small{display:block;color:var(--muted);margin-top:4px;line-height:1.45}
-.history-qty{font-weight:900;color:var(--green)}
-.modal-detail{text-align:left}
-.modal-detail h2{margin:10px 0 6px}
-.modal-detail .price{font-size:28px;font-weight:900;color:var(--orange);margin:8px 0}
-.modal-detail .desc{font-size:13px;color:var(--muted);line-height:1.6}
-.modal-detail .status{background:#fff8e9;border:1px solid #f3dcab;border-radius:13px;padding:9px 10px;font-size:12px;color:#7a5411;margin-top:12px}
-
-
-.reload-quota{
-  margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;
-}
-.reload-quota-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.reload-quota-head strong{font-size:15px}
-.reload-quota-head span{font-size:12px;color:var(--muted)}
-.reload-quota-amount{font-size:22px;font-weight:900;color:var(--green);margin-top:7px}
-.reload-quota-sub{font-size:12px;color:var(--muted);margin-top:3px}
-.reload-progress{height:9px;background:#edf0ee;border-radius:999px;overflow:hidden;margin-top:11px}
-.reload-progress > div{height:100%;background:var(--green);border-radius:999px;width:0%}
-.reload-rule{font-size:11px;color:var(--muted);margin-top:9px;line-height:1.45}
-
-
-.app-service-overlay{display:none;position:fixed;inset:0;z-index:120;background:rgba(246,248,247,.98);align-items:center;justify-content:center;padding:24px;text-align:center}
-.app-service-overlay.show{display:flex}
-.app-service-card{width:100%;max-width:380px;background:#fff;border:1px solid var(--line);border-radius:26px;padding:24px;box-shadow:0 18px 50px rgba(0,0,0,.12)}
-.app-service-card .big{font-size:48px;margin-bottom:10px}
-.app-service-card h2{margin:0 0 8px}.app-service-card p{margin:0;color:var(--muted);line-height:1.6}
-.announcement{display:none;background:#fff8e9;border:1px solid #f3dcab;color:#7a5411;border-radius:16px;padding:12px 14px;margin:0 0 14px;line-height:1.5;font-size:13px}
-.announcement.show{display:block}
-.coupon-list{display:flex;flex-direction:column;gap:12px}
-.coupon-card{background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden}
-.coupon-image{height:120px;background:var(--orange-2);display:grid;place-items:center;font-size:42px;overflow:hidden}
-.coupon-image img{width:100%;height:100%;object-fit:cover}
-.coupon-body{padding:14px}.coupon-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
-.coupon-name{font-size:17px;font-weight:900}
-.coupon-type{font-size:11px;background:var(--green-2);color:var(--green);padding:4px 8px;border-radius:999px;font-weight:800;white-space:nowrap}
-.coupon-value{font-size:24px;font-weight:900;color:var(--orange);margin-top:6px}
-.coupon-meta{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.55}
-.coupon-code{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:12px;color:var(--muted)}
-.feature-disabled{opacity:.45;pointer-events:none}
-
-.shop-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
-.shop-info-chip{background:#f7f8f8;border:1px solid var(--line);border-radius:10px;padding:7px 8px;font-size:11px;color:var(--muted)}
-.activity-badge{display:inline-block;margin-top:6px;background:#fff1e7;color:#c65d10;border:1px solid #ffd7ba;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:900}
-.activity-range{font-size:11px;color:var(--muted);margin-top:5px}
-.detail-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
-.detail-meta div{background:#f7f8f8;border:1px solid var(--line);border-radius:12px;padding:9px 10px;font-size:12px}
-
-
-.dev-action{border:0;border-radius:12px;background:#f28a2b;color:#fff;padding:9px 11px;font-weight:900}
-.dev-action:disabled{background:#c9cecb}
-.dev-mini{border:1px solid #f28a2b;border-radius:11px;background:#fff;color:#c65d10;padding:8px 9px;font-weight:900;font-size:12px}
-.dev-flow-note{background:#fff8e9;border:1px solid #f3dcab;color:#7a5411;border-radius:14px;padding:10px 12px;font-size:12px;line-height:1.5;margin:10px 0}
-.action-row{display:flex;gap:8px;align-items:center}
-
-</style>
-
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
-<body>
-<div class="phone">
-<header class="topbar"><div class="brand"><div class="logo">億</div><span>億家</span></div><button class="iconbtn">🔔</button></header>
-<main class="content">
-<section id="home" class="view active">
-<div id="appAnnouncement" class="announcement"></div>
-<div class="hero"><div class="hero-head"><div><div class="eyebrow">億家會員</div><div id="memberName" class="member-name">您好</div><div id="memberEmail" class="member-email"></div></div><div class="points" onclick="showView('points')"><span>可用點數</span><b id="homePoints">--</b><span id="homeExpiry">等待點數資料表</span></div></div><div class="barcode" onclick="openBarcode()"><svg id="homeBarcode" class="real-barcode"></svg><small>點一下放大會員條碼</small></div></div>
-<div class="quick"><button class="q" onclick="showView('points')"><span class="ico">🪙</span>億家點數</button><button class="q" onclick="showView('redeem')"><span class="ico">☕</span>隨買跨店取</button><button class="q" onclick="showView('products')"><span class="ico">🛍️</span>我的商品</button><button class="q" onclick="showView('coupons')"><span class="ico">🎟️</span>優惠券</button></div>
-<div class="section-title"><h3>本期活動</h3><button>更多</button></div><div class="banner"><div><h2>億家會員專屬</h2><p>活動內容將由總部 App 後台設定同步顯示</p></div><div class="cup">🥤</div></div>
-<div class="section-title"><h3>我的服務</h3></div><div class="cards"><div class="card"><span class="badge">跨店取</span><b>待兌換 5 件</b><small>查看已購買商品</small></div><div class="card"><span class="badge">點數</span><b>本月 +320 點</b><small>查看累點明細</small></div><div class="card"><span class="badge">訂單</span><b>我的訂單</b><small>商城／預購紀錄</small></div><div class="card"><span class="badge">會員</span><b>個人資料</b><small>帳號與通知設定</small></div></div>
-</section>
-
-<section id="coupons" class="view">
-  <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>優惠券</h2></div>
-  <div id="couponList" class="coupon-list">
-    <div class="empty-box"><div class="big">🎟️</div>優惠券載入中…</div>
-  </div>
-</section>
-
-<section id="points" class="view">
-<div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>億家點數</h2></div>
-<div class="bigpoints"><small>目前可用點數</small><div id="pointsBalance" class="num">-- 點</div><div id="pointsExpiry">等待點數資料表接通</div></div>
-<div class="section-title"><h3>點數紀錄</h3></div>
-<div id="pointsHistory" class="list history">
-  <div class="row"><div><strong>尚未讀取點數紀錄</strong><small>尚無點數紀錄時會顯示在這裡；資料現在直接讀取 Supabase</small></div></div>
-</div>
-<div class="data-wait">這一版不再顯示假點數。登入目前為測試連線版；等確認點數資料表後，再接上真實餘額與紀錄。</div>
-</section>
-<section id="redeem" class="view">
-  <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>隨買跨店取</h2></div>
-  <div class="shop-toolbar">
-    <input id="shopSearch" class="shop-search" placeholder="搜尋隨買商品" oninput="renderShopProducts()">
-    <button class="shop-filter" onclick="loadShopProducts()">重新整理</button>
-  </div>
-  <div id="shopProducts" class="product-grid">
-    <div class="empty-box" style="grid-column:1/-1"><div class="big">🛍️</div>商品載入中…</div>
-  </div>
-  <p class="note">「隨買」商品資料由總部 SC 同步。v0.9 開發測試可建立購買紀錄，但不會扣款；正式版將改由億家Pay／正式金流建立購買。</p>
-</section>
-<section id="products" class="view">
-  <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>我的商品</h2></div>
-  <div class="dev-flow-note">開發測試：可直接「測試兌換 1 件」驗證剩餘數量扣除與兌換紀錄。正式版會移除此按鈕，由 TM 掃碼兌換。</div>
-  <div id="myProducts" class="list">
-    <div class="empty-box"><div class="big">☕</div>已購商品載入中…</div>
-  </div>
-
-  <div class="section-title"><h3>兌換紀錄</h3><button onclick="loadRedemptions()">重新整理</button></div>
-  <div id="redemptionHistory" class="list">
-    <div class="empty-box"><div class="big">🧾</div>兌換紀錄載入中…</div>
-  </div>
-</section>
-
-<section id="pay" class="view">
-  <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>億家Pay</h2></div>
-
-  <div class="pay-card">
-    <div class="pay-card-top">
-      <div class="pay-brand">億家 Pay</div>
-      <div class="pay-status">安全付款</div>
-    </div>
-    <div class="pay-balance">億家Pay 錢包餘額</div>
-    <div class="pay-amount">$0</div>
-    <div class="pay-actions">
-      <button class="pay-action" onclick="togglePayCode()">付款碼</button>
-      <button class="pay-action" onclick="alert('儲值功能後續接入')">儲值</button>
-    </div>
-  </div>
-
-  
-  <div class="reload-quota">
-    <div class="reload-quota-head">
-      <strong>本月現金儲值額度</strong>
-      <span id="reloadLimitLabel">每月上限由總部設定</span>
-    </div>
-    <div id="reloadUsedText" class="reload-quota-amount">$0 / $5,000</div>
-    <div id="reloadRemainText" class="reload-quota-sub">本月剩餘可儲值 $5,000</div>
-    <div class="reload-progress"><div id="reloadProgressBar"></div></div>
-    <div class="reload-rule">現金儲值以曆月累計；每月上限由總部 SC 設定，次月自動重新計算額度。</div>
-  </div>
-
-<div id="payCodeBox" class="pay-code">
-    <div class="eyebrow">結帳時出示</div>
-    <h3 style="margin:3px 0 8px">億家Pay 付款碼</h3>
-    <div class="qr"></div>
-    <strong>付款碼每 60 秒更新</strong>
-    <p class="note" style="margin-bottom:0">正式版會由登入會員產生動態付款碼，並與會員身分綁定。</p>
-  </div>
-
-  <div class="section-title"><h3>付款方式</h3><button>管理</button></div>
-  <div class="list">
-    <div class="pay-method">
-      <div class="method-icon">💳</div>
-      <div class="grow"><strong>信用卡／簽帳金融卡</strong><small>尚未綁定</small></div>
-      <span>›</span>
-    </div>
-    <div class="pay-method">
-      <div class="method-icon">🏦</div>
-      <div class="grow"><strong>銀行帳戶</strong><small>預留串接</small></div>
-      <span>›</span>
-    </div>
-    <div class="pay-method">
-      <div class="method-icon">🪙</div>
-      <div class="grow"><strong>點數折抵</strong><small>付款時可選擇使用億家點數</small></div>
-      <div class="switch on" onclick="this.classList.toggle('on')"></div>
-    </div>
-  </div>
-
-  <div class="section-title"><h3>最近交易</h3><button>全部</button></div>
-  <div class="list">
-    <div class="row"><div><strong>目前尚無交易</strong><small>完成億家Pay付款後會顯示在這裡</small></div><span>›</span></div>
-  </div>
-
-  <div class="section-title"><h3>安全與設定</h3></div>
-  <div class="list">
-    <div class="row"><div><strong>付款驗證</strong><small>Face ID／裝置驗證</small></div><span>›</span></div>
-    <div class="row"><div><strong>付款限額</strong><small>單筆與每日上限</small></div><span>›</span></div>
-    <div class="row"><div><strong>停用億家Pay</strong><small>遺失手機時可立即停用</small></div><span>›</span></div>
-  </div>
-  <p class="note">目前為介面原型。真正付款功能需再串接合法支付服務商／金流，不會直接把信用卡資料存放在 App 或 Supabase。</p>
-</section>
-
-<section id="me" class="view">
-  <div class="header2"><h2>我的</h2></div>
-  <div class="list">
-    <div class="row" onclick="showView('profile')">
-      <div><strong id="meName">會員</strong><small id="meEmail">--</small></div><span>›</span>
-    </div>
-    <div class="row" onclick="showView('profile')"><div><strong>會員資料</strong><small>姓名、生日、性別、Email、地址、國籍</small></div><span>›</span></div>
-    <div class="row"><div><strong>我的訂單</strong><small>商城與預購訂單</small></div><span>›</span></div>
-    <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.9 Dev Purchase</small></div><span>›</span></div>
-    <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
-  </div>
-</section>
-
-<section id="profile" class="view">
-  <div class="header2"><button class="back" onclick="showView('me')">‹</button><h2>會員資料</h2></div>
-
-  <div class="profile-card">
-    <div class="profile-row"><label>姓名</label><div id="pvName" class="value">未填寫</div></div>
-    <div class="profile-row"><label>生日</label><div id="pvBirthday" class="value">未填寫</div></div>
-    <div class="profile-row"><label>性別</label><div id="pvGender" class="value">未填寫</div></div>
-    <div class="profile-row"><label>Email</label><div id="pvEmail" class="value">未填寫</div></div>
-    <div class="profile-row"><label>地址</label><div id="pvAddress" class="value">未填寫</div></div>
-    <div class="profile-row"><label>國籍</label><div id="pvNationality" class="value">未填寫</div></div>
-    <button class="profile-edit-btn" onclick="toggleProfileForm(true)">編輯會員資料</button>
-  </div>
-
-  <div id="profileForm" class="profile-form">
-    <div class="auth-field"><label>姓名</label><input id="pfName" autocomplete="name" placeholder="請輸入姓名"></div>
-    <div class="auth-field"><label>生日</label><input id="pfBirthday" type="date"></div>
-    <div class="auth-field"><label>性別</label>
-      <select id="pfGender">
-        <option value="">請選擇</option>
-        <option value="男">男</option>
-        <option value="女">女</option>
-        <option value="其他">其他</option>
-        <option value="不透露">不透露</option>
-      </select>
-    </div>
-    <div class="auth-field"><label>Email</label><input id="pfEmail" type="email" autocomplete="email" placeholder="name@example.com"></div>
-    <div class="auth-field"><label>地址</label><input id="pfAddress" autocomplete="street-address" placeholder="請輸入地址"></div>
-    <div class="auth-field"><label>國籍</label><input id="pfNationality" placeholder="例如：台灣"></div>
-    <button class="profile-save" onclick="saveProfile()">儲存會員資料</button>
-    <div id="profileMsg" class="auth-msg"></div>
-  </div>
-
-  <div class="account-block">
-    <div class="account-row"><div><strong>手機號碼</strong><small id="accountPhone">--</small></div></div>
-    <div class="account-row" onclick="alert('變更密碼功能下一版接入')"><div><strong>密碼</strong><small>點此變更密碼</small></div><span class="chev">›</span></div>
-    <div class="account-row"><div><strong>生物辨識登入</strong><small>Face ID／Touch ID</small></div><div class="switch on" onclick="this.classList.toggle('on')"></div></div>
-  </div>
-
-  <button class="danger-wide" onclick="alert('取消會員屬高風險帳號操作，正式版會加二次確認與後端流程。')">取消會員</button>
-</section>
-</main>
-<nav class="nav"><button class="active" data-view="home" onclick="showView('home')"><span class="ni">🏠</span>首頁</button><button data-view="redeem" onclick="showView('redeem')"><span class="ni">☕</span>隨買</button><button data-view="pay" onclick="showView('pay')"><span class="ni">💳</span>億家Pay</button><button data-view="points" onclick="showView('points')"><span class="ni">🪙</span>點數</button><button data-view="me" onclick="showView('me')"><span class="ni">👤</span>我的</button></nav>
-</div>
-
-<div id="appServiceOverlay" class="app-service-overlay">
-  <div class="app-service-card">
-    <div id="appServiceIcon" class="big">🛠️</div>
-    <h2 id="appServiceTitle">億家 App 暫時無法使用</h2>
-    <p id="appServiceMessage">請稍後再試。</p>
-  </div>
-</div>
-
-<div id="modal" class="modal" onclick="if(event.target===this)closeBarcode()">
-<div class="modal-card">
-<div class="logo" style="margin:auto;width:56px;height:56px;font-size:34px">億</div>
-<h2>億家會員條碼</h2>
-<svg id="modalBarcode" class="real-barcode-large"></svg>
-<p id="memberCodeText" class="note"></p>
-<button class="close" onclick="closeBarcode()">關閉</button>
-</div></div>
-
-
-<div id="productModal" class="modal" onclick="if(event.target===this)closeProductModal()">
-  <div class="modal-card modal-detail">
-    <div id="pdImage" class="shop-img" style="border-radius:16px;height:150px">🛍️</div>
-    <h2 id="pdName">商品</h2>
-    <div id="pdPrice" class="price">$0</div>
-    <div id="pdDesc" class="desc"></div>
-    <div id="pdStatus" class="status">付款功能尚未接通。</div>
-    <button id="pdBuyBtn" class="dev-action" style="width:100%;padding:12px" onclick="startPurchase()">開發測試購買</button>
-    <button class="danger-wide" style="margin-top:9px" onclick="closeProductModal()">關閉</button>
-  </div>
-</div>
-
-<div id="authScreen" class="auth-screen">
-  <div class="auth-box">
-    <div class="auth-brand">
-      <div class="logo">億</div>
-      <div><h1>億家 App</h1><p>會員登入</p><span class="dev-badge">測試連線版</span></div>
-    </div>
-    <div class="auth-tabs">
-      <button id="loginTab" class="auth-tab active" onclick="setAuthMode('login')">登入</button>
-      <button id="registerTab" class="auth-tab" onclick="setAuthMode('register')">註冊</button>
-    </div>
-<div class="auth-field">
-      <label>手機號碼</label>
-      <input id="authPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="09xxxxxxxx">
-      <div class="phone-hint">手機號碼就是億家 App 登入帳號</div>
-    </div>
-    <div class="auth-field">
-      <label>密碼</label>
-      <input id="authPassword" type="password" autocomplete="current-password" placeholder="至少 6 個字元">
-    </div>
-    <button id="authSubmit" class="auth-submit" onclick="submitAuth()">登入</button>
-    <div id="authMsg" class="auth-msg">開發測試登入：輸入手機號碼＋密碼即可進入。</div><div class="dev-note">目前使用手機號碼＋密碼登入；系統內部以隱藏識別方式連接 Supabase，不需要 SMS 或 Twilio。</div>
-  </div>
-</div>
-
-<script>
-
-const SUPABASE_URL = "https://lmiazouyimwuwjoihizi.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_9k2wrNVmnstb2SWaRvazGw_L0lrtXNW";
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-let authMode='login';
-let currentUser=null;
-let currentMember=null;
-
-function showView(id){
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  const target=document.getElementById(id);
-  if(target) target.classList.add('active');
-  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===id));
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-function openBarcode(){if(!currentUser)return;renderBarcodes();document.getElementById('modal').classList.add('open')}
-function closeBarcode(){document.getElementById('modal').classList.remove('open')}
-function togglePayCode(){const el=document.getElementById('payCodeBox');el.style.display=(el.style.display==='none')?'block':'none'}
-
-function setAuthMode(mode){
-  authMode=mode;
-  document.getElementById('loginTab').classList.toggle('active',mode==='login');
-  document.getElementById('registerTab').classList.toggle('active',mode==='register');
-  document.getElementById('authSubmit').textContent=mode==='login'?'登入':'註冊';
-  document.getElementById('authMsg').textContent=
-    mode==='login'?'輸入手機號碼＋密碼登入。':'註冊只需要手機號碼＋密碼。';
-  document.getElementById('authMsg').className='auth-msg';
-}
-function setAuthMessage(text,type=''){
-  const el=document.getElementById('authMsg');
-  el.textContent=text;
-  el.className='auth-msg'+(type?' '+type:'');
-}
-
-function normalizePhone(input){
-  const digits=(input||'').replace(/\D/g,'');
-  if(/^09\d{8}$/.test(digits)) return digits;
-  return '';
-}
-function phoneToInternalEmail(phone){
-  // 僅 Supabase 內部技術識別，會員不會看到，也不是實際 Email。
-  return 'tw'+phone+'@auth.yijia.invalid';
-}
-function memberCodeFromPhone(phone){ return 'YJ'+phone; }
-
-async function submitAuth(){
-  const phone=normalizePhone(document.getElementById('authPhone').value.trim());
-  const password=document.getElementById('authPassword').value;
-  if(!phone){setAuthMessage('請輸入正確的台灣手機號碼，例如 09xxxxxxxx。','error');return}
-  if(!password||password.length<6){setAuthMessage('密碼至少 6 個字元。','error');return}
-
-  const email=phoneToInternalEmail(phone);
-  const btn=document.getElementById('authSubmit');
-  btn.disabled=true; btn.textContent='處理中…';
-
-  try{
-    if(authMode==='register'){
-      const {data,error}=await sb.auth.signUp({
-        email,password,
-        options:{data:{phone_login:phone}}
-      });
-      if(error) throw error;
-
-      if(!data.session){
-        setAuthMessage('Supabase 目前要求 Email 確認。請先把 Email confirmation 關閉後再註冊。','error');
-        return;
-      }
-      await ensureMemberRow(data.user,phone);
-      await applyUser(data.user);
-    } else {
-      const {data,error}=await sb.auth.signInWithPassword({email,password});
-      if(error) throw error;
-      await applyUser(data.user);
-    }
-  }catch(err){
-    setAuthMessage(err?.message||'登入失敗，請稍後再試。','error');
-  }finally{
-    btn.disabled=false; btn.textContent=authMode==='login'?'登入':'註冊';
-  }
-}
-
-async function ensureMemberRow(user,phone){
-  const {data:existing,error:findErr}=await sb
-    .from('app_members')
-    .select('*')
-    .eq('auth_user_id',user.id)
-    .maybeSingle();
-  if(findErr) throw findErr;
-  if(existing) return existing;
-
-  const {data,error}=await sb
-    .from('app_members')
-    .insert({
-      auth_user_id:user.id,
-      phone,
-      updated_at:new Date().toISOString()
-    })
-    .select()
-    .single();
-  if(error) throw error;
-  return data;
-}
-
-async function loadMember(){
-  const {data,error}=await sb
-    .from('app_members')
-    .select('*')
-    .eq('auth_user_id',currentUser.id)
-    .maybeSingle();
-  if(error) throw error;
-  if(!data){
-    return await ensureMemberRow(currentUser,currentUser.user_metadata?.phone_login||'');
-  }
-  return data;
-}
-
-async function loadPoints(){
-  const {data,error}=await sb
-    .from('app_points')
-    .select('*')
-    .eq('auth_user_id',currentUser.id)
-    .maybeSingle();
-  if(error) throw error;
-
-  if(!data){
-    const {data:created,error:createErr}=await sb
-      .from('app_points')
-      .insert({
-        auth_user_id:currentUser.id,
-        phone:currentMember.phone,
-        available_points:0,
-        expiring_points:0,
-        updated_at:new Date().toISOString()
-      })
-      .select()
-      .single();
-    if(createErr) throw createErr;
-    renderPoints(created);
-    return;
-  }
-  renderPoints(data);
-}
-
-async function loadPointHistory(){
-  const {data,error}=await sb
-    .from('app_point_transactions')
-    .select('*')
-    .eq('auth_user_id',currentUser.id)
-    .order('created_at',{ascending:false})
-    .limit(30);
-  if(error) throw error;
-
-  const box=document.getElementById('pointsHistory');
-  if(!box) return;
-  if(!data?.length){
-    box.innerHTML='<div class="row"><div><strong>尚無點數紀錄</strong><small>完成累點、折抵或活動贈點後會顯示在這裡</small></div></div>';
-    return;
-  }
-  const labels={earn:'消費累點',redeem:'點數折抵',refund_deduct:'退貨扣點',bonus:'活動贈點'};
-  box.innerHTML=data.map(t=>{
-    const plus=t.points>0;
-    return `<div class="row"><div><strong>${labels[t.transaction_type]||t.transaction_type}</strong><small>${t.description||''} · ${new Date(t.created_at).toLocaleString('zh-TW')}</small></div><div class="${plus?'plus':'minus'}">${plus?'+':''}${t.points}</div></div>`;
-  }).join('');
-}
-
-function renderPoints(p){
-  const available=Number(p?.available_points||0);
-  const expiring=Number(p?.expiring_points||0);
-  document.getElementById('homePoints').textContent=available.toLocaleString();
-  document.getElementById('homeExpiry').textContent=expiring>0 ? expiring.toLocaleString()+' 點即將到期' : '目前無即將到期點數';
-  document.getElementById('pointsBalance').textContent=available.toLocaleString()+' 點';
-  document.getElementById('pointsExpiry').textContent=
-    expiring>0
-      ? expiring.toLocaleString()+' 點將於 '+(p.expiry_date||'指定日期')+' 到期'
-      : '目前無即將到期點數';
-}
-
-function getDisplayName(){
-  return currentMember?.name?.trim()||'會員';
-}
-function renderBarcodes(){
-  if(!currentMember||!window.JsBarcode)return;
-  const code=memberCodeFromPhone(currentMember.phone);
-  const opts={format:'CODE128',displayValue:false,margin:4,height:58,width:1.35};
-  try{
-    JsBarcode('#homeBarcode',code,opts);
-    JsBarcode('#modalBarcode',code,{...opts,height:92,width:1.25,margin:8});
-    document.getElementById('memberCodeText').textContent='會員編號：'+code;
-  }catch(e){console.warn(e)}
-}
-
-async function applyUser(user){
-  currentUser=user;
-  try{
-    currentMember=await loadMember();
-    const name=getDisplayName();
-    document.getElementById('memberName').textContent='您好，'+name;
-    document.getElementById('memberEmail').textContent=currentMember.phone||'';
-    document.getElementById('meName').textContent=name;
-    document.getElementById('meEmail').textContent=currentMember.phone||'';
-    document.getElementById('authScreen').classList.add('hidden');
-    renderProfile();
-    renderBarcodes();
-    await loadSCAppState();
-    if(scAppSettings.pointsSync){ await loadPoints(); await loadPointHistory(); }
-    renderShopProducts();
-    await loadMyProducts();
-    await loadRedemptions();
-    await loadCashReloadQuota();
-  }catch(err){
-    console.error(err);
-    setAuthMessage('已登入，但會員資料讀取失敗：'+(err?.message||''),'error');
-  }
-}
-
-async function signOut(){
-  await sb.auth.signOut();
-  currentUser=null; currentMember=null;
-  document.getElementById('authScreen').classList.remove('hidden');
-  showView('home');
-  setAuthMode('login');
-  setAuthMessage('已登出。');
-}
-
-function demoBuy(name){alert(name+'：目前為選購流程。跨店取商品與訂單資料表接通後才會真的建立訂單。')}
-function valOrBlank(v){return v&&String(v).trim()?v:'未填寫'}
-
-function renderProfile(){
-  if(!currentMember)return;
-  const m=currentMember;
-  const fields={pvName:m.name,pvBirthday:m.birthday,pvGender:m.gender,pvEmail:m.email,pvAddress:m.address,pvNationality:m.nationality};
-  Object.entries(fields).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.textContent=valOrBlank(v)});
-  const ap=document.getElementById('accountPhone');if(ap)ap.textContent=m.phone||'--';
-  const map={pfName:m.name||'',pfBirthday:m.birthday||'',pfGender:m.gender||'',pfEmail:m.email||'',pfAddress:m.address||'',pfNationality:m.nationality||''};
-  Object.entries(map).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v});
-}
-function toggleProfileForm(open){
-  const form=document.getElementById('profileForm');
-  if(form)form.classList.toggle('open',!!open);
-  if(open)renderProfile();
-}
-async function saveProfile(){
-  if(!currentUser||!currentMember)return;
-  const payload={
-    name:document.getElementById('pfName').value.trim()||null,
-    birthday:document.getElementById('pfBirthday').value||null,
-    gender:document.getElementById('pfGender').value||null,
-    email:document.getElementById('pfEmail').value.trim()||null,
-    address:document.getElementById('pfAddress').value.trim()||null,
-    nationality:document.getElementById('pfNationality').value.trim()||null,
-    updated_at:new Date().toISOString()
-  };
-  const msg=document.getElementById('profileMsg');
-  msg.textContent='儲存中…'; msg.className='auth-msg';
-
-  const {data,error}=await sb
-    .from('app_members')
-    .update(payload)
-    .eq('auth_user_id',currentUser.id)
-    .select()
-    .single();
-
-  if(error){
-    msg.textContent=error.message||'儲存失敗';
-    msg.className='auth-msg error';
-    return;
-  }
-  currentMember=data;
-  renderProfile();
-  const name=getDisplayName();
-  document.getElementById('memberName').textContent='您好，'+name;
-  document.getElementById('meName').textContent=name;
-  msg.textContent='會員資料已同步到 Supabase';
-  msg.className='auth-msg ok';
-  setTimeout(()=>toggleProfileForm(false),700);
-}
-
-
-let shopProductsCache=[];
-
-const HQ_STORE_ID='001';
-const SC_KEY_SETTINGS='yj_hq_app_settings';
-const SC_KEY_COUPONS='yj_app_coupons';
-const SC_KEY_ANYBUY='yj_app_anybuy_products';
-
-let scAppSettings={enabled:true,maintenance:false,pointsSync:true,crossStoreRedeem:true,announcement:'',yijiaPayMonthlyCashTopupLimit:5000};
-let scCoupons=[];
-let scAnybuyProducts=[];
-
-function normalizeStateData(v){
-  if(v==null) return null;
-  if(typeof v==='string'){try{return JSON.parse(v)}catch{return v}}
-  return v;
-}
-
-async function loadSCAppState(){
-  const {data,error}=await sb.from('yijia_app_state')
-    .select('data_key,data,updated_at')
-    .eq('store_id',HQ_STORE_ID)
-    .in('data_key',[SC_KEY_SETTINGS,SC_KEY_COUPONS,SC_KEY_ANYBUY]);
-
-  if(error){console.error('SC app state load failed',error);return}
-
-  const byKey={};
-  (data||[]).forEach(row=>{byKey[row.data_key]=normalizeStateData(row.data)});
-
-  const backend=(byKey[SC_KEY_SETTINGS]||{}).appBackend||{};
-  scAppSettings={
-    enabled:backend.enabled!==false,
-    maintenance:backend.maintenance===true,
-    pointsSync:backend.pointsSync!==false,
-    crossStoreRedeem:backend.crossStoreRedeem!==false,
-    announcement:backend.announcement||'',
-    yijiaPayMonthlyCashTopupLimit:Number(backend.yijiaPayMonthlyCashTopupLimit??5000)
-  };
-
-  scCoupons=Array.isArray(byKey[SC_KEY_COUPONS])?byKey[SC_KEY_COUPONS]:[];
-  scAnybuyProducts=Array.isArray(byKey[SC_KEY_ANYBUY])?byKey[SC_KEY_ANYBUY]:[];
-
-  applySCAppSettings();
-  renderCoupons();
-
-  shopProductsCache=scAnybuyProducts
-    .filter(p=>p&&p.active!==false)
-    .map(p=>({
-      id:p.id||p.code,
-      code:p.code||'',
-      name:p.name||'',
-      category:p.category||'',
-      price:Number(p.price||0),
-      image_url:p.imageUrl||'',
-      description:p.note||p.category||'隨買跨店取商品',
-      quantity:Number(p.quantity||0),
-      validityDays:Number(p.validityDays||0),
-      activityStartDate:p.activityStartDate||'',
-      activityEndDate:p.activityEndDate||'',
-      activityContent:p.activityContent||''
-    }));
-  renderShopProducts();
-}
-
-function applySCAppSettings(){
-  const overlay=document.getElementById('appServiceOverlay');
-  const title=document.getElementById('appServiceTitle');
-  const msg=document.getElementById('appServiceMessage');
-  const icon=document.getElementById('appServiceIcon');
-
-  if(scAppSettings.enabled===false){
-    if(icon) icon.textContent='⛔';
-    if(title) title.textContent='億家 App 服務暫停';
-    if(msg) msg.textContent='總部目前已暫停 App 服務，請稍後再試。';
-    overlay?.classList.add('show');
-  }else if(scAppSettings.maintenance===true){
-    if(icon) icon.textContent='🛠️';
-    if(title) title.textContent='億家 App 維護中';
-    if(msg) msg.textContent='系統目前進行維護，完成後即可繼續使用。';
-    overlay?.classList.add('show');
-  }else{
-    overlay?.classList.remove('show');
-  }
-
-  const ann=document.getElementById('appAnnouncement');
-  if(ann){
-    if(String(scAppSettings.announcement||'').trim()){
-      ann.textContent='📢 '+scAppSettings.announcement;
-      ann.classList.add('show');
-    }else{
-      ann.textContent='';
-      ann.classList.remove('show');
-    }
-  }
-
-  if(!scAppSettings.pointsSync){
-    const hp=document.getElementById('homePoints');
-    const he=document.getElementById('homeExpiry');
-    const pb=document.getElementById('pointsBalance');
-    const pe=document.getElementById('pointsExpiry');
-    if(hp) hp.textContent='--';
-    if(he) he.textContent='點數同步暫停';
-    if(pb) pb.textContent='-- 點';
-    if(pe) pe.textContent='總部目前暫停會員點數同步';
-  }
-
-  const rv=document.getElementById('redeem');
-  const pv=document.getElementById('products');
-  if(rv) rv.classList.toggle('feature-disabled',!scAppSettings.crossStoreRedeem);
-  if(pv) pv.classList.toggle('feature-disabled',!scAppSettings.crossStoreRedeem);
-
-  const limit=Math.max(0,Number(scAppSettings.yijiaPayMonthlyCashTopupLimit||0));
-  window.MONTHLY_CASH_RELOAD_LIMIT_DYNAMIC=limit;
-  renderCashReloadQuota(window.currentCashReloadUsed||0);
-}
-
-function couponValueText(c){
-  const type=c.type||'';
-  const value=Number(c.value||0);
-  if(type==='折價券') return '折 '+money(value);
-  if(type==='折扣券') return value>0 ? value+' 折' : '折扣券';
-  if(type==='商品券') return '商品券';
-  if(type==='贈品券') return '贈品券';
-  if(type==='免運券') return '免運';
-  return value ? String(value) : '優惠';
-}
-
-function couponDateValid(c){
-  const now=new Date();
-  if(c.startDate && now<new Date(c.startDate+'T00:00:00')) return false;
-  if(c.endDate && now>new Date(c.endDate+'T23:59:59')) return false;
-  return true;
-}
-
-function renderCoupons(){
-  const box=document.getElementById('couponList');
-  if(!box) return;
-  const list=scCoupons.filter(c=>c&&c.active!==false&&couponDateValid(c));
-  if(!list.length){
-    box.innerHTML='<div class="empty-box"><div class="big">🎟️</div>目前沒有可使用的優惠券</div>';
-    return;
-  }
-  box.innerHTML=list.map(c=>`
-    <div class="coupon-card">
-      <div class="coupon-image">${c.imageUrl?`<img src="${safeText(c.imageUrl)}" alt="${safeText(c.name||'優惠券')}">`:'🎟️'}</div>
-      <div class="coupon-body">
-        <div class="coupon-top">
-          <div class="coupon-name">${safeText(c.name||'優惠券')}</div>
-          <div class="coupon-type">${safeText(c.type||'優惠')}</div>
-        </div>
-        <div class="coupon-value">${safeText(couponValueText(c))}</div>
-        <div class="coupon-meta">
-          ${Number(c.minSpend||0)>0?'最低消費 '+money(c.minSpend)+'<br>':''}
-          ${(c.startDate||c.endDate)?'有效期間：'+safeText(c.startDate||'即日起')+' ～ '+safeText(c.endDate||'無期限'):''}
-          ${c.note?'<br>'+safeText(c.note):''}
-        </div>
-        <div class="coupon-code">優惠券代碼：${safeText(c.code||'--')}</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-let selectedProduct=null;
-
-function money(v){
-  const n=Number(v||0);
-  return '$'+n.toLocaleString('zh-TW');
-}
-
-function safeText(v){
-  return String(v??'')
-    .replaceAll('&','&amp;')
-    .replaceAll('<','&lt;')
-    .replaceAll('>','&gt;')
-    .replaceAll('"','&quot;')
-    .replaceAll("'","&#039;");
-}
-
-function productImageHtml(p){
-  if(p?.image_url){
-    return `<img src="${safeText(p.image_url)}" alt="${safeText(p.name)}">`;
-  }
-  return '🛍️';
-}
-
-async function loadShopProducts(){
-  const box=document.getElementById('shopProducts');
-  if(box) box.innerHTML='<div class="empty-box" style="grid-column:1/-1"><div class="big">🛍️</div>商品載入中…</div>';
-  await loadSCAppState();
-}
-
-function renderShopProducts(){
-  const box=document.getElementById('shopProducts');
-  if(!box) return;
-  const q=(document.getElementById('shopSearch')?.value||'').trim().toLowerCase();
-  const rows=shopProductsCache.filter(p=>
-    !q || (p.name||'').toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q)
-  );
-
-  if(!rows.length){
-    box.innerHTML='<div class="empty-box" style="grid-column:1/-1"><div class="big">🛒</div>目前沒有可選購的隨買商品</div>';
-    return;
-  }
-
-  box.innerHTML=rows.map(p=>`
-    <div class="shop-item">
-      <div class="shop-img">${productImageHtml(p)}</div>
-      <div class="shop-body">
-        <div class="shop-name">${safeText(p.name)}</div>
-        <div class="shop-desc">${safeText(p.description||'跨店取商品')}</div>
-        ${p.activityContent ? `<div class="activity-badge">${safeText(p.activityContent)}</div>` : ''}
-        ${(p.activityStartDate||p.activityEndDate) ? `<div class="activity-range">活動：${safeText(p.activityStartDate||'即日起')} ～ ${safeText(p.activityEndDate||'未定')}</div>` : ''}
-        <div class="shop-info-grid">
-          <div class="shop-info-chip">數量：${Number(p.quantity||0)}</div>
-          <div class="shop-info-chip">效期：${Number(p.validityDays||0)} 天</div>
-        </div>
-        <div class="shop-bottom" style="margin-top:10px">
-          <div class="shop-price2">${money(p.price)}</div>
-          <button class="shop-buy" onclick="openProductModal('${p.id}')">選購</button>
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function openProductModal(id){
-  selectedProduct=shopProductsCache.find(p=>String(p.id)===String(id))||null;
-  if(!selectedProduct) return;
-  const p=selectedProduct;
-  const img=document.getElementById('pdImage');
-  img.innerHTML=productImageHtml(p);
-  document.getElementById('pdName').textContent=p.name||'商品';
-  document.getElementById('pdPrice').textContent=money(p.price);
-  document.getElementById('pdDesc').innerHTML=
-    `${safeText(p.description||'')}`
-    + `${p.activityContent ? `<div class="activity-badge">${safeText(p.activityContent)}</div>` : ''}`
-    + `<div class="detail-meta">
-         <div>購買數量<br><strong>${Number(p.quantity||0)}</strong></div>
-         <div>效期<br><strong>${Number(p.validityDays||0)} 天</strong></div>
-       </div>`
-    + `${(p.activityStartDate||p.activityEndDate) ? `<div class="activity-range">活動期間：${safeText(p.activityStartDate||'即日起')} ～ ${safeText(p.activityEndDate||'未定')}</div>` : ''}`;
-  document.getElementById('pdStatus').textContent='開發測試模式：按下後會建立真實測試購買紀錄，但不會扣款。';
-  document.getElementById('pdBuyBtn').textContent='開發測試購買';
-  document.getElementById('pdBuyBtn').disabled=false;
-  document.getElementById('productModal').classList.add('open');
-}
-
-function closeProductModal(){
-  document.getElementById('productModal').classList.remove('open');
-  selectedProduct=null;
-}
-
-async function startPurchase(){
-  if(!selectedProduct || !currentUser) return;
-  const btn=document.getElementById('pdBuyBtn');
-  btn.disabled=true;
-  btn.textContent='建立購買中…';
-
-  const productKey=String(selectedProduct.code || selectedProduct.id || '');
-  const {data,error}=await sb.rpc('dev_app_purchase_anybuy',{p_product_key:productKey});
-
-  if(error){
-    console.error(error);
-    alert('測試購買失敗：'+error.message);
-    btn.disabled=false;
-    btn.textContent='開發測試購買';
-    return;
-  }
-
-  closeProductModal();
-  await loadMyProducts();
-  showView('products');
-  alert('測試購買完成，商品已加入「我的商品」。');
-}
-
-async function loadMyProducts(){
-  const box=document.getElementById('myProducts');
-  if(!box||!currentUser) return;
-  box.innerHTML='<div class="empty-box"><div class="big">☕</div>已購商品載入中…</div>';
-
-  const {data,error}=await sb
-    .from('app_member_products')
-    .select('id, product_id, quantity_total, quantity_remaining, purchased_at, expires_at, status, app_products(name,description,image_url)')
-    .eq('auth_user_id',currentUser.id)
-    .gt('quantity_remaining',0)
-    .order('purchased_at',{ascending:false});
-
-  if(error){
-    console.error(error);
-    box.innerHTML=`<div class="empty-box"><div class="big">⚠️</div>我的商品讀取失敗<br><small>${safeText(error.message)}</small></div>`;
-    return;
-  }
-
-  if(!data?.length){
-    box.innerHTML='<div class="empty-box"><div class="big">🛍️</div>目前沒有可兌換商品<br><small>完成隨買購買後會出現在這裡</small></div>';
-    updateHomePendingCount(0);
-    return;
-  }
-
-  updateHomePendingCount(data.reduce((sum,x)=>sum+Number(x.quantity_remaining||0),0));
-
-  box.innerHTML=data.map(x=>{
-    const p=x.app_products||{};
-    const expired=x.expires_at && new Date(x.expires_at)<new Date();
-    const canRedeem=!expired && x.status!=='disabled' && Number(x.quantity_remaining)>0;
-    return `
-      <div class="member-product">
-        <div class="member-product-top">
-          <div class="member-product-pic">${productImageHtml(p)}</div>
-          <div class="member-product-main">
-            <strong>${safeText(p.name||'商品')}</strong>
-            <small>購買 ${Number(x.quantity_total||0)} 件</small>
-          </div>
-        </div>
-        <div class="qty-wrap">
-          <div>
-            <div class="qty-big">剩餘 ${Number(x.quantity_remaining||0)}</div>
-            <div class="expiry">${x.expires_at ? '有效至 '+new Date(x.expires_at).toLocaleDateString('zh-TW') : '無指定到期日'}</div>
-          </div>
-          <div class="action-row">
-            <button class="redeem-open" ${canRedeem?'':'disabled'} onclick="openBarcode()">${canRedeem?'出示條碼':'不可兌換'}</button>
-            ${canRedeem ? `<button class="dev-mini" onclick="devRedeemOne(${x.id})">測試兌換1件</button>` : ''}
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function updateHomePendingCount(count){
-  const cards=[...document.querySelectorAll('.card b')];
-  const target=cards.find(el=>el.textContent.includes('待兌換') || el.parentElement?.textContent.includes('跨店取'));
-  if(target) target.textContent='待兌換 '+Number(count||0)+' 件';
-}
-
-
-async function devRedeemOne(memberProductId){
-  if(!currentUser) return;
-  if(!confirm('確定要開發測試兌換 1 件嗎？')) return;
-
-  const {data,error}=await sb.rpc('dev_app_redeem_one',{
-    p_member_product_id:Number(memberProductId),
-    p_store_code:'DEV'
-  });
-
-  if(error){
-    console.error(error);
-    alert('測試兌換失敗：'+error.message);
-    return;
-  }
-
-  await loadMyProducts();
-  await loadRedemptions();
-  alert('已測試兌換 1 件。');
-}
-
-async function loadRedemptions(){
-  const box=document.getElementById('redemptionHistory');
-  if(!box||!currentUser) return;
-  box.innerHTML='<div class="empty-box"><div class="big">🧾</div>兌換紀錄載入中…</div>';
-
-  const {data,error}=await sb
-    .from('app_redemptions')
-    .select('id, quantity, store_code, redeemed_at, app_products(name)')
-    .eq('auth_user_id',currentUser.id)
-    .order('redeemed_at',{ascending:false})
-    .limit(50);
-
-  if(error){
-    console.error(error);
-    box.innerHTML=`<div class="empty-box"><div class="big">⚠️</div>兌換紀錄讀取失敗<br><small>${safeText(error.message)}</small></div>`;
-    return;
-  }
-
-  if(!data?.length){
-    box.innerHTML='<div class="empty-box"><div class="big">🧾</div>目前沒有兌換紀錄</div>';
-    return;
-  }
-
-  box.innerHTML=data.map(r=>`
-    <div class="history-card">
-      <strong>${safeText(r.app_products?.name||'商品')}</strong>
-      <small>${r.store_code ? '門市：'+safeText(r.store_code)+' · ' : ''}${new Date(r.redeemed_at).toLocaleString('zh-TW')}</small>
-      <div class="history-qty">兌換 ${Number(r.quantity||0)} 件</div>
-    </div>
-  `).join('');
-}
-
-
-const MONTHLY_CASH_RELOAD_LIMIT = 5000;
-window.MONTHLY_CASH_RELOAD_LIMIT_DYNAMIC=5000;
-window.currentCashReloadUsed=0;
-
-async function loadCashReloadQuota(){
-  // v0.7.1 先保留 0 元作為正式資料表接入前的預設值。
-  // 後續接 app_pay_reload_transactions 後改由 Supabase 加總本月 cash reload。
-  const used = 0;
-  renderCashReloadQuota(used);
-}
-
-function renderCashReloadQuota(usedValue){
-  const limit=Math.max(0,Number(window.MONTHLY_CASH_RELOAD_LIMIT_DYNAMIC ?? MONTHLY_CASH_RELOAD_LIMIT));
-  window.currentCashReloadUsed=Number(usedValue||0);
-  const used=Math.max(0,Math.min(limit,Number(usedValue||0)));
-  const remain=Math.max(0,limit-used);
-  const pct=limit>0?Math.min(100,(used/limit)*100):100;
-
-  const usedEl=document.getElementById('reloadUsedText');
-  const remainEl=document.getElementById('reloadRemainText');
-  const bar=document.getElementById('reloadProgressBar');
-
-  if(usedEl) usedEl.textContent='$'+used.toLocaleString('zh-TW')+' / $'+limit.toLocaleString('zh-TW');
-  if(remainEl) remainEl.textContent='本月剩餘可儲值 $'+remain.toLocaleString('zh-TW');
-  const lbl=document.getElementById('reloadLimitLabel'); if(lbl) lbl.textContent='每月上限 NT$'+limit.toLocaleString('zh-TW');
-  if(bar) bar.style.width=pct+'%';
-}
-
-async function initAuth(){
-  const {data,error}=await sb.auth.getSession();
-  if(error) console.warn(error);
-  if(data?.session?.user) await applyUser(data.session.user);
-  else document.getElementById('authScreen').classList.remove('hidden');
-
-  sb.auth.onAuthStateChange(async(event,session)=>{
-    if(session?.user && (!currentUser || currentUser.id!==session.user.id)){
-      await applyUser(session.user);
-    }
-  });
-}
-document.addEventListener('DOMContentLoaded',initAuth);
-
-</script>
-</body></html>
+-- 億家 App v0.9 開發測試購買 / 兌換
+-- 目的：先把「隨買 → 我的商品 → 兌換 → 兌換紀錄」整條資料流程跑通
+-- 正式上線前可移除這兩個 dev RPC。
+
+create extension if not exists pgcrypto;
+
+-- app_products 增加 SC 商品代號，作為 SC JSON 商品與已購商品之間的橋接
+alter table public.app_products
+  add column if not exists sc_product_code text;
+
+create unique index if not exists uq_app_products_sc_product_code
+  on public.app_products(sc_product_code)
+  where sc_product_code is not null;
+
+-- app_member_products 若舊表 product_id 是 not null，保留使用 mirror app_products 的 UUID
+-- 不需要改既有 FK。
+
+create or replace function public.dev_app_purchase_anybuy(p_product_key text)
+returns bigint
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_phone text;
+  v_product jsonb;
+  v_product_uuid uuid;
+  v_quantity integer;
+  v_validity_days integer;
+  v_member_product_id bigint;
+  v_name text;
+  v_price numeric(10,2);
+  v_image text;
+  v_note text;
+begin
+  if v_uid is null then
+    raise exception 'not authenticated';
+  end if;
+
+  select phone into v_phone
+  from public.app_members
+  where auth_user_id = v_uid
+  limit 1;
+
+  if v_phone is null then
+    raise exception 'member profile not found';
+  end if;
+
+  select elem into v_product
+  from public.yijia_app_state s,
+       lateral jsonb_array_elements(s.data::jsonb) elem
+  where s.store_id = '001'
+    and s.data_key = 'yj_app_anybuy_products'
+    and coalesce((elem->>'active')::boolean, true) = true
+    and (
+      elem->>'code' = p_product_key
+      or elem->>'id' = p_product_key
+    )
+  limit 1;
+
+  if v_product is null then
+    raise exception 'product not found or inactive';
+  end if;
+
+  v_name := coalesce(v_product->>'name','商品');
+  v_price := coalesce(nullif(v_product->>'price','')::numeric,0);
+  v_image := nullif(v_product->>'imageUrl','');
+  v_note := coalesce(nullif(v_product->>'note',''), nullif(v_product->>'activityContent',''));
+  v_quantity := greatest(1, coalesce(nullif(v_product->>'quantity','')::integer,1));
+  v_validity_days := greatest(0, coalesce(nullif(v_product->>'validityDays','')::integer,0));
+
+  insert into public.app_products
+    (name, description, price, image_url, is_active, sc_product_code, updated_at)
+  values
+    (v_name, v_note, v_price, v_image, true, coalesce(v_product->>'code',p_product_key), now())
+  on conflict (sc_product_code)
+  do update set
+    name = excluded.name,
+    description = excluded.description,
+    price = excluded.price,
+    image_url = excluded.image_url,
+    is_active = true,
+    updated_at = now()
+  returning id into v_product_uuid;
+
+  insert into public.app_member_products
+    (auth_user_id, phone, product_id, quantity_total, quantity_remaining,
+     purchased_at, expires_at, status, created_at, updated_at)
+  values
+    (v_uid, v_phone, v_product_uuid, v_quantity, v_quantity,
+     now(),
+     case when v_validity_days > 0
+          then now() + make_interval(days => v_validity_days)
+          else null end,
+     'active', now(), now())
+  returning id into v_member_product_id;
+
+  return v_member_product_id;
+end;
+$$;
+
+create or replace function public.dev_app_redeem_one(
+  p_member_product_id bigint,
+  p_store_code text default 'DEV'
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_row public.app_member_products%rowtype;
+  v_redemption_id bigint;
+begin
+  if v_uid is null then
+    raise exception 'not authenticated';
+  end if;
+
+  select *
+  into v_row
+  from public.app_member_products
+  where id = p_member_product_id
+    and auth_user_id = v_uid
+  for update;
+
+  if not found then
+    raise exception 'member product not found';
+  end if;
+
+  if v_row.quantity_remaining <= 0 then
+    raise exception 'no remaining quantity';
+  end if;
+
+  if v_row.expires_at is not null and v_row.expires_at < now() then
+    raise exception 'product expired';
+  end if;
+
+  update public.app_member_products
+  set quantity_remaining = quantity_remaining - 1,
+      status = case when quantity_remaining - 1 <= 0 then 'used' else status end,
+      updated_at = now()
+  where id = v_row.id;
+
+  insert into public.app_redemptions
+    (auth_user_id, member_product_id, product_id, quantity, store_code, redeemed_at, created_at)
+  values
+    (v_uid, v_row.id, v_row.product_id, 1, p_store_code, now(), now())
+  returning id into v_redemption_id;
+
+  return v_redemption_id;
+end;
+$$;
+
+revoke all on function public.dev_app_purchase_anybuy(text) from public;
+revoke all on function public.dev_app_redeem_one(bigint,text) from public;
+
+grant execute on function public.dev_app_purchase_anybuy(text) to authenticated;
+grant execute on function public.dev_app_redeem_one(bigint,text) to authenticated;
+
+notify pgrst, 'reload schema';
