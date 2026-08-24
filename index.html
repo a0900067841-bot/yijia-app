@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0f7a46">
-<title>億家 App v0.5 Dev</title>
+<title>億家 App v0.6</title>
 <style>
 :root{--green:#0f7a46;--green2:#eaf6ef;--orange:#f28a2b;--orange2:#fff3e7;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--bg:#f6f8f7;--danger:#d94841}
 *{box-sizing:border-box}html,body{margin:0;background:#dfe5e2;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;color:var(--ink)}body{display:flex;justify-content:center;min-height:100vh}.phone{width:100%;max-width:430px;min-height:100vh;background:var(--bg);position:relative;overflow:hidden}.topbar{padding:calc(12px + env(safe-area-inset-top)) 18px 12px;background:linear-gradient(135deg,var(--green),#0a6b3c);color:white;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:21px}.logo{width:38px;height:38px;border-radius:12px;background:#fff;color:var(--orange);display:grid;place-items:center;font-size:24px;font-weight:900;box-shadow:0 3px 10px rgba(0,0,0,.12)}.iconbtn{width:38px;height:38px;border:0;border-radius:12px;background:rgba(255,255,255,.14);color:#fff;font-size:19px}.content{padding:16px 16px 108px}.hero{background:linear-gradient(135deg,#fff,#fff9f2);border-radius:24px;padding:18px;box-shadow:0 8px 24px rgba(31,41,55,.08);border:1px solid rgba(242,138,43,.15)}.hero-head{display:flex;justify-content:space-between;align-items:flex-start}.eyebrow{font-size:12px;color:var(--muted);margin-bottom:4px}.member-name{font-size:20px;font-weight:800}.points{text-align:right;background:var(--green2);padding:8px 10px;border-radius:14px;min-width:112px}.points b{display:block;color:var(--green);font-size:20px}.points span{font-size:11px;color:var(--muted)}.barcode{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;text-align:center;cursor:pointer}.barcode-lines{height:58px;border-radius:8px;background:repeating-linear-gradient(90deg,#111 0 2px,transparent 2px 4px,#111 4px 5px,transparent 5px 8px,#111 8px 11px,transparent 11px 13px);max-width:290px;margin:0 auto 8px}.barcode small{color:var(--muted)}.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}.q{background:#fff;border:0;border-radius:18px;padding:14px 6px 12px;box-shadow:0 4px 14px rgba(31,41,55,.05);font-size:12px;color:var(--ink)}.q .ico{font-size:25px;display:block;margin-bottom:7px}.section-title{display:flex;align-items:center;justify-content:space-between;margin:20px 2px 10px}.section-title h3{margin:0;font-size:18px}.section-title button{border:0;background:none;color:var(--green);font-weight:700}.banner{border-radius:22px;padding:18px;background:linear-gradient(120deg,var(--orange),#ffad5f);color:#fff;min-height:130px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 7px 18px rgba(242,138,43,.25)}.banner h2{margin:0 0 7px;font-size:22px}.banner p{margin:0;font-size:13px;opacity:.95}.banner .cup{font-size:62px}.cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card{background:#fff;border-radius:18px;padding:14px;border:1px solid var(--line);min-height:112px}.card b{display:block;margin-top:8px}.card small{color:var(--muted)}.badge{display:inline-block;background:var(--orange2);color:#b75a08;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:430px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);z-index:30;backdrop-filter:blur(14px)}.nav button{border:0;background:none;padding:5px 2px;font-size:11px;color:var(--muted)}.nav .ni{font-size:21px;display:block;margin-bottom:3px}.nav button.active{color:var(--green);font-weight:800}.view{display:none}.view.active{display:block}.list{display:flex;flex-direction:column;gap:10px}.row{background:#fff;border-radius:18px;padding:14px;display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line)}.row strong{display:block}.row small{color:var(--muted)}.pill{padding:6px 9px;border-radius:999px;background:var(--green2);color:var(--green);font-size:12px;font-weight:800}.product{background:#fff;border-radius:18px;padding:14px;display:grid;grid-template-columns:54px 1fr auto;gap:12px;align-items:center;border:1px solid var(--line)}.product .pic{width:54px;height:54px;border-radius:14px;background:var(--orange2);display:grid;place-items:center;font-size:28px}.redeem-btn{border:0;border-radius:12px;background:var(--green);color:white;padding:9px 10px;font-weight:800}.header2{display:flex;align-items:center;gap:10px;margin-bottom:14px}.header2 h2{margin:0}.back{border:0;background:#fff;border-radius:12px;width:38px;height:38px;font-size:20px}.bigpoints{background:linear-gradient(135deg,var(--green),#169458);color:#fff;border-radius:24px;padding:20px;margin-bottom:16px}.bigpoints .num{font-size:38px;font-weight:900;margin:4px 0}.history .row{align-items:flex-start}.plus{color:var(--green);font-weight:900}.minus{color:var(--danger);font-weight:900}.note{font-size:12px;color:var(--muted);line-height:1.5}.center{text-align:center}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;align-items:center;justify-content:center;padding:24px}.modal.open{display:flex}.modal-card{background:#fff;border-radius:24px;padding:20px;width:100%;max-width:360px;text-align:center}.modal .barcode-lines{height:110px;margin-top:14px}.close{margin-top:16px;width:100%;border:0;background:var(--green);color:#fff;border-radius:14px;padding:12px;font-weight:800}
@@ -93,6 +93,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="phone">
@@ -109,9 +110,9 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 <div class="bigpoints"><small>目前可用點數</small><div id="pointsBalance" class="num">-- 點</div><div id="pointsExpiry">等待點數資料表接通</div></div>
 <div class="section-title"><h3>點數紀錄</h3></div>
 <div id="pointsHistory" class="list history">
-  <div class="row"><div><strong>尚未讀取點數紀錄</strong><small>開發測試登入已可使用；點數資料表接通後再讀取真實資料</small></div></div>
+  <div class="row"><div><strong>尚未讀取點數紀錄</strong><small>尚無點數紀錄時會顯示在這裡；資料現在直接讀取 Supabase</small></div></div>
 </div>
-<div class="data-wait">這一版不再顯示假點數。登入目前為開發測試模式；等確認點數資料表後，再接上真實餘額與紀錄。</div>
+<div class="data-wait">這一版不再顯示假點數。登入目前為測試連線版；等確認點數資料表後，再接上真實餘額與紀錄。</div>
 </section>
 <section id="redeem" class="view">
 <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>隨買跨店取</h2></div>
@@ -197,7 +198,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('profile')"><div><strong>會員資料</strong><small>姓名、生日、性別、Email、地址、國籍</small></div><span>›</span></div>
     <div class="row"><div><strong>我的訂單</strong><small>商城與預購訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.5 Dev Login</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.6 Supabase</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -258,7 +259,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div class="auth-box">
     <div class="auth-brand">
       <div class="logo">億</div>
-      <div><h1>億家 App</h1><p>會員登入</p><span class="dev-badge">開發測試模式</span></div>
+      <div><h1>億家 App</h1><p>會員登入</p><span class="dev-badge">測試連線版</span></div>
     </div>
     <div class="auth-tabs">
       <button id="loginTab" class="auth-tab active" onclick="setAuthMode('login')">登入</button>
@@ -274,14 +275,19 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <input id="authPassword" type="password" autocomplete="current-password" placeholder="至少 6 個字元">
     </div>
     <button id="authSubmit" class="auth-submit" onclick="submitAuth()">登入</button>
-    <div id="authMsg" class="auth-msg">開發測試登入：輸入手機號碼＋密碼即可進入。</div><div class="dev-note">目前不會發送簡訊，也不會建立正式公開會員帳號。這個模式只供億家 App 開發測試。</div>
+    <div id="authMsg" class="auth-msg">開發測試登入：輸入手機號碼＋密碼即可進入。</div><div class="dev-note">目前使用手機號碼＋密碼登入；系統內部以隱藏識別方式連接 Supabase，不需要 SMS 或 Twilio。</div>
   </div>
 </div>
 
 <script>
 
+const SUPABASE_URL = "https://lmiazouyimwuwjoihizi.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_9k2wrNVmnstb2SWaRvazGw_L0lrtXNW";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 let authMode='login';
 let currentUser=null;
+let currentMember=null;
 
 function showView(id){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -293,12 +299,14 @@ function showView(id){
 function openBarcode(){if(!currentUser)return;renderBarcodes();document.getElementById('modal').classList.add('open')}
 function closeBarcode(){document.getElementById('modal').classList.remove('open')}
 function togglePayCode(){const el=document.getElementById('payCodeBox');el.style.display=(el.style.display==='none')?'block':'none'}
+
 function setAuthMode(mode){
   authMode=mode;
   document.getElementById('loginTab').classList.toggle('active',mode==='login');
   document.getElementById('registerTab').classList.toggle('active',mode==='register');
   document.getElementById('authSubmit').textContent=mode==='login'?'登入':'註冊';
-  document.getElementById('authMsg').textContent=mode==='login'?'開發測試登入：輸入手機號碼＋密碼即可進入。':'開發測試註冊：只需要手機號碼與密碼。';
+  document.getElementById('authMsg').textContent=
+    mode==='login'?'輸入手機號碼＋密碼登入。':'註冊只需要手機號碼＋密碼。';
   document.getElementById('authMsg').className='auth-msg';
 }
 function setAuthMessage(text,type=''){
@@ -306,123 +314,259 @@ function setAuthMessage(text,type=''){
   el.textContent=text;
   el.className='auth-msg'+(type?' '+type:'');
 }
+
 function normalizePhone(input){
   const digits=(input||'').replace(/\D/g,'');
   if(/^09\d{8}$/.test(digits)) return digits;
   return '';
 }
-function getAccountKey(phone){return 'yijia_dev_account_'+phone}
-function getProfileKey(phone){return 'yijia_dev_profile_'+phone}
-function simpleHash(s){
-  let h=2166136261;
-  for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}
-  return (h>>>0).toString(16);
+function phoneToInternalEmail(phone){
+  // 僅 Supabase 內部技術識別，會員不會看到，也不是實際 Email。
+  return 'tw'+phone+'@auth.yijia.invalid';
 }
-function loadProfile(phone){try{return JSON.parse(localStorage.getItem(getProfileKey(phone))||'{}')}catch{return {}}}
-function saveProfileLocal(phone,data){localStorage.setItem(getProfileKey(phone),JSON.stringify(data))}
+function memberCodeFromPhone(phone){ return 'YJ'+phone; }
+
 async function submitAuth(){
   const phone=normalizePhone(document.getElementById('authPhone').value.trim());
   const password=document.getElementById('authPassword').value;
   if(!phone){setAuthMessage('請輸入正確的台灣手機號碼，例如 09xxxxxxxx。','error');return}
-  if(!password||password.length<4){setAuthMessage('測試密碼至少輸入 4 個字元。','error');return}
-  const key=getAccountKey(phone);
-  const saved=localStorage.getItem(key);
-  if(authMode==='register'){
-    if(saved){setAuthMessage('這個手機號碼已在本機建立測試帳號，請切換到登入。','error');return}
-    localStorage.setItem(key,JSON.stringify({phone,passwordHash:simpleHash(password),createdAt:new Date().toISOString()}));
-    if(!localStorage.getItem(getProfileKey(phone))) saveProfileLocal(phone,{name:'',birthday:'',gender:'',profile_email:'',address:'',nationality:''});
-    createSession(phone);return;
+  if(!password||password.length<6){setAuthMessage('密碼至少 6 個字元。','error');return}
+
+  const email=phoneToInternalEmail(phone);
+  const btn=document.getElementById('authSubmit');
+  btn.disabled=true; btn.textContent='處理中…';
+
+  try{
+    if(authMode==='register'){
+      const {data,error}=await sb.auth.signUp({
+        email,password,
+        options:{data:{phone_login:phone}}
+      });
+      if(error) throw error;
+
+      if(!data.session){
+        setAuthMessage('Supabase 目前要求 Email 確認。請先把 Email confirmation 關閉後再註冊。','error');
+        return;
+      }
+      await ensureMemberRow(data.user,phone);
+      await applyUser(data.user);
+    } else {
+      const {data,error}=await sb.auth.signInWithPassword({email,password});
+      if(error) throw error;
+      await applyUser(data.user);
+    }
+  }catch(err){
+    setAuthMessage(err?.message||'登入失敗，請稍後再試。','error');
+  }finally{
+    btn.disabled=false; btn.textContent=authMode==='login'?'登入':'註冊';
   }
-  if(!saved){setAuthMessage('本機找不到這個測試帳號，請先切換到註冊。','error');return}
-  let account;try{account=JSON.parse(saved)}catch{account=null}
-  if(!account||account.passwordHash!==simpleHash(password)){setAuthMessage('手機號碼或密碼錯誤。','error');return}
-  createSession(phone);
 }
-function createSession(phone){
-  localStorage.setItem('yijia_dev_session',JSON.stringify({phone,loginAt:new Date().toISOString()}));
-  currentUser={phone,profile:loadProfile(phone)};
-  applyUser(currentUser);
+
+async function ensureMemberRow(user,phone){
+  const {data:existing,error:findErr}=await sb
+    .from('app_members')
+    .select('*')
+    .eq('auth_user_id',user.id)
+    .maybeSingle();
+  if(findErr) throw findErr;
+  if(existing) return existing;
+
+  const {data,error}=await sb
+    .from('app_members')
+    .insert({
+      auth_user_id:user.id,
+      phone,
+      updated_at:new Date().toISOString()
+    })
+    .select()
+    .single();
+  if(error) throw error;
+  return data;
 }
-function getDisplayName(user){return user?.profile?.name?.trim()||'會員'}
-function getMemberCode(user){return 'YJ'+(user?.phone||'0000000000')}
+
+async function loadMember(){
+  const {data,error}=await sb
+    .from('app_members')
+    .select('*')
+    .eq('auth_user_id',currentUser.id)
+    .maybeSingle();
+  if(error) throw error;
+  if(!data){
+    return await ensureMemberRow(currentUser,currentUser.user_metadata?.phone_login||'');
+  }
+  return data;
+}
+
+async function loadPoints(){
+  const {data,error}=await sb
+    .from('app_points')
+    .select('*')
+    .eq('auth_user_id',currentUser.id)
+    .maybeSingle();
+  if(error) throw error;
+
+  if(!data){
+    const {data:created,error:createErr}=await sb
+      .from('app_points')
+      .insert({
+        auth_user_id:currentUser.id,
+        phone:currentMember.phone,
+        available_points:0,
+        expiring_points:0,
+        updated_at:new Date().toISOString()
+      })
+      .select()
+      .single();
+    if(createErr) throw createErr;
+    renderPoints(created);
+    return;
+  }
+  renderPoints(data);
+}
+
+async function loadPointHistory(){
+  const {data,error}=await sb
+    .from('app_point_transactions')
+    .select('*')
+    .eq('auth_user_id',currentUser.id)
+    .order('created_at',{ascending:false})
+    .limit(30);
+  if(error) throw error;
+
+  const box=document.getElementById('pointsHistory');
+  if(!box) return;
+  if(!data?.length){
+    box.innerHTML='<div class="row"><div><strong>尚無點數紀錄</strong><small>完成累點、折抵或活動贈點後會顯示在這裡</small></div></div>';
+    return;
+  }
+  const labels={earn:'消費累點',redeem:'點數折抵',refund_deduct:'退貨扣點',bonus:'活動贈點'};
+  box.innerHTML=data.map(t=>{
+    const plus=t.points>0;
+    return `<div class="row"><div><strong>${labels[t.transaction_type]||t.transaction_type}</strong><small>${t.description||''} · ${new Date(t.created_at).toLocaleString('zh-TW')}</small></div><div class="${plus?'plus':'minus'}">${plus?'+':''}${t.points}</div></div>`;
+  }).join('');
+}
+
+function renderPoints(p){
+  const available=Number(p?.available_points||0);
+  const expiring=Number(p?.expiring_points||0);
+  document.getElementById('homePoints').textContent=available.toLocaleString();
+  document.getElementById('homeExpiry').textContent=expiring>0 ? expiring.toLocaleString()+' 點即將到期' : '目前無即將到期點數';
+  document.getElementById('pointsBalance').textContent=available.toLocaleString()+' 點';
+  document.getElementById('pointsExpiry').textContent=
+    expiring>0
+      ? expiring.toLocaleString()+' 點將於 '+(p.expiry_date||'指定日期')+' 到期'
+      : '目前無即將到期點數';
+}
+
+function getDisplayName(){
+  return currentMember?.name?.trim()||'會員';
+}
 function renderBarcodes(){
-  if(!currentUser||!window.JsBarcode)return;
-  const code=getMemberCode(currentUser);
+  if(!currentMember||!window.JsBarcode)return;
+  const code=memberCodeFromPhone(currentMember.phone);
   const opts={format:'CODE128',displayValue:false,margin:4,height:58,width:1.35};
   try{
     JsBarcode('#homeBarcode',code,opts);
     JsBarcode('#modalBarcode',code,{...opts,height:92,width:1.25,margin:8});
-    document.getElementById('memberCodeText').textContent='測試會員編號：'+code;
+    document.getElementById('memberCodeText').textContent='會員編號：'+code;
   }catch(e){console.warn(e)}
 }
-function applyUser(user){
+
+async function applyUser(user){
   currentUser=user;
-  const name=getDisplayName(user);
-  document.getElementById('memberName').textContent='您好，'+name;
-  document.getElementById('memberEmail').textContent=user.phone||'';
-  document.getElementById('meName').textContent=name;
-  document.getElementById('meEmail').textContent=user.phone||'';
-  document.getElementById('authScreen').classList.add('hidden');
-  renderBarcodes();
-  renderProfile(user);
+  try{
+    currentMember=await loadMember();
+    const name=getDisplayName();
+    document.getElementById('memberName').textContent='您好，'+name;
+    document.getElementById('memberEmail').textContent=currentMember.phone||'';
+    document.getElementById('meName').textContent=name;
+    document.getElementById('meEmail').textContent=currentMember.phone||'';
+    document.getElementById('authScreen').classList.add('hidden');
+    renderProfile();
+    renderBarcodes();
+    await loadPoints();
+    await loadPointHistory();
+  }catch(err){
+    console.error(err);
+    setAuthMessage('已登入，但會員資料讀取失敗：'+(err?.message||''),'error');
+  }
 }
-function signOut(){
-  localStorage.removeItem('yijia_dev_session');
-  currentUser=null;
+
+async function signOut(){
+  await sb.auth.signOut();
+  currentUser=null; currentMember=null;
   document.getElementById('authScreen').classList.remove('hidden');
   showView('home');
   setAuthMode('login');
-  setAuthMessage('已登出開發測試帳號。');
+  setAuthMessage('已登出。');
 }
-function demoBuy(name){alert(name+'：目前為開發測試選購流程。商品、訂單與付款接通後才會真的建立訂單。')}
+
+function demoBuy(name){alert(name+'：目前為選購流程。跨店取商品與訂單資料表接通後才會真的建立訂單。')}
 function valOrBlank(v){return v&&String(v).trim()?v:'未填寫'}
-function renderProfile(user){
-  if(!user)return;
-  const m=user.profile||{};
-  const fields={pvName:m.name,pvBirthday:m.birthday,pvGender:m.gender,pvEmail:m.profile_email,pvAddress:m.address,pvNationality:m.nationality};
+
+function renderProfile(){
+  if(!currentMember)return;
+  const m=currentMember;
+  const fields={pvName:m.name,pvBirthday:m.birthday,pvGender:m.gender,pvEmail:m.email,pvAddress:m.address,pvNationality:m.nationality};
   Object.entries(fields).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.textContent=valOrBlank(v)});
-  const ap=document.getElementById('accountPhone');if(ap)ap.textContent=user.phone||'--';
-  const map={pfName:m.name||'',pfBirthday:m.birthday||'',pfGender:m.gender||'',pfEmail:m.profile_email||'',pfAddress:m.address||'',pfNationality:m.nationality||''};
+  const ap=document.getElementById('accountPhone');if(ap)ap.textContent=m.phone||'--';
+  const map={pfName:m.name||'',pfBirthday:m.birthday||'',pfGender:m.gender||'',pfEmail:m.email||'',pfAddress:m.address||'',pfNationality:m.nationality||''};
   Object.entries(map).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v});
 }
 function toggleProfileForm(open){
   const form=document.getElementById('profileForm');
   if(form)form.classList.toggle('open',!!open);
-  if(open&&currentUser)renderProfile(currentUser);
+  if(open)renderProfile();
 }
 async function saveProfile(){
-  if(!currentUser)return;
-  const data={
-    name:document.getElementById('pfName').value.trim(),
-    birthday:document.getElementById('pfBirthday').value,
-    gender:document.getElementById('pfGender').value,
-    profile_email:document.getElementById('pfEmail').value.trim(),
-    address:document.getElementById('pfAddress').value.trim(),
-    nationality:document.getElementById('pfNationality').value.trim()
+  if(!currentUser||!currentMember)return;
+  const payload={
+    name:document.getElementById('pfName').value.trim()||null,
+    birthday:document.getElementById('pfBirthday').value||null,
+    gender:document.getElementById('pfGender').value||null,
+    email:document.getElementById('pfEmail').value.trim()||null,
+    address:document.getElementById('pfAddress').value.trim()||null,
+    nationality:document.getElementById('pfNationality').value.trim()||null,
+    updated_at:new Date().toISOString()
   };
-  saveProfileLocal(currentUser.phone,data);
-  currentUser.profile=data;
-  renderProfile(currentUser);
-  const name=getDisplayName(currentUser);
+  const msg=document.getElementById('profileMsg');
+  msg.textContent='儲存中…'; msg.className='auth-msg';
+
+  const {data,error}=await sb
+    .from('app_members')
+    .update(payload)
+    .eq('auth_user_id',currentUser.id)
+    .select()
+    .single();
+
+  if(error){
+    msg.textContent=error.message||'儲存失敗';
+    msg.className='auth-msg error';
+    return;
+  }
+  currentMember=data;
+  renderProfile();
+  const name=getDisplayName();
   document.getElementById('memberName').textContent='您好，'+name;
   document.getElementById('meName').textContent=name;
-  const msg=document.getElementById('profileMsg');
-  msg.textContent='會員資料已儲存在此裝置的開發測試資料';
+  msg.textContent='會員資料已同步到 Supabase';
   msg.className='auth-msg ok';
   setTimeout(()=>toggleProfileForm(false),700);
 }
-function initDevAuth(){
-  try{
-    const s=JSON.parse(localStorage.getItem('yijia_dev_session')||'null');
-    if(s?.phone&&localStorage.getItem(getAccountKey(s.phone))){
-      currentUser={phone:s.phone,profile:loadProfile(s.phone)};
-      applyUser(currentUser);
-      return;
+
+async function initAuth(){
+  const {data,error}=await sb.auth.getSession();
+  if(error) console.warn(error);
+  if(data?.session?.user) await applyUser(data.session.user);
+  else document.getElementById('authScreen').classList.remove('hidden');
+
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    if(session?.user && (!currentUser || currentUser.id!==session.user.id)){
+      await applyUser(session.user);
     }
-  }catch{}
-  document.getElementById('authScreen').classList.remove('hidden');
+  });
 }
-document.addEventListener('DOMContentLoaded',initDevAuth);
+document.addEventListener('DOMContentLoaded',initAuth);
 
 </script>
 </body></html>
