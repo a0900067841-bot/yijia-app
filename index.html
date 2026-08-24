@@ -8,6 +8,33 @@
 <style>
 :root{--green:#0f7a46;--green2:#eaf6ef;--orange:#f28a2b;--orange2:#fff3e7;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--bg:#f6f8f7;--danger:#d94841}
 *{box-sizing:border-box}html,body{margin:0;background:#dfe5e2;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;color:var(--ink)}body{display:flex;justify-content:center;min-height:100vh}.phone{width:100%;max-width:430px;min-height:100vh;background:var(--bg);position:relative;overflow:hidden}.topbar{padding:calc(12px + env(safe-area-inset-top)) 18px 12px;background:linear-gradient(135deg,var(--green),#0a6b3c);color:white;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:21px}.logo{width:38px;height:38px;border-radius:12px;background:#fff;color:var(--orange);display:grid;place-items:center;font-size:24px;font-weight:900;box-shadow:0 3px 10px rgba(0,0,0,.12)}.iconbtn{width:38px;height:38px;border:0;border-radius:12px;background:rgba(255,255,255,.14);color:#fff;font-size:19px}.content{padding:16px 16px 108px}.hero{background:linear-gradient(135deg,#fff,#fff9f2);border-radius:24px;padding:18px;box-shadow:0 8px 24px rgba(31,41,55,.08);border:1px solid rgba(242,138,43,.15)}.hero-head{display:flex;justify-content:space-between;align-items:flex-start}.eyebrow{font-size:12px;color:var(--muted);margin-bottom:4px}.member-name{font-size:20px;font-weight:800}.points{text-align:right;background:var(--green2);padding:8px 10px;border-radius:14px;min-width:112px}.points b{display:block;color:var(--green);font-size:20px}.points span{font-size:11px;color:var(--muted)}.barcode{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;text-align:center;cursor:pointer}.barcode-lines{height:58px;border-radius:8px;background:repeating-linear-gradient(90deg,#111 0 2px,transparent 2px 4px,#111 4px 5px,transparent 5px 8px,#111 8px 11px,transparent 11px 13px);max-width:290px;margin:0 auto 8px}.barcode small{color:var(--muted)}.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}.q{background:#fff;border:0;border-radius:18px;padding:14px 6px 12px;box-shadow:0 4px 14px rgba(31,41,55,.05);font-size:12px;color:var(--ink)}.q .ico{font-size:25px;display:block;margin-bottom:7px}.section-title{display:flex;align-items:center;justify-content:space-between;margin:20px 2px 10px}.section-title h3{margin:0;font-size:18px}.section-title button{border:0;background:none;color:var(--green);font-weight:700}.banner{border-radius:22px;padding:18px;background:linear-gradient(120deg,var(--orange),#ffad5f);color:#fff;min-height:130px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 7px 18px rgba(242,138,43,.25)}.banner h2{margin:0 0 7px;font-size:22px}.banner p{margin:0;font-size:13px;opacity:.95}.banner .cup{font-size:62px}.cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card{background:#fff;border-radius:18px;padding:14px;border:1px solid var(--line);min-height:112px}.card b{display:block;margin-top:8px}.card small{color:var(--muted)}.badge{display:inline-block;background:var(--orange2);color:#b75a08;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:430px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);z-index:30;backdrop-filter:blur(14px)}.nav button{border:0;background:none;padding:5px 2px;font-size:11px;color:var(--muted)}.nav .ni{font-size:21px;display:block;margin-bottom:3px}.nav button.active{color:var(--green);font-weight:800}.view{display:none}.view.active{display:block}.list{display:flex;flex-direction:column;gap:10px}.row{background:#fff;border-radius:18px;padding:14px;display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line)}.row strong{display:block}.row small{color:var(--muted)}.pill{padding:6px 9px;border-radius:999px;background:var(--green2);color:var(--green);font-size:12px;font-weight:800}.product{background:#fff;border-radius:18px;padding:14px;display:grid;grid-template-columns:54px 1fr auto;gap:12px;align-items:center;border:1px solid var(--line)}.product .pic{width:54px;height:54px;border-radius:14px;background:var(--orange2);display:grid;place-items:center;font-size:28px}.redeem-btn{border:0;border-radius:12px;background:var(--green);color:white;padding:9px 10px;font-weight:800}.header2{display:flex;align-items:center;gap:10px;margin-bottom:14px}.header2 h2{margin:0}.back{border:0;background:#fff;border-radius:12px;width:38px;height:38px;font-size:20px}.bigpoints{background:linear-gradient(135deg,var(--green),#169458);color:#fff;border-radius:24px;padding:20px;margin-bottom:16px}.bigpoints .num{font-size:38px;font-weight:900;margin:4px 0}.history .row{align-items:flex-start}.plus{color:var(--green);font-weight:900}.minus{color:var(--danger);font-weight:900}.note{font-size:12px;color:var(--muted);line-height:1.5}.center{text-align:center}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;align-items:center;justify-content:center;padding:24px}.modal.open{display:flex}.modal-card{background:#fff;border-radius:24px;padding:20px;width:100%;max-width:360px;text-align:center}.modal .barcode-lines{height:110px;margin-top:14px}.close{margin-top:16px;width:100%;border:0;background:var(--green);color:#fff;border-radius:14px;padding:12px;font-weight:800}
+
+.pay-card{background:linear-gradient(135deg,#0f7a46,#15995a);color:#fff;border-radius:24px;padding:20px;text-align:left;box-shadow:0 10px 24px rgba(15,122,70,.22)}
+.pay-card-top{display:flex;justify-content:space-between;align-items:flex-start}
+.pay-brand{font-size:20px;font-weight:900}.pay-status{font-size:11px;background:rgba(255,255,255,.18);padding:5px 8px;border-radius:999px}
+.pay-balance{font-size:13px;opacity:.9;margin-top:22px}.pay-amount{font-size:34px;font-weight:900;margin-top:3px}
+.pay-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.pay-action{border:0;border-radius:14px;padding:12px;background:rgba(255,255,255,.16);color:#fff;font-weight:800}
+.pay-code{margin-top:14px;background:#fff;color:var(--ink);border-radius:20px;padding:18px;text-align:center;border:1px solid var(--line)}
+.qr{width:150px;height:150px;margin:8px auto 10px;background:
+conic-gradient(from 90deg at 2px 2px,#111 90deg,transparent 0) 0 0/14px 14px,
+linear-gradient(#111 0 0) 8px 8px/40px 40px no-repeat,
+linear-gradient(#fff 0 0) 15px 15px/26px 26px no-repeat,
+linear-gradient(#111 0 0) 22px 22px/12px 12px no-repeat,
+linear-gradient(#111 0 0) 102px 8px/40px 40px no-repeat,
+linear-gradient(#fff 0 0) 109px 15px/26px 26px no-repeat,
+linear-gradient(#111 0 0) 116px 22px/12px 12px no-repeat,
+linear-gradient(#111 0 0) 8px 102px/40px 40px no-repeat,
+linear-gradient(#fff 0 0) 15px 109px/26px 26px no-repeat,
+linear-gradient(#111 0 0) 22px 116px/12px 12px no-repeat;
+border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
+.pay-method{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px}
+.pay-method .method-icon{width:46px;height:46px;border-radius:14px;background:var(--green-2);display:grid;place-items:center;font-size:23px}
+.pay-method .grow{flex:1}.pay-method small{display:block;color:var(--muted);margin-top:3px}
+.switch{width:44px;height:26px;border-radius:999px;background:#d1d5db;position:relative}
+.switch.on{background:var(--green)}.switch:after{content:"";position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s}
+.switch.on:after{left:21px}
+
 </style>
 </head>
 <body>
@@ -23,7 +50,64 @@
 <section id="points" class="view"><div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>億家點數</h2></div><div class="bigpoints"><small>目前可用點數</small><div class="num">1,280 點</div><div>其中 120 點將於 2026/09/30 到期</div></div><div class="section-title"><h3>點數紀錄</h3></div><div class="list history"><div class="row"><div><strong>消費累點</strong><small>08/24 03:18</small></div><div class="plus">+18</div></div><div class="row"><div><strong>點數折抵</strong><small>08/22 18:06</small></div><div class="minus">-50</div></div><div class="row"><div><strong>活動贈點</strong><small>08/20</small></div><div class="plus">+100</div></div></div><p class="note">正式版會讀取會員點數、到期點數、累點、折抵、退貨扣回及活動贈點紀錄。</p></section>
 <section id="redeem" class="view"><div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>隨買跨店取</h2></div><div class="list"><div class="product"><div class="pic">☕</div><div><strong>大杯美式咖啡</strong><small>剩餘 5 杯・已兌換 1 杯</small></div><button class="redeem-btn" onclick="openBarcode()">兌換</button></div><div class="product"><div class="pic">🥤</div><div><strong>經典奶茶</strong><small>剩餘 2 杯・有效至 09/15</small></div><button class="redeem-btn" onclick="openBarcode()">兌換</button></div></div><p class="note">TM：跨店取 → 掃會員條碼 → 掃商品 → 確認兌換 → App 同步剩餘數量。</p></section>
 <section id="products" class="view"><div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>我的商品</h2></div><div class="list"><div class="row"><div><strong>大杯美式咖啡</strong><small>剩餘 5／購買 6</small></div><span class="pill">可兌換</span></div><div class="row"><div><strong>經典奶茶</strong><small>剩餘 2／購買 2</small></div><span class="pill">可兌換</span></div><div class="row"><div><strong>兌換紀錄</strong><small>查看所有已兌換商品</small></div><span>›</span></div></div></section>
-<section id="pay" class="view center"><div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>億家 Pay</h2></div><div class="hero"><div class="logo" style="margin:0 auto 12px;width:56px;height:56px;font-size:34px">億</div><h2>億家 Pay</h2><p style="font-size:34px;margin:10px 0">💳</p><strong>行動支付</strong><p class="note">後續接入付款方式、付款條碼／QR Code、交易紀錄與付款設定。</p></div></section>
+
+<section id="pay" class="view">
+  <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>億家Pay</h2></div>
+
+  <div class="pay-card">
+    <div class="pay-card-top">
+      <div class="pay-brand">億家 Pay</div>
+      <div class="pay-status">安全付款</div>
+    </div>
+    <div class="pay-balance">億家Pay 錢包餘額</div>
+    <div class="pay-amount">$0</div>
+    <div class="pay-actions">
+      <button class="pay-action" onclick="togglePayCode()">付款碼</button>
+      <button class="pay-action" onclick="alert('儲值功能後續接入')">儲值</button>
+    </div>
+  </div>
+
+  <div id="payCodeBox" class="pay-code">
+    <div class="eyebrow">結帳時出示</div>
+    <h3 style="margin:3px 0 8px">億家Pay 付款碼</h3>
+    <div class="qr"></div>
+    <strong>付款碼每 60 秒更新</strong>
+    <p class="note" style="margin-bottom:0">正式版會由登入會員產生動態付款碼，並與會員身分綁定。</p>
+  </div>
+
+  <div class="section-title"><h3>付款方式</h3><button>管理</button></div>
+  <div class="list">
+    <div class="pay-method">
+      <div class="method-icon">💳</div>
+      <div class="grow"><strong>信用卡／簽帳金融卡</strong><small>尚未綁定</small></div>
+      <span>›</span>
+    </div>
+    <div class="pay-method">
+      <div class="method-icon">🏦</div>
+      <div class="grow"><strong>銀行帳戶</strong><small>預留串接</small></div>
+      <span>›</span>
+    </div>
+    <div class="pay-method">
+      <div class="method-icon">🪙</div>
+      <div class="grow"><strong>點數折抵</strong><small>付款時可選擇使用億家點數</small></div>
+      <div class="switch on" onclick="this.classList.toggle('on')"></div>
+    </div>
+  </div>
+
+  <div class="section-title"><h3>最近交易</h3><button>全部</button></div>
+  <div class="list">
+    <div class="row"><div><strong>目前尚無交易</strong><small>完成億家Pay付款後會顯示在這裡</small></div><span>›</span></div>
+  </div>
+
+  <div class="section-title"><h3>安全與設定</h3></div>
+  <div class="list">
+    <div class="row"><div><strong>付款驗證</strong><small>Face ID／裝置驗證</small></div><span>›</span></div>
+    <div class="row"><div><strong>付款限額</strong><small>單筆與每日上限</small></div><span>›</span></div>
+    <div class="row"><div><strong>停用億家Pay</strong><small>遺失手機時可立即停用</small></div><span>›</span></div>
+  </div>
+  <p class="note">目前為介面原型。真正付款功能需再串接合法支付服務商／金流，不會直接把信用卡資料存放在 App 或 Supabase。</p>
+</section>
+
 <section id="me" class="view"><div class="header2"><h2>我的</h2></div><div class="list"><div class="row"><div><strong>會員資料</strong><small>姓名、手機、Email</small></div><span>›</span></div><div class="row"><div><strong>我的訂單</strong><small>商城與預購訂單</small></div><span>›</span></div><div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div><div class="row"><div><strong>App 版本</strong><small>v0.1 Prototype</small></div><span>›</span></div></div></section>
 </main>
 <nav class="nav"><button class="active" data-view="home" onclick="showView('home')"><span class="ni">🏠</span>首頁</button><button data-view="redeem" onclick="showView('redeem')"><span class="ni">☕</span>隨買</button><button data-view="pay" onclick="showView('pay')"><span class="ni">💳</span>億家Pay</button><button data-view="points" onclick="showView('points')"><span class="ni">🪙</span>點數</button><button data-view="me" onclick="showView('me')"><span class="ni">👤</span>我的</button></nav>
@@ -31,5 +115,10 @@
 <div id="modal" class="modal" onclick="if(event.target===this)closeBarcode()"><div class="modal-card"><div class="logo" style="margin:auto;width:56px;height:56px;font-size:34px">億</div><h2>億家會員條碼</h2><div class="barcode-lines"></div><p>0000 1280 8888</p><button class="close" onclick="closeBarcode()">關閉</button></div></div>
 <script>
 function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===id));window.scrollTo({top:0,behavior:'smooth'})}function openBarcode(){document.getElementById('modal').classList.add('open')}function closeBarcode(){document.getElementById('modal').classList.remove('open')}
+
+function togglePayCode(){
+  const el=document.getElementById('payCodeBox');
+  el.style.display = (el.style.display==='none') ? 'block' : 'none';
+}
 </script>
 </body></html>
