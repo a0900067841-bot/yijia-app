@@ -367,6 +367,10 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <span class="store-status">已送出申請</span>
     <h2>退貨申請已建立</h2>
     <div id="returnResultCode" class="return-code">--</div>
+    <div id="returnBarcodeWrap" class="store-barcode-wrap" style="margin:14px 0">
+      <svg id="returnResultBarcode"></svg>
+    </div>
+    <div class="note" style="margin-bottom:10px">請到原付款門市出示此退貨條碼，TM 可直接掃描 YR 退貨碼。</div>
     <div id="returnResultText" class="note"></div>
     <button class="pay-continue" onclick="showView('products');loadMyProducts()">回我的商品</button>
   </div>
@@ -482,7 +486,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('profile')"><div><strong>會員資料</strong><small>姓名、生日、性別、Email、地址、國籍</small></div><span>›</span></div>
     <div class="row"><div><strong>我的訂單</strong><small>商城與預購訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.9.4.1 Return Fix</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.9.4.2 Return Barcode</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1716,6 +1720,24 @@ async function submitReturnRequest(){
 
     document.getElementById('returnResultCode').textContent=data.returnCode||'--';
 
+    const returnCode=String(data.returnCode||'');
+    const barcodeWrap=document.getElementById('returnBarcodeWrap');
+    if(barcodeWrap) barcodeWrap.style.display = data.returnMode==='original_store' ? 'block' : 'none';
+
+    if(data.returnMode==='original_store' && window.JsBarcode && returnCode){
+      try{
+        JsBarcode('#returnResultBarcode', returnCode, {
+          format:'CODE128',
+          displayValue:false,
+          margin:6,
+          height:80,
+          width:1.3
+        });
+      }catch(e){
+        console.warn('退貨條碼產生失敗',e);
+      }
+    }
+
     if(data.returnMode==='original_store'){
       document.getElementById('returnResultText').innerHTML=
         `請於退貨期限內回原付款門市辦理。<br>`+
@@ -1723,7 +1745,7 @@ async function submitReturnRequest(){
         `此商品在退貨申請處理期間不可重複申請。`;
     }else{
       document.getElementById('returnResultText').innerHTML=
-        `已建立線上退貨申請。退款將依原付款方式處理。`;
+        `已建立線上退貨申請。此筆不需要到門市，退款將依原付款方式處理。`;
     }
 
     selectedReturnProduct=null;
