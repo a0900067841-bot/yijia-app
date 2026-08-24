@@ -300,7 +300,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="empty-box"><div class="big">🛒</div>購物車目前是空的</div>
   </div>
   <div id="cartSummary" class="cart-summary" style="display:none">
-    <div class="cart-summary-row"><span>購買份數</span><strong id="cartUnits">0</strong></div>
+    <div class="cart-summary-row"><span>商品組數</span><strong id="cartUnits">0</strong></div>
     <div class="cart-summary-row"><span>商品總額</span><strong id="cartTotal" class="cart-total">$0</strong></div>
     <div class="dev-flow-note">下一步可選擇「線上支付」或「店舖結帳」。線上支付目前為開發測試；店舖結帳會建立待付款訂單。</div>
     <button id="cartCheckoutBtn" class="cart-checkout" onclick="openCheckout()">前往結帳</button>
@@ -514,7 +514,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('anybuyCenter')"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.9.5.3 Anybuy Group Count</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.9.5.2 Anybuy Menu Visible</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1043,7 +1043,6 @@ async function loadSCAppState(){
       price:Number(p.price||0),
       image_url:p.imageUrl||'',
       description:p.note||p.category||'隨買跨店取商品',
-      groupCount:Math.max(1,Number(p.groupCount||1)),
       quantity:Number(p.quantity||0),
       validityDays:Number(p.validityDays||0),
       activityStartDate:p.activityStartDate||'',
@@ -1202,7 +1201,7 @@ function renderShopProducts(){
         ${p.activityContent ? `<div class="activity-badge">${safeText(p.activityContent)}</div>` : ''}
         ${(p.activityStartDate||p.activityEndDate) ? `<div class="activity-range">活動：${safeText(p.activityStartDate||'即日起')} ～ ${safeText(p.activityEndDate||'未定')}</div>` : ''}
         <div class="shop-info-grid">
-          <div class="shop-info-chip">規格：${Math.max(1,Number(p.groupCount||1))}組 ${Number(p.quantity||0)}杯</div>
+          <div class="shop-info-chip">數量：${Number(p.quantity||0)}</div>
           <div class="shop-info-chip">效期：${Number(p.validityDays||0)} 天</div>
         </div>
         <div class="shop-bottom" style="margin-top:10px">
@@ -1226,8 +1225,7 @@ function openProductModal(id){
     `${safeText(p.description||'')}`
     + `${p.activityContent ? `<div class="activity-badge">${safeText(p.activityContent)}</div>` : ''}`
     + `<div class="detail-meta">
-         <div>組數<br><strong>${Math.max(1,Number(p.groupCount||1))} 組</strong></div>
-         <div>數量<br><strong>${Number(p.quantity||0)} 杯</strong></div>
+         <div>購買數量<br><strong>${Number(p.quantity||0)}</strong></div>
          <div>效期<br><strong>${Number(p.validityDays||0)} 天</strong></div>
        </div>`
     + `${(p.activityStartDate||p.activityEndDate) ? `<div class="activity-range">活動期間：${safeText(p.activityStartDate||'即日起')} ～ ${safeText(p.activityEndDate||'未定')}</div>` : ''}`;
@@ -1287,7 +1285,6 @@ function addToCart(p){
       price:Number(p.price||0),
       image_url:p.image_url||p.imageUrl||'',
       validityDays:Number(p.validityDays||0),
-      groupCount:Math.max(1,Number(p.groupCount||1)),
       bundleQuantity:Number(p.quantity||1),
       cartQty:1
     });
@@ -1342,7 +1339,7 @@ function renderCart(){
         <div class="cart-pic">${x.image_url?`<img src="${safeText(x.image_url)}" alt="${safeText(x.name)}">`:'🛍️'}</div>
         <div class="cart-info">
           <strong>${safeText(x.name)}</strong>
-          <small>${money(x.price)}／方案 · 規格 ${Math.max(1,Number(x.groupCount||1))}組 ${Number(x.bundleQuantity||1)}杯</small>
+          <small>${money(x.price)}／組 · 每組 ${Number(x.bundleQuantity||1)} 件</small>
           ${x.validityDays?`<small>效期 ${Number(x.validityDays)} 天</small>`:''}
         </div>
       </div>
@@ -1390,7 +1387,7 @@ function renderCheckout(){
     <div class="checkout-item">
       <div>
         <strong>${safeText(x.name)}</strong>
-        <small>${Number(x.cartQty||1)} 份 × ${money(x.price)} · 每份 ${Math.max(1,Number(x.groupCount||1))}組${Number(x.bundleQuantity||1)}杯</small>
+        <small>${Number(x.cartQty||1)} 組 × ${money(x.price)}</small>
       </div>
       <strong>${money(Number(x.cartQty||1)*Number(x.price||0))}</strong>
     </div>
