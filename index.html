@@ -159,6 +159,21 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .coupon-meta{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.55}
 .coupon-code{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:12px;color:var(--muted)}
 .feature-disabled{opacity:.45;pointer-events:none}
+
+.shop-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.shop-info-chip{background:#f7f8f8;border:1px solid var(--line);border-radius:10px;padding:7px 8px;font-size:11px;color:var(--muted)}
+.activity-badge{display:inline-block;margin-top:6px;background:#fff1e7;color:#c65d10;border:1px solid #ffd7ba;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:900}
+.activity-range{font-size:11px;color:var(--muted);margin-top:5px}
+.detail-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.detail-meta div{background:#f7f8f8;border:1px solid var(--line);border-radius:12px;padding:9px 10px;font-size:12px}
+
+
+.dev-action{border:0;border-radius:12px;background:#f28a2b;color:#fff;padding:9px 11px;font-weight:900}
+.dev-action:disabled{background:#c9cecb}
+.dev-mini{border:1px solid #f28a2b;border-radius:11px;background:#fff;color:#c65d10;padding:8px 9px;font-weight:900;font-size:12px}
+.dev-flow-note{background:#fff8e9;border:1px solid #f3dcab;color:#7a5411;border-radius:14px;padding:10px 12px;font-size:12px;line-height:1.5;margin:10px 0}
+.action-row{display:flex;gap:8px;align-items:center}
+
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -202,10 +217,11 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div id="shopProducts" class="product-grid">
     <div class="empty-box" style="grid-column:1/-1"><div class="big">🛍️</div>商品載入中…</div>
   </div>
-  <p class="note">「隨買」是選購入口。正式付款尚未接通，因此本版不會假裝扣款；購買完成後的商品會出現在「我的商品」。</p>
+  <p class="note">「隨買」商品資料由總部 SC 同步。v0.9 開發測試可建立購買紀錄，但不會扣款；正式版將改由億家Pay／正式金流建立購買。</p>
 </section>
 <section id="products" class="view">
   <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>我的商品</h2></div>
+  <div class="dev-flow-note">開發測試：可直接「測試兌換 1 件」驗證剩餘數量扣除與兌換紀錄。正式版會移除此按鈕，由 TM 掃碼兌換。</div>
   <div id="myProducts" class="list">
     <div class="empty-box"><div class="big">☕</div>已購商品載入中…</div>
   </div>
@@ -294,7 +310,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('profile')"><div><strong>會員資料</strong><small>姓名、生日、性別、Email、地址、國籍</small></div><span>›</span></div>
     <div class="row"><div><strong>我的訂單</strong><small>商城與預購訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.8 SC Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.9 Dev Purchase</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -368,7 +384,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div id="pdPrice" class="price">$0</div>
     <div id="pdDesc" class="desc"></div>
     <div id="pdStatus" class="status">付款功能尚未接通。</div>
-    <button id="pdBuyBtn" class="close" onclick="startPurchase()">購買</button>
+    <button id="pdBuyBtn" class="dev-action" style="width:100%;padding:12px" onclick="startPurchase()">開發測試購買</button>
     <button class="danger-wide" style="margin-top:9px" onclick="closeProductModal()">關閉</button>
   </div>
 </div>
@@ -730,7 +746,12 @@ async function loadSCAppState(){
       category:p.category||'',
       price:Number(p.price||0),
       image_url:p.imageUrl||'',
-      description:p.note||p.category||'隨買跨店取商品'
+      description:p.note||p.category||'隨買跨店取商品',
+      quantity:Number(p.quantity||0),
+      validityDays:Number(p.validityDays||0),
+      activityStartDate:p.activityStartDate||'',
+      activityEndDate:p.activityEndDate||'',
+      activityContent:p.activityContent||''
     }));
   renderShopProducts();
 }
@@ -881,7 +902,13 @@ function renderShopProducts(){
       <div class="shop-body">
         <div class="shop-name">${safeText(p.name)}</div>
         <div class="shop-desc">${safeText(p.description||'跨店取商品')}</div>
-        <div class="shop-bottom">
+        ${p.activityContent ? `<div class="activity-badge">${safeText(p.activityContent)}</div>` : ''}
+        ${(p.activityStartDate||p.activityEndDate) ? `<div class="activity-range">活動：${safeText(p.activityStartDate||'即日起')} ～ ${safeText(p.activityEndDate||'未定')}</div>` : ''}
+        <div class="shop-info-grid">
+          <div class="shop-info-chip">數量：${Number(p.quantity||0)}</div>
+          <div class="shop-info-chip">效期：${Number(p.validityDays||0)} 天</div>
+        </div>
+        <div class="shop-bottom" style="margin-top:10px">
           <div class="shop-price2">${money(p.price)}</div>
           <button class="shop-buy" onclick="openProductModal('${p.id}')">選購</button>
         </div>
@@ -898,10 +925,17 @@ function openProductModal(id){
   img.innerHTML=productImageHtml(p);
   document.getElementById('pdName').textContent=p.name||'商品';
   document.getElementById('pdPrice').textContent=money(p.price);
-  document.getElementById('pdDesc').textContent=p.description||'';
-  document.getElementById('pdStatus').textContent='目前已接真實商品資料，但億家Pay／正式付款尚未接通，因此這版不會建立假付款。';
-  document.getElementById('pdBuyBtn').textContent='付款尚未開放';
-  document.getElementById('pdBuyBtn').disabled=true;
+  document.getElementById('pdDesc').innerHTML=
+    `${safeText(p.description||'')}`
+    + `${p.activityContent ? `<div class="activity-badge">${safeText(p.activityContent)}</div>` : ''}`
+    + `<div class="detail-meta">
+         <div>購買數量<br><strong>${Number(p.quantity||0)}</strong></div>
+         <div>效期<br><strong>${Number(p.validityDays||0)} 天</strong></div>
+       </div>`
+    + `${(p.activityStartDate||p.activityEndDate) ? `<div class="activity-range">活動期間：${safeText(p.activityStartDate||'即日起')} ～ ${safeText(p.activityEndDate||'未定')}</div>` : ''}`;
+  document.getElementById('pdStatus').textContent='開發測試模式：按下後會建立真實測試購買紀錄，但不會扣款。';
+  document.getElementById('pdBuyBtn').textContent='開發測試購買';
+  document.getElementById('pdBuyBtn').disabled=false;
   document.getElementById('productModal').classList.add('open');
 }
 
@@ -910,8 +944,27 @@ function closeProductModal(){
   selectedProduct=null;
 }
 
-function startPurchase(){
-  alert('付款功能尚未接通。');
+async function startPurchase(){
+  if(!selectedProduct || !currentUser) return;
+  const btn=document.getElementById('pdBuyBtn');
+  btn.disabled=true;
+  btn.textContent='建立購買中…';
+
+  const productKey=String(selectedProduct.code || selectedProduct.id || '');
+  const {data,error}=await sb.rpc('dev_app_purchase_anybuy',{p_product_key:productKey});
+
+  if(error){
+    console.error(error);
+    alert('測試購買失敗：'+error.message);
+    btn.disabled=false;
+    btn.textContent='開發測試購買';
+    return;
+  }
+
+  closeProductModal();
+  await loadMyProducts();
+  showView('products');
+  alert('測試購買完成，商品已加入「我的商品」。');
 }
 
 async function loadMyProducts(){
@@ -958,7 +1011,10 @@ async function loadMyProducts(){
             <div class="qty-big">剩餘 ${Number(x.quantity_remaining||0)}</div>
             <div class="expiry">${x.expires_at ? '有效至 '+new Date(x.expires_at).toLocaleDateString('zh-TW') : '無指定到期日'}</div>
           </div>
-          <button class="redeem-open" ${canRedeem?'':'disabled'} onclick="openBarcode()">${canRedeem?'兌換':'不可兌換'}</button>
+          <div class="action-row">
+            <button class="redeem-open" ${canRedeem?'':'disabled'} onclick="openBarcode()">${canRedeem?'出示條碼':'不可兌換'}</button>
+            ${canRedeem ? `<button class="dev-mini" onclick="devRedeemOne(${x.id})">測試兌換1件</button>` : ''}
+          </div>
         </div>
       </div>
     `;
@@ -969,6 +1025,27 @@ function updateHomePendingCount(count){
   const cards=[...document.querySelectorAll('.card b')];
   const target=cards.find(el=>el.textContent.includes('待兌換') || el.parentElement?.textContent.includes('跨店取'));
   if(target) target.textContent='待兌換 '+Number(count||0)+' 件';
+}
+
+
+async function devRedeemOne(memberProductId){
+  if(!currentUser) return;
+  if(!confirm('確定要開發測試兌換 1 件嗎？')) return;
+
+  const {data,error}=await sb.rpc('dev_app_redeem_one',{
+    p_member_product_id:Number(memberProductId),
+    p_store_code:'DEV'
+  });
+
+  if(error){
+    console.error(error);
+    alert('測試兌換失敗：'+error.message);
+    return;
+  }
+
+  await loadMyProducts();
+  await loadRedemptions();
+  alert('已測試兌換 1 件。');
 }
 
 async function loadRedemptions(){
