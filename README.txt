@@ -1,9 +1,5 @@
-億家 App v0.9.4.2 — 店舖退貨 YR 條碼
-
-新增：
-1. 店舖結帳退貨申請成功後顯示 YR CODE128 條碼。
-2. 條碼內容與畫面 YR 文字碼完全相同。
-3. TM 可掃描 YR 條碼直接帶出退貨申請。
-4. 線上支付退貨不顯示門市退貨條碼。
-
-本次只需更新 GitHub 的 index.html，不需要再執行 Supabase SQL。
+億家 App v0.9.4.3
+- 我的商品可持續查看 YR 退貨碼與 CODE128 條碼
+- 申請成功後自動刷新
+- 需先執行 setup_v0_9_4_3_return_barcode_lookup.sql
+- 資料來源：HQ / yj_app_return_requests
