@@ -1,4 +1,6 @@
-億家 App v0.9.5.1 Login Fix
+億家 App v0.9.5.3 — 隨買跨店取組數顯示
 
-修正：v0.9.5 移除「我的」頁上方重複會員卡後，登入流程仍直接存取 meName/meEmail，造成登入後會員資料讀取失敗。
-本次只需更新 GitHub 的 index.html，不需要執行 Supabase SQL。
+- App 隨買商品支援 groupCount（組數）＋ quantity（數量）。
+- 商品列表與商品明細會顯示例如「1組3杯」「1組10杯」。
+- 購物車保留活動規格，不改既有付款 RPC。
+- 舊活動未設定 groupCount 時自動視為 1 組。
