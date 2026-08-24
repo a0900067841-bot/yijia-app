@@ -482,7 +482,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('profile')"><div><strong>會員資料</strong><small>姓名、生日、性別、Email、地址、國籍</small></div><span>›</span></div>
     <div class="row"><div><strong>我的訂單</strong><small>商城與預購訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.9.4 Pay & Return</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.9.4.1 Return Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1668,9 +1668,10 @@ async function loadMyProducts(){
 
 function openReturnRequest(encoded){
   try{
-    selectedReturnProduct=JSON.parse(JSON.parse(encoded));
+    selectedReturnProduct=JSON.parse(encoded);
   }catch(e){
     console.error(e);
+    alert('退貨資料開啟失敗，請重新整理後再試。');
     return;
   }
   if(!selectedReturnProduct?.returnEligible) return;
