@@ -233,6 +233,16 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .store-status.paid{background:#eef7f2;color:var(--green);border-color:#b9dfca}
 .store-status.expired{background:#fff1ef;color:#b34437;border-color:#f0c4bf}
 .sync-hint{font-size:11px;color:var(--muted);margin-top:7px}
+
+.return-btn{border:1px solid #d9a59f;background:#fff;color:#a44238;border-radius:10px;padding:9px 12px;font-weight:800}
+.return-note{margin-top:8px;font-size:12px;color:var(--muted)}
+.return-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px}
+.return-warning{background:#fff7e8;border:1px solid #efd39a;border-radius:12px;padding:11px;font-size:13px;line-height:1.55;margin:12px 0}
+.return-code{font-size:18px;font-weight:900;letter-spacing:.6px;margin:8px 0}
+.pay-method.disabled{opacity:.48;pointer-events:none}
+.pay-method-detail{font-size:12px;color:var(--muted);margin-top:5px}
+.pay-method .balance-badge{font-size:12px;font-weight:800;color:var(--green)}
+
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -287,22 +297,32 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
   <h3 style="margin:0 0 10px">選擇付款方式</h3>
   <div class="checkout-methods">
-    <div id="methodOnline" class="pay-method" onclick="selectPayMethod('online')">
+    <div id="methodWallet" class="pay-method" onclick="selectPayMethod('wallet')">
       <div class="pay-method-top">
-        <strong>💳 線上支付</strong>
-        <span class="tag">開發測試</span>
+        <strong>📱 億家Pay・錢包支付</strong>
+        <span id="checkoutWalletBalance" class="balance-badge">餘額 $0</span>
       </div>
-      <p>正式版將接億家Pay／線上金流。目前按確認後使用開發測試付款，不會真的扣款。</p>
+      <p>使用億家Pay錢包餘額付款。餘額不足時無法使用。</p>
+    </div>
+
+    <div id="methodCard" class="pay-method" onclick="selectPayMethod('card')">
+      <div class="pay-method-top">
+        <strong>💳 億家Pay・綁定信用卡</strong>
+        <span id="checkoutCardStatus" class="tag">尚未綁定</span>
+      </div>
+      <p>使用億家Pay已綁定的信用卡／簽帳金融卡付款。</p>
     </div>
 
     <div id="methodStore" class="pay-method" onclick="selectPayMethod('store')">
       <div class="pay-method-top">
         <strong>🏪 店舖結帳</strong>
-        <span class="tag">待門市付款</span>
+        <span class="tag">到店付款</span>
       </div>
-      <p>建立共用待付款訂單與 YS 付款條碼，到門市出示給 TM。TM 收款成功後，App 會同步付款完成並顯示可兌換商品。</p>
+      <p>建立 YS 付款條碼，到門市由 TM 收款；付款完成後商品同步至「我的商品」。</p>
     </div>
   </div>
+
+  <div id="checkoutPayNotice" class="dev-flow-note" style="display:none"></div>
 
   <button id="checkoutContinueBtn" class="pay-continue" disabled onclick="confirmCheckout()">請先選擇付款方式</button>
 </section>
@@ -327,6 +347,28 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     </div>
 
     <button id="storeOrderActionBtn" class="pay-continue" onclick="showView('home')">回首頁</button>
+  </div>
+</section>
+
+
+<section id="returnRequest" class="view">
+  <div class="header2"><button class="back" onclick="showView('products')">‹</button><h2>申請退貨</h2></div>
+  <div class="return-card">
+    <div id="returnProductName" style="font-size:18px;font-weight:900">--</div>
+    <div id="returnProductMeta" class="note"></div>
+    <div id="returnStoreRule" class="return-warning"></div>
+    <button id="returnSubmitBtn" class="pay-continue" onclick="submitReturnRequest()">確認申請退貨</button>
+  </div>
+</section>
+
+<section id="returnResult" class="view">
+  <div class="header2"><button class="back" onclick="showView('products')">‹</button><h2>退貨申請</h2></div>
+  <div class="return-card">
+    <span class="store-status">已送出申請</span>
+    <h2>退貨申請已建立</h2>
+    <div id="returnResultCode" class="return-code">--</div>
+    <div id="returnResultText" class="note"></div>
+    <button class="pay-continue" onclick="showView('products');loadMyProducts()">回我的商品</button>
   </div>
 </section>
 
@@ -371,7 +413,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <div class="pay-status">安全付款</div>
     </div>
     <div class="pay-balance">億家Pay 錢包餘額</div>
-    <div class="pay-amount">$0</div>
+    <div id="payWalletAmount" class="pay-amount">$0</div>
     <div class="pay-actions">
       <button class="pay-action" onclick="togglePayCode()">付款碼</button>
       <button class="pay-action" onclick="alert('儲值功能後續接入')">儲值</button>
@@ -402,7 +444,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div class="list">
     <div class="pay-method">
       <div class="method-icon">💳</div>
-      <div class="grow"><strong>信用卡／簽帳金融卡</strong><small>尚未綁定</small></div>
+      <div class="grow"><strong>信用卡／簽帳金融卡</strong><small id="payCardSummary">尚未綁定</small></div>
       <span>›</span>
     </div>
     <div class="pay-method">
@@ -428,7 +470,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row"><div><strong>付款限額</strong><small>單筆與每日上限</small></div><span>›</span></div>
     <div class="row"><div><strong>停用億家Pay</strong><small>遺失手機時可立即停用</small></div><span>›</span></div>
   </div>
-  <p class="note">目前為介面原型。真正付款功能需再串接合法支付服務商／金流，不會直接把信用卡資料存放在 App 或 Supabase。</p>
+  <p class="note">億家Pay的信用卡資料不會直接存放在 App 或 Supabase；正式扣款需由合法金流服務商以 Token／付款憑證處理。</p>
 </section>
 
 <section id="me" class="view">
@@ -440,7 +482,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('profile')"><div><strong>會員資料</strong><small>姓名、生日、性別、Email、地址、國籍</small></div><span>›</span></div>
     <div class="row"><div><strong>我的訂單</strong><small>商城與預購訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.9.3 TM Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.9.4 Pay & Return</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -562,6 +604,7 @@ let currentMember=null;
 
 function showView(id){
   if(id!=='storeOrder') stopStoreOrderMonitor();
+  if(id==='checkout'||id==='pay') loadYijiaPaySummary();
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const target=document.getElementById(id);
   if(target) target.classList.add('active');
@@ -1237,21 +1280,77 @@ function renderCheckout(){
   `).join('');
 
   if(totalEl) totalEl.textContent=money(cartTotalAmount());
+  loadYijiaPaySummary();
+}
+
+let yijiaPaySummary={walletBalance:0,hasCard:false,cardLabel:'尚未綁定'};
+
+async function loadYijiaPaySummary(){
+  if(!currentUser) return;
+  try{
+    const {data,error}=await sb.rpc('app_get_yijiapay_summary');
+    if(error) throw error;
+    if(data && typeof data==='object') yijiaPaySummary=data;
+  }catch(err){
+    console.warn('億家Pay摘要尚未接通',err);
+    yijiaPaySummary={walletBalance:0,hasCard:false,cardLabel:'尚未綁定'};
+  }
+
+  const balance=Number(yijiaPaySummary.walletBalance||0);
+  const walletLabel=document.getElementById('checkoutWalletBalance');
+  const cardStatus=document.getElementById('checkoutCardStatus');
+  const payAmount=document.getElementById('payWalletAmount');
+  const payCardSummary=document.getElementById('payCardSummary');
+
+  if(walletLabel) walletLabel.textContent='餘額 '+money(balance);
+  if(payAmount) payAmount.textContent=money(balance);
+  if(cardStatus) cardStatus.textContent=yijiaPaySummary.hasCard ? (yijiaPaySummary.cardLabel||'已綁定') : '尚未綁定';
+  if(payCardSummary) payCardSummary.textContent=yijiaPaySummary.hasCard ? (yijiaPaySummary.cardLabel||'已綁定') : '尚未綁定';
+
+  updateCheckoutPayAvailability();
+}
+
+function updateCheckoutPayAvailability(){
+  const total=cartTotalAmount();
+  const wallet=document.getElementById('methodWallet');
+  const card=document.getElementById('methodCard');
+
+  const walletOK=Number(yijiaPaySummary.walletBalance||0)>=total && total>0;
+  const cardOK=!!yijiaPaySummary.hasCard;
+
+  wallet?.classList.toggle('disabled',!walletOK);
+  card?.classList.toggle('disabled',!cardOK);
+
+  if(selectedPayMethod==='wallet' && !walletOK) selectPayMethod(null);
+  if(selectedPayMethod==='card' && !cardOK) selectPayMethod(null);
 }
 
 function selectPayMethod(method){
   selectedPayMethod=method;
-  const online=document.getElementById('methodOnline');
+  const wallet=document.getElementById('methodWallet');
+  const card=document.getElementById('methodCard');
   const store=document.getElementById('methodStore');
   const btn=document.getElementById('checkoutContinueBtn');
+  const notice=document.getElementById('checkoutPayNotice');
 
-  online?.classList.toggle('active',method==='online');
+  wallet?.classList.toggle('active',method==='wallet');
+  card?.classList.toggle('active',method==='card');
   store?.classList.toggle('active',method==='store');
 
+  if(notice){
+    notice.style.display='none';
+    notice.textContent='';
+  }
+
   if(!btn) return;
-  if(method==='online'){
-    btn.disabled=false;
-    btn.textContent='使用開發測試線上付款';
+
+  if(method==='wallet'){
+    const enough=Number(yijiaPaySummary.walletBalance||0)>=cartTotalAmount();
+    btn.disabled=!enough;
+    btn.textContent=enough?'使用億家Pay錢包付款':'錢包餘額不足';
+  }else if(method==='card'){
+    btn.disabled=!yijiaPaySummary.hasCard;
+    btn.textContent=yijiaPaySummary.hasCard?'使用綁定信用卡付款':'尚未綁定信用卡';
   }else if(method==='store'){
     btn.disabled=false;
     btn.textContent='建立店舖待付款訂單';
@@ -1262,10 +1361,56 @@ function selectPayMethod(method){
 }
 
 async function confirmCheckout(){
-  if(selectedPayMethod==='online'){
-    await devCheckoutCart();
+  if(selectedPayMethod==='wallet'){
+    await createYijiaPayOrder('wallet');
+  }else if(selectedPayMethod==='card'){
+    await createYijiaPayOrder('card');
   }else if(selectedPayMethod==='store'){
     await createStoreCheckoutOrder();
+  }
+}
+
+async function createYijiaPayOrder(source){
+  if(!currentUser || !cartItems.length) return;
+
+  const btn=document.getElementById('checkoutContinueBtn');
+  const notice=document.getElementById('checkoutPayNotice');
+  btn.disabled=true;
+  btn.textContent='建立億家Pay訂單中…';
+
+  const payload=cartItems.map(x=>({
+    productKey:String(x.code||x.key),
+    cartQty:Number(x.cartQty||1)
+  }));
+
+  try{
+    const {data,error}=await sb.rpc('app_create_yijiapay_order',{
+      p_items:payload,
+      p_payment_source:source
+    });
+    if(error) throw error;
+
+    if(data?.paymentStatus==='paid' || data?.status==='已付款'){
+      cartItems=[];
+      saveCart();
+      await loadMyProducts();
+      showView('products');
+      alert('付款完成，商品已加入「我的商品」。');
+      return;
+    }
+
+    if(notice){
+      notice.style.display='block';
+      notice.textContent = source==='card'
+        ? '信用卡付款訂單已建立。正式扣款仍需串接金流服務商；目前不會直接向信用卡扣款。'
+        : '億家Pay錢包付款訂單已建立。正式錢包扣款需由後端錢包服務完成後再標記付款成功。';
+    }
+  }catch(err){
+    console.error(err);
+    alert('億家Pay付款建立失敗：'+(err?.message||err));
+  }finally{
+    btn.disabled=false;
+    selectPayMethod(source);
   }
 }
 
@@ -1448,28 +1593,8 @@ async function devCheckoutCart(){
   }
 }
 
-async function startPurchase(){
-  if(!selectedProduct || !currentUser) return;
-  const btn=document.getElementById('pdBuyBtn');
-  btn.disabled=true;
-  btn.textContent='建立購買中…';
 
-  const productKey=String(selectedProduct.code || selectedProduct.id || '');
-  const {data,error}=await sb.rpc('dev_app_purchase_anybuy',{p_product_key:productKey});
-
-  if(error){
-    console.error(error);
-    alert('測試購買失敗：'+error.message);
-    btn.disabled=false;
-    btn.textContent='開發測試購買';
-    return;
-  }
-
-  closeProductModal();
-  await loadMyProducts();
-  showView('products');
-  alert('測試購買完成，商品已加入「我的商品」。');
-}
+let selectedReturnProduct=null;
 
 async function loadMyProducts(){
   const box=document.getElementById('myProducts');
@@ -1486,7 +1611,7 @@ async function loadMyProducts(){
 
   const rows=Array.isArray(data)?data:[];
   if(!rows.length){
-    box.innerHTML='<div class="empty-box"><div class="big">🛍️</div>目前沒有可兌換商品<br><small>店舖或線上付款完成後會顯示在這裡</small></div>';
+    box.innerHTML='<div class="empty-box"><div class="big">🛍️</div>目前沒有可兌換商品<br><small>付款完成後會顯示在這裡</small></div>';
     updateHomePendingCount(0);
     return;
   }
@@ -1504,6 +1629,14 @@ async function loadMyProducts(){
       && Number(x.remainingQuantity||0)>0
       && (!validUntil || validUntil>=new Date());
 
+    const returnBtn = x.returnEligible
+      ? `<button class="return-btn" onclick='openReturnRequest(${JSON.stringify(JSON.stringify(x))})'>退貨</button>`
+      : '';
+
+    const returnText = x.returnRequestStatus
+      ? `<div class="return-note">退貨狀態：${safeText(x.returnRequestStatus)}</div>`
+      : '';
+
     return `
       <div class="member-product">
         <div class="member-product-top">
@@ -1518,15 +1651,89 @@ async function loadMyProducts(){
           <div>
             <div class="qty-big">剩餘 ${Number(x.remainingQuantity||0)}</div>
             <div class="expiry">${validUntil?'有效至 '+validUntil.toLocaleDateString('zh-TW'):'無指定到期日'}</div>
-            ${x.paidStoreCode?`<div class="expiry">付款門市：${safeText(x.paidStoreCode)}</div>`:''}
+            ${x.paidStoreName?`<div class="expiry">付款門市：${safeText(x.paidStoreName)}</div>`:
+              (x.paidStoreCode?`<div class="expiry">付款門市：${safeText(x.paidStoreCode)}</div>`:'')}
+            ${x.returnDeadline?`<div class="expiry">可退貨至：${new Date(x.returnDeadline).toLocaleString('zh-TW')}</div>`:''}
+            ${returnText}
           </div>
           <div class="action-row">
+            ${returnBtn}
             <button class="redeem-open" ${canRedeem?'':'disabled'} onclick="openBarcode()">${canRedeem?'出示會員條碼':'不可兌換'}</button>
           </div>
         </div>
       </div>
     `;
   }).join('');
+}
+
+function openReturnRequest(encoded){
+  try{
+    selectedReturnProduct=JSON.parse(JSON.parse(encoded));
+  }catch(e){
+    console.error(e);
+    return;
+  }
+  if(!selectedReturnProduct?.returnEligible) return;
+
+  document.getElementById('returnProductName').textContent=selectedReturnProduct.name||'商品';
+
+  const deadline=selectedReturnProduct.returnDeadline
+    ? new Date(selectedReturnProduct.returnDeadline).toLocaleString('zh-TW')
+    : '--';
+
+  document.getElementById('returnProductMeta').innerHTML=
+    `原始數量：${Number(selectedReturnProduct.originalQuantity||0)} 件<br>`+
+    `剩餘數量：${Number(selectedReturnProduct.remainingQuantity||0)} 件<br>`+
+    `退貨期限：${safeText(deadline)}`;
+
+  const storeRule=document.getElementById('returnStoreRule');
+  if(selectedReturnProduct.returnMode==='original_store'){
+    storeRule.innerHTML=
+      `<strong>店舖結帳退貨規則</strong><br>`+
+      `此商品只能回原付款門市辦理退貨。<br>`+
+      `原付款門市：${safeText(selectedReturnProduct.paidStoreName||selectedReturnProduct.paidStoreCode||'原付款門市')}`;
+  }else{
+    storeRule.innerHTML=
+      `<strong>線上付款退貨</strong><br>`+
+      `申請通過後，退款會依原付款方式退回。`;
+  }
+
+  showView('returnRequest');
+}
+
+async function submitReturnRequest(){
+  if(!selectedReturnProduct) return;
+  const btn=document.getElementById('returnSubmitBtn');
+  btn.disabled=true;
+  btn.textContent='送出申請中…';
+
+  try{
+    const {data,error}=await sb.rpc('app_create_return_request',{
+      p_member_product_id:String(selectedReturnProduct.id)
+    });
+    if(error) throw error;
+
+    document.getElementById('returnResultCode').textContent=data.returnCode||'--';
+
+    if(data.returnMode==='original_store'){
+      document.getElementById('returnResultText').innerHTML=
+        `請於退貨期限內回原付款門市辦理。<br>`+
+        `原付款門市：${safeText(data.paidStoreName||data.paidStoreCode||'原付款門市')}<br>`+
+        `此商品在退貨申請處理期間不可重複申請。`;
+    }else{
+      document.getElementById('returnResultText').innerHTML=
+        `已建立線上退貨申請。退款將依原付款方式處理。`;
+    }
+
+    selectedReturnProduct=null;
+    showView('returnResult');
+  }catch(err){
+    console.error(err);
+    alert('退貨申請失敗：'+(err?.message||err));
+  }finally{
+    btn.disabled=false;
+    btn.textContent='確認申請退貨';
+  }
 }
 
 function updateHomePendingCount(count){
