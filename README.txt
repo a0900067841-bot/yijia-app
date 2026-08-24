@@ -1,21 +1,34 @@
-億家 App v0.6 — Supabase 會員＋點數接通版
+億家 App v0.7 — 隨買 / 我的商品 / 兌換紀錄
 
-這一版：
-- App 畫面仍是「手機號碼＋密碼」
-- 不需要 Twilio / SMS
-- Supabase 內部使用隱藏的技術 Email 識別，會員看不到
-- 會員資料直接讀寫 app_members
-- 點數餘額讀取 app_points
-- 點數紀錄讀取 app_point_transactions
-- 會員只能讀寫自己的會員資料
-- 會員只能讀自己的點數
-- App 不能自己新增/修改點數，避免會員自行加點
-- 首次登入自動建立 0 點帳戶
+本版新增：
+1. 隨買跨店取
+   - 直接讀 Supabase app_products
+   - 商品搜尋
+   - 商品名稱 / 說明 / 價格 / 圖片
+   - 選購商品詳細畫面
+   - 正式付款尚未接通，所以不建立假付款
 
-重要：
-1. 先在 Supabase SQL Editor 執行 setup_v0_6.sql。
-2. Supabase Authentication > Email provider 必須啟用。
-3. 開發測試期間需關閉「Confirm email」，否則假 Email 無法完成註冊。
-4. 然後再把 index.html 覆蓋到 GitHub Pages。
+2. 我的商品
+   - 直接讀 app_member_products
+   - 顯示購買數量
+   - 顯示剩餘數量
+   - 顯示有效期限
+   - 有商品才可按兌換
+   - 兌換仍以會員條碼交給 TM 處理
 
-正式公開前會再把登入機制換成正式會員驗證，不會讓隱藏技術 Email 成為會員可見資料。
+3. 兌換紀錄
+   - 直接讀 app_redemptions
+   - 顯示商品、數量、門市代碼、時間
+
+安全：
+- 顧客只能讀自己的 app_member_products
+- 顧客只能讀自己的 app_redemptions
+- 顧客端沒有 insert/update 已購商品或兌換紀錄權限
+- 購買成功與 TM 兌換之後要由安全後端寫入，避免會員自行增加商品或偽造兌換
+
+使用順序：
+1. 在 Supabase SQL Editor 執行 setup_v0_7.sql
+2. 成功後，把 index.html 覆蓋 GitHub Pages
+3. 登入 App
+4. 「隨買」應可看到兩筆測試商品
+5. 「我的商品」若尚未有購買資料會顯示空白狀態
