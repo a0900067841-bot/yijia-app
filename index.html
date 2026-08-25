@@ -182,8 +182,10 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .cart-fab{
   position:fixed;right:18px;bottom:92px;z-index:45;width:58px;height:58px;border:0;
   border-radius:50%;background:#fff;box-shadow:0 10px 28px rgba(0,0,0,.15);
-  font-size:26px;display:grid;place-items:center
+  font-size:26px;display:grid;place-items:center;
+  touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab
 }
+.cart-fab.dragging{cursor:grabbing;transform:scale(1.04);box-shadow:0 12px 32px rgba(0,0,0,.22)}
 .cart-count{
   position:absolute;right:-2px;top:-3px;min-width:21px;height:21px;padding:0 5px;
   border-radius:999px;background:#f28a2b;color:#fff;font-size:11px;font-weight:900;
@@ -555,7 +557,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('anybuyCenter')"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.0.2 Login Fix</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.0.3 Price & Cart Drag</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1215,14 +1217,23 @@ async function loadSCAppState(){
       code:p.code||'',
       name:p.name||'',
       category:p.category||'',
-      price:Number(p.price||0),
-      image_url:p.imageUrl||'',
+      price:Number(p.price??p.salePrice??p.sale_price??0),
+      originalPrice:Number(
+        p.originalPrice??p.original_price??p.originalBundlePrice??
+        p.listPrice??p.regularPrice??0
+      ),
+      groupCount:Number(p.groupCount??p.groups??p.groupQuantity??1),
+      purchaseLimitGroups:Number(
+        p.purchaseLimitGroups??p.purchase_limit_groups??
+        p.limitGroups??p.maxGroups??0
+      ),
+      image_url:p.imageUrl||p.image_url||'',
       description:p.note||p.category||'隨買跨店取商品',
-      quantity:Number(p.quantity||0),
-      validityDays:Number(p.validityDays||0),
-      activityStartDate:p.activityStartDate||'',
-      activityEndDate:p.activityEndDate||'',
-      activityContent:p.activityContent||''
+      quantity:Number(p.quantity??p.bundleQuantity??0),
+      validityDays:Number(p.validityDays??p.validity_days??0),
+      activityStartDate:p.activityStartDate||p.activity_start_date||'',
+      activityEndDate:p.activityEndDate||p.activity_end_date||'',
+      activityContent:p.activityContent||p.activity_content||''
     }));
   renderShopProducts();
 }
@@ -2759,9 +2770,9 @@ document.addEventListener('DOMContentLoaded',()=>{initAuth();setTimeout(loadCart
 let anybuyDetailProduct=null, anybuyDetailQty=1;
 function n(v,d=0){v=Number(v);return Number.isFinite(v)?v:d}
 function bundleQty(p){return Math.max(1,n(p.quantity??p.bundleQuantity,1))}
-function originalBundlePrice(p){return Math.max(0,n(p.originalPrice??p.originalBundlePrice,0))}
+function originalBundlePrice(p){return Math.max(0,n(p.originalPrice??p.original_price??p.originalBundlePrice??p.listPrice??p.regularPrice,0))}
 function saleBundlePrice(p){return Math.max(0,n(p.price??p.salePrice??p.bundlePrice,0))}
-function limitGroups(p){return Math.max(0,Math.floor(n(p.purchaseLimitGroups??p.limitGroups??p.maxGroups,0)))}
+function limitGroups(p){return Math.max(0,Math.floor(n(p.purchaseLimitGroups??p.purchase_limit_groups??p.limitGroups??p.maxGroups,0)))}
 function openAnybuyProductDetailById(id){
   const p=shopProductsCache.find(x=>String(x.id)===String(id))||null;
   if(!p) return;
@@ -2813,5 +2824,93 @@ async function buyAnybuyDetailProduct(){
   alert('已加入購物車。');
   showView('cart');
 }
+
+// ===== v0.10.0.3 可移動購物車 =====
+(function initMovableCartFab(){
+  const fab=document.getElementById('cartFab');
+  if(!fab) return;
+
+  const KEY='yijia_cart_fab_position_v1';
+  let dragging=false, moved=false, suppressClick=false;
+  let startX=0,startY=0,startLeft=0,startTop=0;
+
+  function clamp(left,top){
+    const pad=8;
+    const w=fab.offsetWidth||58, h=fab.offsetHeight||58;
+    const maxLeft=Math.max(pad,window.innerWidth-w-pad);
+    const maxTop=Math.max(pad,window.innerHeight-h-76);
+    return {
+      left:Math.min(Math.max(pad,left),maxLeft),
+      top:Math.min(Math.max(pad,top),maxTop)
+    };
+  }
+
+  function applyPosition(left,top,save=true){
+    const p=clamp(left,top);
+    fab.style.left=p.left+'px';
+    fab.style.top=p.top+'px';
+    fab.style.right='auto';
+    fab.style.bottom='auto';
+    if(save){
+      try{localStorage.setItem(KEY,JSON.stringify(p));}catch(e){}
+    }
+  }
+
+  try{
+    const saved=JSON.parse(localStorage.getItem(KEY)||'null');
+    if(saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)){
+      requestAnimationFrame(()=>applyPosition(saved.left,saved.top,false));
+    }
+  }catch(e){}
+
+  fab.addEventListener('pointerdown',e=>{
+    if(e.button!==undefined && e.button!==0) return;
+    const r=fab.getBoundingClientRect();
+    dragging=true; moved=false;
+    startX=e.clientX; startY=e.clientY;
+    startLeft=r.left; startTop=r.top;
+    fab.classList.add('dragging');
+    try{fab.setPointerCapture(e.pointerId)}catch(err){}
+  });
+
+  fab.addEventListener('pointermove',e=>{
+    if(!dragging) return;
+    const dx=e.clientX-startX, dy=e.clientY-startY;
+    if(Math.abs(dx)>4 || Math.abs(dy)>4) moved=true;
+    if(moved){
+      e.preventDefault();
+      applyPosition(startLeft+dx,startTop+dy,false);
+    }
+  });
+
+  function endDrag(e){
+    if(!dragging) return;
+    dragging=false;
+    fab.classList.remove('dragging');
+    try{fab.releasePointerCapture(e.pointerId)}catch(err){}
+    if(moved){
+      const r=fab.getBoundingClientRect();
+      applyPosition(r.left,r.top,true);
+      suppressClick=true;
+      setTimeout(()=>{suppressClick=false},250);
+    }
+  }
+  fab.addEventListener('pointerup',endDrag);
+  fab.addEventListener('pointercancel',endDrag);
+
+  fab.addEventListener('click',e=>{
+    if(suppressClick){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      suppressClick=false;
+    }
+  },true);
+
+  window.addEventListener('resize',()=>{
+    const r=fab.getBoundingClientRect();
+    if(fab.style.left) applyPosition(r.left,r.top,true);
+  });
+})();
+
 </script>
 </body></html>
