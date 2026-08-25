@@ -1,9 +1,12 @@
-億家 App v0.9.5.4 — 動態 App 功能管理
+億家 App v0.10.5.0 Redemption Sync
 
-- 讀取 SC App設定的 appBackend.featureManagement。
-- 所有帶 data-feature-code 的 App 入口會依 SC 設定自動顯示／隱藏。
-- 相容舊版 appBackend.prebuiltHidden。
-- 已接入：億家 Pay、優惠券、我的訂單、通知中心、活動專區／更多活動。
-- 未來新增可隱藏入口時，只要在 App 新功能入口加 data-feature-code="SC功能代碼"，不需再修改 SC 功能管理 UI。
-- 功能本體仍需正常開發；功能管理只控制是否顯示入口。
-- 保留 v0.9.5.3 既有隨買跨店取組數＋數量功能。
+本版重點：
+1. 「我的商品」進入時自動載入可兌換商品與兌換紀錄。
+2. 停留在「我的商品」頁時，每 4 秒輕量同步一次。
+3. TM 完成兌換後，App 自動更新剩餘數量及兌換紀錄。
+4. App 切回前景／Safari 回到頁面時會立即同步。
+5. 到期或不可兌換商品維持不可操作。
+6. 本版為 App 前端更新，不需要新增 SQL。
+
+上傳：
+將 index.html 上傳至 GitHub Pages 專案覆蓋原本 index.html。
