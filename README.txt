@@ -1,20 +1,18 @@
-億家 App v0.10.2.0 Order Price Snapshot
+億家 App v0.10.3.0 Expiry Wallet Refund
 
-本版正式完成「購買當下價格快照」：
-- 店舖結帳建立 YS 訂單時，由 Supabase 後端直接讀 SC 當下商品資料。
-- 保存整組原價 originalPrice / originalBundlePrice。
-- 保存當時售價 price / salePrice / bundlePrice。
-- 保存每組數量 bundleQuantity。
-- 保存購買組數 cartQuantity。
-- 保存實付 paidAmount。
-- 自動算 originalUnitPrice = 購買當時整組原價 ÷ 每組數量。
-- 保存 maxPurchaseGroups，後端也會再次檢查限購。
-- SC 日後改價不會影響舊訂單的退款基準。
+本版完成：
+- 逾兌換／預約期限一般商品，依購買當下價格快照計算退款。
+- 到期未兌換商品退款歸「原購買人」億家錢包。
+- 轉贈後若收禮人仍未兌換，到期仍會回到原購買人。
+- 退款後所有同原訂單／同商品剩餘數量失效並標記已逾期。
+- 同一訂單商品只會處理一次，避免重複入帳。
+- 億家Pay畫面會讀取新的錢包餘額。
+- 商品使用紀錄 → 逾期，顯示到期未兌換數量與退款金額。
+
+目前自動方式：
+會員登入／App讀取億家Pay時會自動執行到期檢查。
+真正完全不依賴 App 開啟的伺服器定時排程，可再於下一階段加入。
 
 安裝：
-1. Supabase 執行 setup_v0_10_2_0_order_price_snapshot.sql。
-2. GitHub 更新 index.html。
-3. 建立一筆新的店舖結帳測試訂單，再檢查訂單 items 是否有 purchaseSnapshot。
-
-注意：
-舊訂單不會被回填新快照；只有本版之後新建立的訂單才會完整保存購買當下價格。
+1. Supabase 執行 setup_v0_10_3_0_expiry_wallet_refund.sql
+2. GitHub 更新 index.html

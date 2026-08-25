@@ -601,7 +601,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('redeem');loadShopProducts()"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.2.0 Order Price Snapshot</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.3.0 Expiry Wallet Refund</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1665,6 +1665,15 @@ let yijiaPaySummary={walletBalance:0,hasCard:false,cardLabel:'尚未綁定'};
 
 async function loadYijiaPaySummary(){
   if(!currentUser) return;
+
+  // 每次讀取錢包前，自動檢查目前會員是否有已到期且尚未處理的隨買商品。
+  try{
+    const {error:expiryError}=await sb.rpc('app_process_expired_anybuy_refunds');
+    if(expiryError) console.warn('逾期退款檢查失敗',expiryError);
+  }catch(err){
+    console.warn('逾期退款檢查尚未接通',err);
+  }
+
   try{
     const {data,error}=await sb.rpc('app_get_yijiapay_summary');
     if(error) throw error;
@@ -1672,6 +1681,19 @@ async function loadYijiaPaySummary(){
   }catch(err){
     console.warn('億家Pay摘要尚未接通',err);
     yijiaPaySummary={walletBalance:0,hasCard:false,cardLabel:'尚未綁定'};
+  }
+
+  // 億家錢包正式餘額由逾期退款／錢包帳本狀態覆蓋。
+  try{
+    const {data:walletData,error:walletError}=await sb.rpc('app_get_yijiapay_wallet_balance');
+    if(!walletError && walletData!=null){
+      const b=typeof walletData==='object'
+        ? Number(walletData.walletBalance??walletData.balance??0)
+        : Number(walletData||0);
+      if(Number.isFinite(b)) yijiaPaySummary.walletBalance=b;
+    }
+  }catch(err){
+    console.warn('億家錢包餘額尚未接通',err);
   }
 
   const balance=Number(yijiaPaySummary.walletBalance||0);
@@ -2694,11 +2716,19 @@ async function loadProductUsage(){
     box.innerHTML=`<div class="empty-panel">使用紀錄讀取失敗<br><small>${safeText(error.message)}</small></div>`;
     return;
   }
+  let expiryRows=Array.isArray(data?.expired)?data.expired:[];
+  try{
+    const {data:expiryData,error:expiryError}=await sb.rpc('app_get_expiry_refund_history');
+    if(!expiryError && Array.isArray(expiryData)) expiryRows=expiryData;
+  }catch(err){
+    console.warn('逾期退款紀錄尚未接通',err);
+  }
+
   usageCache={
     purchases:Array.isArray(data?.purchases)?data.purchases:[],
     redemptions:Array.isArray(data?.redemptions)?data.redemptions:[],
     returns:Array.isArray(data?.returns)?data.returns:[],
-    expired:Array.isArray(data?.expired)?data.expired:[],
+    expired:expiryRows,
     gifts:Array.isArray(data?.gifts)?data.gifts:[],
     transfers:Array.isArray(data?.transfers)?data.transfers:[]
   };
@@ -2769,7 +2799,20 @@ function renderProductUsage(){
         <button type="button" class="secondary-btn" style="margin-top:10px;padding:8px 12px;width:auto;color:#1686c9">查看明細</button>
       </div>`;
     }
-    return `<div class="history-card2"><div class="top"><div><div class="title">${safeText(r.name||'商品')}</div><div class="meta">有效期限：${r.validUntil?new Date(r.validUntil).toLocaleString('zh-TW'):'--'}<br>剩餘數量：${Number(r.remainingQuantity||0)}</div></div><span class="status-pill red">已逾期</span></div></div>`;
+    return `<div class="history-card2">
+      <div class="top">
+        <div>
+          <div class="title">${safeText(r.name||'商品')}</div>
+          <div class="meta">
+            到期時間：${r.validUntil?new Date(r.validUntil).toLocaleString('zh-TW'):'--'}<br>
+            到期未兌換：${Number(r.expiredRemainingQuantity??r.remainingQuantity??0)} 件<br>
+            ${r.refundAmount!=null?`逾期退款：${money(Number(r.refundAmount||0))}<br>`:''}
+            ${r.walletCreditedAt?`退款入帳：${new Date(r.walletCreditedAt).toLocaleString('zh-TW')}`:''}
+          </div>
+        </div>
+        <span class="status-pill red">${safeText(r.status||'已逾期')}</span>
+      </div>
+    </div>`;
   }).join('');
 }
 
