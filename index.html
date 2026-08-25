@@ -525,7 +525,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('anybuyCenter')"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.9.6 Anybuy Complete</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.9.6.1.1 Direct Gift</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -599,14 +599,14 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <label>轉贈數量</label>
       <input id="giftQty" type="number" min="1" value="1">
 
-      <label>對方手機號碼（可留白，用領取碼領取）</label>
+      <label>對方手機號碼（填寫後直接轉入對方 App；留白才產生領取碼）</label>
       <input id="giftReceiverPhone" inputmode="tel" placeholder="09xxxxxxxx">
 
       <div class="return-warning">
-        轉贈成功後，該數量會先從你的可兌換數量扣除。對方領取後加入對方「我的商品」。
+        有填對方手機：成功後直接加入對方「我的商品」。未填手機：才產生 YG 領取碼，等對方自行領取。
       </div>
 
-      <button class="primary-btn" onclick="createGiftTransfer()">產生轉贈領取碼</button>
+      <button class="primary-btn" onclick="createGiftTransfer()">確認轉贈</button>
     </div>
 
     <div id="giftCreateResult" class="form-card" style="display:none">
@@ -1807,7 +1807,7 @@ async function loadMyProducts(){
       && Number(x.remainingQuantity||0)>0
       && (!validUntil || validUntil>=new Date());
 
-    const returnBtn = x.returnEligible
+    const returnBtn = (x.returnEligible && x.source!=='會員轉贈')
       ? `<button class="return-btn" onclick='openReturnRequest(${JSON.stringify(JSON.stringify(x))})'>退貨</button>`
       : '';
 
@@ -2057,16 +2057,34 @@ async function createGiftTransfer(){
     });
     if(error) throw error;
 
-    document.getElementById('giftCreateResult').style.display='block';
-    document.getElementById('giftCodeText').textContent=data.giftCode||'--';
+    const resultBox=document.getElementById('giftCreateResult');
+    const codeText=document.getElementById('giftCodeText');
+    const barcodeWrap=document.getElementById('giftCodeBarcodeWrap');
+    const hint=resultBox?.querySelector('.small-muted');
 
-    if(window.JsBarcode && data.giftCode){
-      try{
-        JsBarcode('#giftCodeBarcode',String(data.giftCode),{
-          format:'CODE128',displayValue:false,margin:6,height:80,width:1.3
-        });
-      }catch(e){console.warn(e)}
+    if(resultBox) resultBox.style.display='block';
+
+    if(data.deliveryMode==='direct'){
+      if(codeText) codeText.textContent='已直接轉贈';
+      if(barcodeWrap) barcodeWrap.style.display='none';
+      if(hint) hint.textContent=`商品已直接加入 ${data.receiverPhone||'對方'} 的「我的商品」，不需要領取碼。`;
+      alert(`轉贈成功，商品已直接送到 ${data.receiverPhone||'對方會員'} 的 App。`);
+    }else{
+      if(codeText) codeText.textContent=data.giftCode||'--';
+      if(barcodeWrap) barcodeWrap.style.display='block';
+      if(hint) hint.textContent='可將領取碼或條碼提供給對方。';
+
+      if(window.JsBarcode && data.giftCode){
+        try{
+          JsBarcode('#giftCodeBarcode',String(data.giftCode),{
+            format:'CODE128',displayValue:false,margin:6,height:80,width:1.3
+          });
+        }catch(e){console.warn(e)}
+      }
     }
+
+    document.getElementById('giftReceiverPhone').value='';
+    document.getElementById('giftQty').value='1';
 
     await loadGiftTransferData();
     await loadMyProducts();
