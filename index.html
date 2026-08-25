@@ -615,7 +615,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('redeem');loadShopProducts()"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.6.0 Product Status</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.6.1 Usage History</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2939,6 +2939,35 @@ function setUsageTab(tab,el){
   renderProductUsage();
 }
 
+function usageDateText(v){
+  if(!v) return '--';
+  const d=new Date(v);
+  return Number.isNaN(d.getTime())?'--':d.toLocaleString('zh-TW');
+}
+
+function usageQtyText(v,unit='件'){
+  const n=Number(v||0);
+  return `${Number.isFinite(n)?n:0} ${unit}`;
+}
+
+function renderUsageUnifiedCard({title,product,dateLabel,dateValue,details=[],status='',statusClass='',amount='',onclick=''}){
+  const clickAttr=onclick?` onclick="${onclick}" style="cursor:pointer"`:'';
+  const detailHtml=details.filter(Boolean).map(x=>`<div>${x}</div>`).join('');
+  return `<div class="history-card2"${clickAttr}>
+    <div class="top">
+      <div>
+        <div class="title">${safeText(title||'使用紀錄')}</div>
+        <div class="meta">${dateLabel}：${safeText(usageDateText(dateValue))}</div>
+      </div>
+      ${status?`<span class="status-pill ${statusClass}">${safeText(status)}</span>`:''}
+    </div>
+    <div style="margin-top:10px;font-weight:800;font-size:16px">${safeText(product||'商品')}</div>
+    ${detailHtml?`<div class="meta" style="margin-top:6px;line-height:1.65">${detailHtml}</div>`:''}
+    ${amount?`<div class="amount" style="margin-top:10px">${safeText(amount)}</div>`:''}
+    ${onclick?`<button type="button" class="secondary-btn" style="margin-top:10px;padding:8px 12px;width:auto;color:#1686c9">查看明細</button>`:''}
+  </div>`;
+}
+
 function renderProductUsage(){
   const box=document.getElementById('productUsageList');
   if(!box) return;
@@ -2951,7 +2980,7 @@ function renderProductUsage(){
   if(currentUsageTab==='transfer') rows=Array.isArray(usageCache.transfers)?usageCache.transfers:[];
 
   if(!rows.length){
-    const labels={purchase:'購買',redeem:'兌換',transfer:'轉贈',gift:'禮物',expired:'逾期',refund:'退款'};
+    const labels={purchase:'購買',redeem:'兌換',transfer:'轉贈',gift:'禮物',expired:'到期退款',refund:'退款'};
     box.innerHTML=`<div class="empty-panel">目前沒有${labels[currentUsageTab]||''}紀錄</div>`;
     return;
   }
@@ -2960,56 +2989,96 @@ function renderProductUsage(){
 
   box.innerHTML=rows.map((r,rowIndex)=>{
     if(currentUsageTab==='purchase'){
-      const first=Array.isArray(r.items)?(r.items[0]||{}):{};
-      return `<div class="history-card2"><div class="top"><div><div class="title">${safeText(first.name||'隨買商品')}</div><div class="meta">購買日期：${new Date(r.paidAt||r.createdAt).toLocaleString('zh-TW')}<br>類別：隨買跨店取</div></div><div class="amount">${money(Number(r.total||0))}</div></div></div>`;
+      const items=Array.isArray(r.items)?r.items:[];
+      const first=items[0]||{};
+      const qty=items.reduce((s,x)=>s+Number(x.cartQuantity||x.quantity||1),0);
+      return renderUsageUnifiedCard({
+        title:'購買',
+        product:first.name||r.name||'隨買商品',
+        dateLabel:'購買日期',
+        dateValue:r.paidAt||r.createdAt,
+        details:[
+          `購買數量：${usageQtyText(qty||1,'組')}`,
+          `付款方式：${safeText(r.paymentMethod||'--')}`,
+          (r.paidStoreName||r.paidStoreCode)?`付款門市：${safeText(r.paidStoreName||r.paidStoreCode)}`:''
+        ],
+        status:r.status||'已購買',
+        amount:money(Number(r.total||0))
+      });
     }
     if(currentUsageTab==='redeem'){
-      return `<div class="history-card2"><div class="top"><div><div class="title">${safeText(r.name||'商品')}</div><div class="meta">兌換日期：${new Date(r.redeemedAt||r.createdAt).toLocaleString('zh-TW')}<br>兌換店舖：${safeText(r.redeemStoreName||r.redeemStoreCode||'--')}</div></div><span class="status-pill">兌換</span></div><div class="meta">兌換數量：${redemptionQty(r)}</div></div>`;
+      return renderUsageUnifiedCard({
+        title:'兌換',
+        product:r.name||'商品',
+        dateLabel:'兌換日期',
+        dateValue:r.redeemedAt||r.createdAt,
+        details:[
+          `兌換數量：${usageQtyText(redemptionQty(r))}`,
+          `兌換門市：${safeText(r.redeemStoreName||r.redeemStoreCode||'--')}`
+        ],
+        status:'已兌換'
+      });
     }
     if(currentUsageTab==='refund'){
-      return `<div class="history-card2"><div class="top"><div><div class="title">${safeText(r.name||'商品')}</div><div class="meta">申請日期：${new Date(r.createdAt).toLocaleString('zh-TW')}<br>退款方式：${r.returnMode==='original_store'?'原付款門市':'原線上付款方式'}</div></div><span class="status-pill ${String(r.status||'').includes('已退')?'':'warn'}">${safeText(r.status||'退貨申請')}</span></div>${r.refundedAt?`<div class="meta">退款日期：${new Date(r.refundedAt).toLocaleString('zh-TW')}</div>`:''}</div>`;
+      return renderUsageUnifiedCard({
+        title:'退款',
+        product:r.name||'商品',
+        dateLabel:r.refundedAt?'退款日期':'申請日期',
+        dateValue:r.refundedAt||r.createdAt,
+        details:[
+          `退款方式：${r.returnMode==='original_store'?'原付款門市':'原線上付款方式'}`,
+          r.refundAmount!=null?`退款金額：${money(Number(r.refundAmount||0))}`:''
+        ],
+        status:r.status||'退貨申請',
+        statusClass:String(r.status||'').includes('已退')?'':'warn'
+      });
     }
     if(currentUsageTab==='gift'){
-      const dt = r.claimedAt||r.deliveredAt||r.createdAt;
-      return `<div class="history-card2" onclick="openGiftDetail(${rowIndex})" style="cursor:pointer">
-        <div class="top">
-          <div>
-            <div class="title">禮物領取</div>
-            <div class="meta">領取日期：${dt?new Date(dt).toLocaleString('zh-TW'):'--'}<br>領取來源：${safeText(maskPhone(r.senderPhone||''))}<br>轉贈總數：${Number(r.quantity||0)}</div>
-          </div>
-          <span class="status-pill">禮物領取</span>
-        </div>
-        <button type="button" class="secondary-btn" style="margin-top:10px;padding:8px 12px;width:auto;color:#1686c9">查看明細</button>
-      </div>`;
+      const dt=r.claimedAt||r.deliveredAt||r.createdAt;
+      return renderUsageUnifiedCard({
+        title:'禮物領取',
+        product:r.name||'商品',
+        dateLabel:'領取日期',
+        dateValue:dt,
+        details:[
+          `領取數量：${usageQtyText(r.quantity||0)}`,
+          `領取來源：${safeText(maskPhone(r.senderPhone||''))}`
+        ],
+        status:'已領取',
+        onclick:`openGiftDetail(${rowIndex})`
+      });
     }
     if(currentUsageTab==='transfer'){
-      const dt = r.deliveredAt||r.createdAt;
-      const transferType = r.deliveryMode==='direct' ? '手機轉贈' : '社群轉贈';
-      return `<div class="history-card2" onclick="openTransferDetail(${rowIndex})" style="cursor:pointer">
-        <div class="top">
-          <div>
-            <div class="title">${transferType}</div>
-            <div class="meta">轉贈日期：${dt?new Date(dt).toLocaleString('zh-TW'):'--'}<br>轉贈總數：${Number(r.quantity||0)}${r.giftCode?`<br>轉贈序號：${safeText(r.giftCode)}`:''}</div>
-          </div>
-          <span class="status-pill">${transferType}</span>
-        </div>
-        <button type="button" class="secondary-btn" style="margin-top:10px;padding:8px 12px;width:auto;color:#1686c9">查看明細</button>
-      </div>`;
+      const dt=r.deliveredAt||r.createdAt;
+      const transferType=r.deliveryMode==='direct'?'手機轉贈':'社群轉贈';
+      return renderUsageUnifiedCard({
+        title:'轉贈',
+        product:r.name||'商品',
+        dateLabel:'轉贈日期',
+        dateValue:dt,
+        details:[
+          `轉贈方式：${transferType}`,
+          `轉贈數量：${usageQtyText(r.quantity||0)}`,
+          r.receiverPhone?`受贈人：${safeText(maskPhone(r.receiverPhone))}`:'',
+          r.giftCode?`轉贈序號：${safeText(r.giftCode)}`:''
+        ],
+        status:r.status||transferType,
+        onclick:`openTransferDetail(${rowIndex})`
+      });
     }
-    return `<div class="history-card2">
-      <div class="top">
-        <div>
-          <div class="title">${safeText(r.name||'商品')}</div>
-          <div class="meta">
-            到期時間：${r.validUntil?new Date(r.validUntil).toLocaleString('zh-TW'):'--'}<br>
-            到期未兌換：${Number(r.expiredRemainingQuantity??r.remainingQuantity??0)} 件<br>
-            ${r.refundAmount!=null?`逾期退款：${money(Number(r.refundAmount||0))}<br>`:''}
-            ${r.walletCreditedAt?`退款入帳：${new Date(r.walletCreditedAt).toLocaleString('zh-TW')}`:''}
-          </div>
-        </div>
-        <span class="status-pill red">${safeText(r.status||'已逾期')}</span>
-      </div>
-    </div>`;
+    return renderUsageUnifiedCard({
+      title:'到期退款',
+      product:r.name||'商品',
+      dateLabel:'到期時間',
+      dateValue:r.validUntil,
+      details:[
+        `到期未兌換：${usageQtyText(r.expiredRemainingQuantity??r.remainingQuantity??0)}`,
+        r.refundAmount!=null?`退款金額：${money(Number(r.refundAmount||0))}`:'',
+        r.walletCreditedAt?`退款入帳：${usageDateText(r.walletCreditedAt)}`:''
+      ],
+      status:r.status||'已到期退款',
+      statusClass:'red'
+    });
   }).join('');
 }
 
