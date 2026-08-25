@@ -1,17 +1,9 @@
-億家 App v0.10.4.0 Background Expiry Refund
+億家 App v0.9.5.4 — 動態 App 功能管理
 
-本版：
-- 使用 Supabase pg_cron 每小時自動執行一次逾期退款檢查。
-- 不需要會員打開 App。
-- 退款仍依購買當下價格快照。
-- 退款一律回原購買人的億家錢包。
-- 轉贈商品若到期未兌換，仍由原購買人收到退款。
-- 同一訂單商品只處理一次。
-- App 版本更新為 v0.10.4.0。
-
-安裝：
-1. 在 Supabase SQL Editor 執行 setup_v0_10_4_0_background_expiry_refund.sql
-2. GitHub 更新 index.html
-
-排程：
-每小時第 5 分鐘執行一次。
+- 讀取 SC App設定的 appBackend.featureManagement。
+- 所有帶 data-feature-code 的 App 入口會依 SC 設定自動顯示／隱藏。
+- 相容舊版 appBackend.prebuiltHidden。
+- 已接入：億家 Pay、優惠券、我的訂單、通知中心、活動專區／更多活動。
+- 未來新增可隱藏入口時，只要在 App 新功能入口加 data-feature-code="SC功能代碼"，不需再修改 SC 功能管理 UI。
+- 功能本體仍需正常開發；功能管理只控制是否顯示入口。
+- 保留 v0.9.5.3 既有隨買跨店取組數＋數量功能。
