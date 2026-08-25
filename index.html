@@ -428,9 +428,36 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .notification-dot-v1080{width:8px;height:8px;border-radius:50%;background:#1683d8;margin-top:7px}
 .notification-section-v1080{font-size:13px;color:#7a828a;font-weight:800;margin:16px 2px 8px}
 
+
+/* v0.10.8.1 隨買店舖結帳商品 QR */
+.checkout-ref-head{font-size:18px;font-weight:900;margin:4px 0 12px}
+.checkout-ref-methods{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.checkout-ref-method{
+  background:#fff;border:1.5px solid #d8dde2;border-radius:16px;padding:15px 10px;
+  text-align:center;font-weight:900;cursor:pointer
+}
+.checkout-ref-method.active{border-color:#1683d8;background:#eef7ff;color:#1269ad}
+.checkout-ticket{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:14px}
+.checkout-ticket-tag{display:inline-flex;padding:4px 8px;border-radius:8px;border:1px solid #7db9e8;color:#1683d8;font-size:12px;font-weight:800}
+.checkout-ticket-item{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:start;margin-top:12px}
+.checkout-ticket-pic{width:56px;height:56px;border-radius:12px;background:#fff3e8;display:grid;place-items:center;font-size:28px}
+.checkout-ticket-price{font-size:23px;font-weight:900;color:var(--orange);margin-top:8px}
+.checkout-agree{display:flex;align-items:center;gap:8px;font-size:13px;color:#4e555d;margin:12px 2px}
+.checkout-agree input{width:20px;height:20px}
+.store-qr-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px 18px;margin-top:14px;text-align:center}
+.store-qr-countdown{font-size:18px;font-weight:900;margin:8px 0 16px}
+.store-qr-limit{font-size:13px;color:#7a828a;margin-bottom:14px}
+.store-order-qr{width:210px;height:210px;margin:0 auto 18px;display:flex;align-items:center;justify-content:center}
+.store-order-qr img,.store-order-qr canvas{max-width:100%!important;height:auto!important}
+.store-order-code-small{font-size:12px;color:#8b9299;letter-spacing:.7px;margin-top:8px}
+.store-order-summary{font-size:15px;color:#6b7280;margin-top:12px}
+.store-order-summary strong{font-size:26px;color:var(--orange)}
+.store-order-expired{color:#b42318}
+
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -469,72 +496,77 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 </section>
 
 
+
 <section id="checkout" class="view">
-  <div class="header2"><button class="back" onclick="showView('cart')">‹</button><h2>結帳</h2></div>
+  <div class="header2"><button class="back" onclick="showView('cart')">‹</button><h2>付款資訊頁</h2></div>
+
+  <div class="checkout-ref-head">請選擇結帳方式</div>
+  <div class="checkout-ref-methods">
+    <div id="methodWallet" class="checkout-ref-method" onclick="selectPayMethod('wallet')">
+      📱 線上支付
+      <div id="checkoutWalletBalance" style="font-size:11px;color:#7a828a;margin-top:5px">億家Pay</div>
+    </div>
+    <div id="methodStore" class="checkout-ref-method" onclick="selectPayMethod('store')">
+      🏪 店舖結帳
+      <div style="font-size:11px;color:#7a828a;margin-top:5px">到櫃檯付款</div>
+    </div>
+  </div>
+
+  <div class="checkout-ticket">
+    <div><strong>商品兌換券</strong> <span class="checkout-ticket-tag">隨買跨店取</span></div>
+    <div id="checkoutItems"></div>
+  </div>
 
   <div class="checkout-box">
-    <strong>訂單內容</strong>
-    <div id="checkoutItems"></div>
+    <strong>付款詳情</strong>
     <div class="checkout-total">
-      <span>應付金額</span>
+      <span>商品總金額</span>
       <span id="checkoutTotal">$0</span>
     </div>
-  </div>
-
-  <h3 style="margin:0 0 10px">選擇付款方式</h3>
-  <div class="checkout-methods">
-    <div id="methodWallet" class="pay-method" onclick="selectPayMethod('wallet')">
-      <div class="pay-method-top">
-        <strong>📱 億家Pay・錢包支付</strong>
-        <span id="checkoutWalletBalance" class="balance-badge">餘額 $0</span>
-      </div>
-      <p>使用億家Pay錢包餘額付款。餘額不足時無法使用。</p>
-    </div>
-
-    <div id="methodCard" class="pay-method" onclick="selectPayMethod('card')">
-      <div class="pay-method-top">
-        <strong>💳 億家Pay・綁定信用卡</strong>
-        <span id="checkoutCardStatus" class="tag">尚未綁定</span>
-      </div>
-      <p>使用億家Pay已綁定的信用卡／簽帳金融卡付款。</p>
-    </div>
-
-    <div id="methodStore" class="pay-method" onclick="selectPayMethod('store')">
-      <div class="pay-method-top">
-        <strong>🏪 店舖結帳</strong>
-        <span class="tag">到店付款</span>
-      </div>
-      <p>建立 YS 付款條碼，到門市由 TM 收款；付款完成後商品同步至「我的商品」。</p>
+    <div class="checkout-total">
+      <span>總付款金額</span>
+      <span id="checkoutTotalBottom">$0</span>
     </div>
   </div>
+
+  <label class="checkout-agree">
+    <input id="checkoutTermsAgree" type="checkbox" checked onchange="refreshCheckoutButton()">
+    <span>我已詳細閱讀並同意權益條款</span>
+  </label>
 
   <div id="checkoutPayNotice" class="dev-flow-note" style="display:none"></div>
 
-  <button id="checkoutContinueBtn" class="pay-continue" disabled onclick="confirmCheckout()">請先選擇付款方式</button>
+  <button id="checkoutContinueBtn" class="pay-continue" disabled onclick="confirmCheckout()">請先選擇結帳方式</button>
+  <span id="checkoutCardStatus" style="display:none"></span>
 </section>
 
+
+
 <section id="storeOrder" class="view">
-  <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>店舖結帳</h2></div>
+  <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>請至店舖櫃檯結帳</h2></div>
 
   <div class="store-order-card">
     <span id="storeOrderStatusBadge" class="store-status">等待店舖付款</span>
-    <h2 id="storeOrderTitle">請到門市出示付款條碼</h2>
-    <div id="storeOrderCode" class="store-order-code">--</div>
+    <div id="storeOrderTitle" class="store-qr-countdown">條碼有效期限：-- 秒</div>
 
-    <div id="storeBarcodeWrap" class="store-barcode-wrap">
-      <svg id="storeOrderBarcode"></svg>
+    <div id="storeBarcodeWrap" class="store-qr-card">
+      <div class="store-qr-limit">僅限 億家 門市使用</div>
+      <div id="storeOrderQr" class="store-order-qr"></div>
+      <div id="storeOrderCode" class="store-order-code-small">--</div>
+      <div id="storeOrderMeta" class="store-order-meta"></div>
+      <div id="storeOrderSummary" class="store-order-summary"></div>
+      <div id="storeOrderAmount" style="display:none">$0</div>
+      <svg id="storeOrderBarcode" style="display:none"></svg>
     </div>
 
-    <div id="storeOrderAmount" style="font-size:26px;font-weight:900;color:var(--orange)">$0</div>
-    <div id="storeOrderMeta" class="store-order-meta"></div>
-
     <div id="storeOrderNotice" class="dev-flow-note" style="text-align:left">
-      此訂單目前為「待付款」。請到門市讓 TM 掃描上方 YS 條碼；TM 收款成功後，本頁會自動更新為付款完成。
+      請直接出示本次隨買商品結帳 QR Code 給 TM 掃描，不需要先出示會員條碼。
     </div>
 
     <button id="storeOrderActionBtn" class="pay-continue" onclick="showView('home')">回首頁</button>
   </div>
 </section>
+
 
 
 <section id="returnRequest" class="view">
@@ -696,7 +728,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.8.0 Notification Center</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.8.1 Store Checkout QR</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -872,14 +904,14 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <p>在「隨買」選擇商品與購買組數，確認內容後建立訂單。</p>
     <div class="help-step-v1070"><div class="num">1</div><div class="text">進入「隨買」並選擇商品。</div></div>
     <div class="help-step-v1070"><div class="num">2</div><div class="text">選擇購買組數；每組數量、售價與限購組數依商品設定顯示。</div></div>
-    <div class="help-step-v1070"><div class="num">3</div><div class="text">確認訂單後，依付款方式完成付款；店舖付款會產生 YS 付款碼。</div></div>
+    <div class="help-step-v1070"><div class="num">3</div><div class="text">確認訂單後，依付款方式完成付款；店舖付款會產生本次訂單專用的商品結帳 QR Code。</div></div>
   </div>
 
   <div class="help-card-v1070">
     <h3>門市付款</h3>
     <p>店舖付款訂單完成建立後，請在付款期限內至門市出示付款碼。</p>
     <div class="help-step-v1070"><div class="num">1</div><div class="text">打開訂單管理中的待付款訂單。</div></div>
-    <div class="help-step-v1070"><div class="num">2</div><div class="text">出示 YS 付款條碼給門市 TM 掃描。</div></div>
+    <div class="help-step-v1070"><div class="num">2</div><div class="text">直接出示本次隨買商品結帳 QR Code 給門市 TM 掃描，不需要先出示會員條碼。</div></div>
     <div class="help-step-v1070"><div class="num">3</div><div class="text">付款完成後，商品會加入「我的商品」。</div></div>
   </div>
 
@@ -2207,6 +2239,22 @@ function updateCheckoutPayAvailability(){
   if(selectedPayMethod==='card' && !cardOK) selectPayMethod(null);
 }
 
+
+function refreshCheckoutButton(){
+  const btn=document.getElementById('checkoutContinueBtn');
+  if(!btn) return;
+  const agree=document.getElementById('checkoutTermsAgree');
+  const ok=!!selectedPayMethod && (!agree || agree.checked);
+  btn.disabled=!ok;
+  if(!selectedPayMethod){
+    btn.textContent='請先選擇結帳方式';
+  }else if(selectedPayMethod==='store'){
+    btn.textContent='去店舖結帳';
+  }else{
+    btn.textContent='確認線上支付';
+  }
+}
+
 function selectPayMethod(method){
   selectedPayMethod=method;
   const wallet=document.getElementById('methodWallet');
@@ -2337,13 +2385,44 @@ async function createStoreCheckoutOrder(){
 }
 
 let storeOrderPollTimer=null;
+let storeOrderCountdownTimer=null;
 let monitoredPaymentCode='';
+
+function stopStoreOrderCountdown(){
+  if(storeOrderCountdownTimer){
+    clearInterval(storeOrderCountdownTimer);
+    storeOrderCountdownTimer=null;
+  }
+}
+
+function startStoreOrderCountdown(order){
+  stopStoreOrderCountdown();
+  const deadlineRaw=order?.paymentDeadline||order?.expiresAt||null;
+  if(!deadlineRaw) return;
+
+  const update=()=>{
+    const deadline=new Date(deadlineRaw);
+    const secs=Math.max(0,Math.ceil((deadline-new Date())/1000));
+    const title=document.getElementById('storeOrderTitle');
+    if(title){
+      title.textContent=`條碼有效期限：${secs}秒`;
+      title.classList.toggle('store-order-expired',secs<=0);
+    }
+    if(secs<=0){
+      stopStoreOrderCountdown();
+      refreshStoreOrderStatus(false);
+    }
+  };
+  update();
+  storeOrderCountdownTimer=setInterval(update,1000);
+}
 
 function stopStoreOrderMonitor(){
   if(storeOrderPollTimer){
     clearInterval(storeOrderPollTimer);
     storeOrderPollTimer=null;
   }
+  stopStoreOrderCountdown();
 }
 
 function startStoreOrderMonitor(paymentCode){
@@ -2377,6 +2456,7 @@ async function refreshStoreOrderStatus(showError=true){
 
 function renderStoreOrder(order){
   if(!order) return;
+
   const code=String(order.paymentCode||order.orderCode||'');
   const amount=Number(order.total??order.totalAmount??0);
   const deadlineRaw=order.paymentDeadline||order.expiresAt||null;
@@ -2389,69 +2469,100 @@ function renderStoreOrder(order){
   const metaEl=document.getElementById('storeOrderMeta');
   const badge=document.getElementById('storeOrderStatusBadge');
   const title=document.getElementById('storeOrderTitle');
+  const qrWrap=document.getElementById('storeOrderQr');
   const barcodeWrap=document.getElementById('storeBarcodeWrap');
   const notice=document.getElementById('storeOrderNotice');
   const action=document.getElementById('storeOrderActionBtn');
+  const summary=document.getElementById('storeOrderSummary');
 
   if(codeEl) codeEl.textContent=code;
   if(amountEl) amountEl.textContent=money(amount);
 
+  const itemCount=Array.isArray(order.items)
+    ? order.items.reduce((sum,i)=>sum+Number(i.cartQty??i.groups??1),0)
+    : Number(order.itemCount||1);
+
+  if(summary){
+    summary.innerHTML=`共 ${itemCount||1} 項商品<br>金額 <strong>${money(amount)}</strong>`;
+  }
+
   if(paid){
+    stopStoreOrderCountdown();
     if(badge){badge.textContent='付款完成';badge.classList.add('paid');badge.classList.remove('expired')}
     if(title) title.textContent='店舖付款已完成';
-    if(barcodeWrap) barcodeWrap.style.display='none';
+    if(qrWrap) qrWrap.innerHTML='✅';
     if(metaEl){
       metaEl.innerHTML=
-        '付款方式：店舖結帳<br>'
-        +'狀態：已付款'
+        '狀態：已付款'
         +(order.paidAt?'<br>付款時間：'+new Date(order.paidAt).toLocaleString('zh-TW'):'')
         +(order.paidStoreName?'<br>付款門市：'+safeText(order.paidStoreName):'')
         +(order.tmSaleId?'<br>TM交易：'+safeText(order.tmSaleId):'');
     }
     if(notice){
-      notice.innerHTML='TM 已完成收款。可兌換商品已由 TM 寫入「我的商品」，App 已同步更新。';
+      notice.innerHTML='TM 已完成收款，商品已同步加入「我的商品」。';
     }
     if(action){
       action.textContent='查看我的商品';
       action.onclick=()=>{loadMyProducts();showView('products')};
     }
-  }else{
+    return;
+  }
+
+  if(expired){
+    stopStoreOrderCountdown();
     if(badge){
-      badge.textContent=expired?'付款期限已過':'等待店舖付款';
-      badge.classList.toggle('expired',!!expired);
+      badge.textContent='結帳碼已失效';
+      badge.classList.add('expired');
       badge.classList.remove('paid');
     }
-    if(title) title.textContent=expired?'此訂單已超過付款期限':'請到門市出示付款條碼';
-    if(barcodeWrap) barcodeWrap.style.display=expired?'none':'block';
-    if(metaEl){
-      metaEl.innerHTML=
-        '付款方式：店舖結帳<br>'
-        +'狀態：'+(expired?'付款期限已過':'等待付款')
-        +(deadline?'<br>付款期限：'+deadline.toLocaleString('zh-TW'):'')
-        +(!expired?'<div class="sync-hint">本頁會自動同步 TM 收款狀態</div>':'');
+    if(title){
+      title.textContent='條碼有效期限：0秒';
+      title.classList.add('store-order-expired');
     }
-    if(notice){
-      notice.innerHTML=expired
-        ? '此訂單已超過付款期限，請重新建立店舖結帳訂單。'
-        : '請讓 TM 掃描上方 YS 付款條碼。TM 收款成功後，本頁會自動更新為「付款完成」。';
-    }
+    if(qrWrap) qrWrap.innerHTML='<div style="font-size:46px">⌛</div>';
+    if(notice) notice.innerHTML='此結帳碼已超過有效期限，請重新建立店舖結帳訂單。';
     if(action){
-      action.textContent='回首頁';
-      action.onclick=()=>showView('home');
+      action.textContent='重新選購';
+      action.onclick=()=>showView('anybuyCenter');
+    }
+    return;
+  }
+
+  if(badge){
+    badge.textContent='等待店舖付款';
+    badge.classList.remove('expired','paid');
+  }
+  if(notice){
+    notice.innerHTML='請直接出示本次隨買商品結帳 QR Code 給 TM 掃描，不需要先出示會員條碼。';
+  }
+  if(action){
+    action.textContent='回首頁';
+    action.onclick=()=>showView('home');
+  }
+
+  if(metaEl){
+    metaEl.innerHTML=
+      '店舖結帳'
+      +(deadline?'<br>有效至：'+deadline.toLocaleString('zh-TW'):'')
+      +'<div class="sync-hint">付款完成後本頁會自動更新</div>';
+  }
+
+  // QR 內容只放既有 YS paymentCode，TM 掃到的值與原本 CODE128 完全相同。
+  if(qrWrap){
+    qrWrap.innerHTML='';
+    if(window.QRCode && code){
+      new QRCode(qrWrap,{
+        text:code,
+        width:210,
+        height:210,
+        correctLevel:QRCode.CorrectLevel.M
+      });
+    }else{
+      qrWrap.innerHTML='<div style="font-size:14px;color:#777">QR Code 載入中<br>'+safeText(code)+'</div>';
     }
   }
 
-  if(window.JsBarcode && code && !paid && !expired){
-    try{
-      JsBarcode('#storeOrderBarcode',code,{
-        format:'CODE128',
-        displayValue:false,
-        margin:6,
-        height:80,
-        width:1.3
-      });
-    }catch(e){console.warn(e)}
-  }
+  startStoreOrderCountdown(order);
 }
 
 async function devCheckoutCart(){
