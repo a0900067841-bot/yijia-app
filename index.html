@@ -555,7 +555,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('anybuyCenter')"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.0 Purchase Detail</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.0.1 Detail Click Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1368,7 +1368,7 @@ function renderShopProducts(){
   }
 
   box.innerHTML=rows.map(p=>`
-    <div class="shop-item" onclick="openProductModal('${p.id}')">
+    <div class="shop-item" onclick="openAnybuyProductDetailById('${p.id}')">
       <div class="shop-img">${productImageHtml(p)}</div>
       <div class="shop-body">
         <div class="shop-name">${safeText(p.name)}</div>
@@ -1381,7 +1381,7 @@ function renderShopProducts(){
         </div>
         <div class="shop-bottom" style="margin-top:10px">
           <div class="shop-price2">${money(p.price)}</div>
-          <button class="shop-buy" onclick="event.stopPropagation();openProductModal('${p.id}')">選購</button>
+          <button class="shop-buy" onclick="event.stopPropagation();openAnybuyProductDetailById('${p.id}')">選購</button>
         </div>
       </div>
     </div>
@@ -1446,22 +1446,30 @@ function addSelectedToCart(){
   alert('已加入購物車。');
 }
 
-function addToCart(p){
+function addToCart(p, groups=1){
   const key=String(p.code||p.id||'');
+  const addGroups=Math.max(1,Number(groups||1));
+  const limit=Math.max(0,Number(p.purchaseLimitGroups??p.limitGroups??p.maxGroups??0));
   const found=cartItems.find(x=>x.key===key);
+
   if(found){
-    found.cartQty+=1;
+    const next=Number(found.cartQty||0)+addGroups;
+    found.cartQty=limit>0?Math.min(limit,next):next;
   }else{
     cartItems.push({
       key,
       id:p.id||'',
       code:p.code||'',
       name:p.name||'商品',
-      price:Number(p.price||0),
+      price:Number(p.bundlePrice??p.salePrice??p.price||0),
+      originalPrice:Number(p.originalBundlePrice??p.originalPrice||0),
       image_url:p.image_url||p.imageUrl||'',
       validityDays:Number(p.validityDays||0),
-      bundleQuantity:Number(p.quantity||1),
-      cartQty:1
+      bundleQuantity:Number(p.bundleQuantity??p.quantity||1),
+      purchaseLimitGroups:limit,
+      originalUnitPrice:Number(p.originalUnitPrice||0),
+      purchaseSnapshot:p.purchaseSnapshot||null,
+      cartQty:limit>0?Math.min(limit,addGroups):addGroups
     });
   }
   saveCart();
@@ -1470,7 +1478,10 @@ function addToCart(p){
 function changeCartQty(key,delta){
   const item=cartItems.find(x=>x.key===String(key));
   if(!item) return;
-  item.cartQty=Math.max(1,Number(item.cartQty||1)+Number(delta||0));
+  let q=Math.max(1,Number(item.cartQty||1)+Number(delta||0));
+  const limit=Math.max(0,Number(item.purchaseLimitGroups||0));
+  if(limit>0) q=Math.min(limit,q);
+  item.cartQty=q;
   saveCart();
 }
 
@@ -1514,7 +1525,7 @@ function renderCart(){
         <div class="cart-pic">${x.image_url?`<img src="${safeText(x.image_url)}" alt="${safeText(x.name)}">`:'🛍️'}</div>
         <div class="cart-info">
           <strong>${safeText(x.name)}</strong>
-          <small>${money(x.price)}／組 · 每組 ${Number(x.bundleQuantity||1)} 件</small>
+          <small>${money(x.price)}／組 ${Number(x.originalPrice||0)>0?`· 原價 ${money(x.originalPrice)}`:''} · 每組 ${Number(x.bundleQuantity||1)} 件</small>
           ${x.validityDays?`<small>效期 ${Number(x.validityDays)} 天</small>`:''}
         </div>
       </div>
@@ -2751,6 +2762,12 @@ function bundleQty(p){return Math.max(1,n(p.quantity??p.bundleQuantity,1))}
 function originalBundlePrice(p){return Math.max(0,n(p.originalPrice??p.originalBundlePrice,0))}
 function saleBundlePrice(p){return Math.max(0,n(p.price??p.salePrice??p.bundlePrice,0))}
 function limitGroups(p){return Math.max(0,Math.floor(n(p.purchaseLimitGroups??p.limitGroups??p.maxGroups,0)))}
+function openAnybuyProductDetailById(id){
+  const p=shopProductsCache.find(x=>String(x.id)===String(id))||null;
+  if(!p) return;
+  openAnybuyProductDetail(p);
+}
+
 function openAnybuyProductDetail(p){
   anybuyDetailProduct=p; anybuyDetailQty=1;
   const oq=bundleQty(p), op=originalBundlePrice(p), sp=saleBundlePrice(p), lim=limitGroups(p);
@@ -2790,11 +2807,11 @@ function buildAnybuyPurchaseSnapshot(p,groups){
   return {...p,cartQuantity:g,bundleQuantity:bq,originalBundlePrice:op,bundlePrice:sp,salePrice:sp,paidAmount:sp*g,totalQuantity:bq*g,originalUnitPrice:bq?op/bq:0,purchaseSnapshot:{capturedAt:new Date().toISOString(),originalBundlePrice:op,saleBundlePrice:sp,bundleQuantity:bq,purchasedGroups:g,paidAmount:sp*g,originalUnitPrice:bq?op/bq:0}};
 }
 async function buyAnybuyDetailProduct(){
+  if(!anybuyDetailProduct) return;
   const snap=buildAnybuyPurchaseSnapshot(anybuyDetailProduct,anybuyDetailQty);
-  if(typeof startAnybuyCheckout==='function') return startAnybuyCheckout(snap,anybuyDetailQty);
-  if(typeof openAnybuyCheckout==='function') return openAnybuyCheckout(snap,anybuyDetailQty);
-  if(typeof buyAnybuyProduct==='function') return buyAnybuyProduct(snap,anybuyDetailQty);
-  alert('找不到目前版本既有購買入口，請把商品列表畫面截圖給我。');
+  addToCart(snap, anybuyDetailQty);
+  alert('已加入購物車。');
+  showView('cart');
 }
 </script>
 </body></html>
