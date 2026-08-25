@@ -525,7 +525,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('anybuyCenter')"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.9.6.2.1 Direct Gift</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.9.6.3.1 Direct Gift</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -566,6 +566,12 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
 
 
+
+<section id="transferDetail" class="view">
+  <div class="header2"><button class="back" onclick="showView('productUsage')">‹</button><h2>轉贈明細</h2></div>
+  <div id="transferDetailBody"><div class="empty-panel">轉贈明細載入中…</div></div>
+</section>
+
 <section id="giftDetail" class="view">
   <div class="header2"><button class="back" onclick="showView('productUsage')">‹</button><h2>轉贈明細</h2></div>
   <div id="giftDetailBody"><div class="empty-panel">轉贈明細載入中…</div></div>
@@ -581,7 +587,8 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div class="history-toolbar">
     <button class="history-tab active" data-usage-tab="purchase" onclick="setUsageTab('purchase',this)">購買</button>
     <button class="history-tab" data-usage-tab="redeem" onclick="setUsageTab('redeem',this)">兌換</button>
-    <button class="history-tab" data-usage-tab="gift" onclick="setUsageTab('gift',this)">轉贈</button>
+    <button class="history-tab" data-usage-tab="transfer" onclick="setUsageTab('transfer',this)">轉贈</button>
+    <button class="history-tab" data-usage-tab="gift" onclick="setUsageTab('gift',this)">禮物</button>
     <button class="history-tab" data-usage-tab="expired" onclick="setUsageTab('expired',this)">逾期</button>
     <button class="history-tab" data-usage-tab="refund" onclick="setUsageTab('refund',this)">退款</button>
   </div>
@@ -789,7 +796,7 @@ function showView(id){
   const target=document.getElementById(id);
   if(target) target.classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>{
-    const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','productUsage','giftDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
+    const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','productUsage','giftDetail','transferDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
     const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : id;
     b.classList.toggle('active',b.dataset.view===activeView);
   });
@@ -1969,7 +1976,7 @@ function updateHomePendingCount(count){
 
 
 let anybuyOrdersCache=[];
-let usageCache={purchases:[],redemptions:[],returns:[],expired:[],gifts:[]};
+let usageCache={purchases:[],redemptions:[],returns:[],expired:[],gifts:[],transfers:[]};
 let currentUsageTab='purchase';
 
 function toggleAnybuyOrderMenu(){
@@ -2268,27 +2275,23 @@ function maskPhone(phone){
   return s.slice(0,4)+'***'+s.slice(-3);
 }
 
+
 function openGiftDetail(encoded){
   let g;
   try{g=JSON.parse(JSON.parse(encoded));}catch(e){console.error(e);return;}
 
-  const received = (g.receiverMemberId===currentUser.id || g.receiverPhone===currentMemberPhone);
-  const dt = received ? (g.claimedAt||g.deliveredAt||g.createdAt) : (g.deliveredAt||g.createdAt);
-  const personLabel = received ? '轉贈人' : '領取人';
-  const personPhone = received ? g.senderPhone : g.receiverPhone;
-
+  const dt=g.claimedAt||g.deliveredAt||g.createdAt;
   const box=document.getElementById('giftDetailBody');
   if(box){
     box.innerHTML=`
       <div class="form-card">
         <h3 style="margin-top:0">轉贈資訊</h3>
-        <div class="order-detail-row"><span>${personLabel}</span><strong>${safeText(maskPhone(personPhone||'')) || '—'}</strong></div>
-        <div class="order-detail-row"><span>數量</span><strong>${Number(g.quantity||0)} 個</strong></div>
-        <div class="order-detail-row"><span>${received?'領取日期':'轉贈日期'}</span><strong>${dt?new Date(dt).toLocaleString('zh-TW'):'--'}</strong></div>
-        <div class="order-detail-row"><span>狀態</span><strong>${safeText(g.status||'--')}</strong></div>
+        <div class="order-detail-row"><span>轉贈人</span><strong>${safeText(maskPhone(g.senderPhone||''))}</strong></div>
+        <div class="order-detail-row"><span>領取數量</span><strong>${Number(g.quantity||0)} 個</strong></div>
+        <div class="order-detail-row"><span>領取日期</span><strong>${dt?new Date(dt).toLocaleString('zh-TW'):'--'}</strong></div>
       </div>
       <div class="form-card">
-        <h3 style="margin-top:0">商品詳情</h3>
+        <h3 style="margin-top:0">領取商品詳情</h3>
         <div class="order-detail-row">
           <div>
             <strong>${safeText(g.name||'商品')}</strong>
@@ -2299,6 +2302,42 @@ function openGiftDetail(encoded){
       </div>`;
   }
   showView('giftDetail');
+}
+
+function openTransferDetail(encoded){
+  let g;
+  try{g=JSON.parse(JSON.parse(encoded));}catch(e){console.error(e);return;}
+
+  const dt=g.deliveredAt||g.createdAt;
+  const transferType=g.deliveryMode==='direct'?'手機轉贈':'社群轉贈';
+  const box=document.getElementById('transferDetailBody');
+  if(box){
+    const receiverInfo = g.deliveryMode==='direct'
+      ? `<div class="form-card"><h3 style="margin-top:0">收禮人資訊</h3><div class="order-detail-row"><span>收禮人</span><strong>${safeText(maskPhone(g.receiverPhone||''))}</strong></div><div class="order-detail-row"><span>數量</span><strong>${Number(g.quantity||0)} 個</strong></div></div>`
+      : `<div class="form-card"><h3 style="margin-top:0">收禮人資訊</h3><div class="small-muted">社群轉贈為領取碼／連結方式，收禮人資訊會隨領取狀態更新。</div>${g.receiverPhone?`<div class="order-detail-row"><span>已領取會員</span><strong>${safeText(maskPhone(g.receiverPhone))}</strong></div>`:''}</div>`;
+
+    box.innerHTML=`
+      <div class="form-card">
+        <h3 style="margin-top:0">轉贈資訊</h3>
+        <div class="order-detail-row"><span>轉贈方式</span><strong>${transferType}</strong></div>
+        ${g.giftCode?`<div class="order-detail-row"><span>轉贈序號</span><strong>${safeText(g.giftCode)}</strong></div>`:''}
+        <div class="order-detail-row"><span>轉贈總數</span><strong>${Number(g.quantity||0)} 個</strong></div>
+        <div class="order-detail-row"><span>受贈人數</span><strong>${g.deliveryMode==='direct'?1:(g.status==='已領取'?1:0)}</strong></div>
+        <div class="order-detail-row"><span>轉贈日期</span><strong>${dt?new Date(dt).toLocaleString('zh-TW').split(' ')[0]:'--'}</strong></div>
+      </div>
+      <div class="form-card">
+        <h3 style="margin-top:0">轉贈商品詳情</h3>
+        <div class="order-detail-row">
+          <div>
+            <strong>${safeText(g.name||'商品')}</strong>
+            <div class="small-muted">${safeText(g.code||'')}</div>
+          </div>
+          <strong>轉贈 ${Number(g.quantity||0)}</strong>
+        </div>
+      </div>
+      ${receiverInfo}`;
+  }
+  showView('transferDetail');
 }
 
 async function loadProductUsage(){
@@ -2316,7 +2355,8 @@ async function loadProductUsage(){
     redemptions:Array.isArray(data?.redemptions)?data.redemptions:[],
     returns:Array.isArray(data?.returns)?data.returns:[],
     expired:Array.isArray(data?.expired)?data.expired:[],
-    gifts:Array.isArray(data?.gifts)?data.gifts:[]
+    gifts:Array.isArray(data?.gifts)?data.gifts:[],
+    transfers:Array.isArray(data?.transfers)?data.transfers:[]
   };
   renderProductUsage();
 }
@@ -2337,9 +2377,10 @@ function renderProductUsage(){
   if(currentUsageTab==='refund') rows=usageCache.returns;
   if(currentUsageTab==='expired') rows=usageCache.expired;
   if(currentUsageTab==='gift') rows=Array.isArray(usageCache.gifts)?usageCache.gifts:[];
+  if(currentUsageTab==='transfer') rows=Array.isArray(usageCache.transfers)?usageCache.transfers:[];
 
   if(!rows.length){
-    const labels={purchase:'購買',redeem:'兌換',gift:'轉贈',expired:'逾期',refund:'退款'};
+    const labels={purchase:'購買',redeem:'兌換',transfer:'轉贈',gift:'禮物',expired:'逾期',refund:'退款'};
     box.innerHTML=`<div class="empty-panel">目前沒有${labels[currentUsageTab]||''}紀錄</div>`;
     return;
   }
@@ -2356,19 +2397,28 @@ function renderProductUsage(){
       return `<div class="history-card2"><div class="top"><div><div class="title">${safeText(r.name||'商品')}</div><div class="meta">申請日期：${new Date(r.createdAt).toLocaleString('zh-TW')}<br>退款方式：${r.returnMode==='original_store'?'原付款門市':'原線上付款方式'}</div></div><span class="status-pill ${String(r.status||'').includes('已退')?'':'warn'}">${safeText(r.status||'退貨申請')}</span></div>${r.refundedAt?`<div class="meta">退款日期：${new Date(r.refundedAt).toLocaleString('zh-TW')}</div>`:''}</div>`;
     }
     if(currentUsageTab==='gift'){
-      const received = (r.receiverMemberId===currentUser.id || r.receiverPhone===currentMemberPhone);
-      const title = received ? '禮物領取' : '商品轉贈';
-      const person = received
-        ? `領取來源：${maskPhone(r.senderPhone||'')}`
-        : `轉贈對象：${maskPhone(r.receiverPhone||'') || '領取碼'}`;
-      const dt = received ? (r.claimedAt||r.deliveredAt||r.createdAt) : (r.deliveredAt||r.createdAt);
+      const dt = r.claimedAt||r.deliveredAt||r.createdAt;
       return `<div class="history-card2" onclick='openGiftDetail(${JSON.stringify(JSON.stringify(r))})' style="cursor:pointer">
         <div class="top">
           <div>
-            <div class="title">${title}</div>
-            <div class="meta">${received?'領取日期':'轉贈日期'}：${dt?new Date(dt).toLocaleString('zh-TW'):'--'}<br>${person}<br>轉贈總數：${Number(r.quantity||0)}</div>
+            <div class="title">禮物領取</div>
+            <div class="meta">領取日期：${dt?new Date(dt).toLocaleString('zh-TW'):'--'}<br>領取來源：${safeText(maskPhone(r.senderPhone||''))}<br>轉贈總數：${Number(r.quantity||0)}</div>
           </div>
-          <span class="status-pill">${safeText(title)}</span>
+          <span class="status-pill">禮物領取</span>
+        </div>
+        <div class="meta" style="margin-top:10px;color:#1686c9">查看明細</div>
+      </div>`;
+    }
+    if(currentUsageTab==='transfer'){
+      const dt = r.deliveredAt||r.createdAt;
+      const transferType = r.deliveryMode==='direct' ? '手機轉贈' : '社群轉贈';
+      return `<div class="history-card2" onclick='openTransferDetail(${JSON.stringify(JSON.stringify(r))})' style="cursor:pointer">
+        <div class="top">
+          <div>
+            <div class="title">${transferType}</div>
+            <div class="meta">轉贈日期：${dt?new Date(dt).toLocaleString('zh-TW'):'--'}<br>轉贈總數：${Number(r.quantity||0)}${r.giftCode?`<br>轉贈序號：${safeText(r.giftCode)}`:''}</div>
+          </div>
+          <span class="status-pill">${transferType}</span>
         </div>
         <div class="meta" style="margin-top:10px;color:#1686c9">查看明細</div>
       </div>`;
