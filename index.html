@@ -540,7 +540,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('anybuyCenter')"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.9.8.1 Rights Rules</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.9.9 Refund Calculator</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1899,6 +1899,9 @@ async function loadMyProducts(){
     const returnText = x.returnRequestStatus
       ? `<div class="return-note">退貨狀態：${safeText(x.returnRequestStatus)}</div>`
       : '';
+    const refundPreview = x.returnEligible && x.refundCalculationReady && x.refundAmount!=null
+      ? `<div class="return-note">目前試算退款：${money(Number(x.refundAmount||0))}</div>`
+      : '';
     const returnBarcodeBtn = x.returnCode && x.returnMode==='original_store' && x.returnRequestStatus && !String(x.returnRequestStatus).includes('已退貨')
       ? `<button class="return-btn" onclick="showExistingReturnBarcode('${safeText(x.returnCode)}','${safeText(x.paidStoreName||x.paidStoreCode||'原付款門市')}')">退貨條碼</button>`
       : '';
@@ -1920,6 +1923,7 @@ async function loadMyProducts(){
             ${x.paidStoreName?`<div class="expiry">付款門市：${safeText(x.paidStoreName)}</div>`:
               (x.paidStoreCode?`<div class="expiry">付款門市：${safeText(x.paidStoreCode)}</div>`:'')}
             ${x.returnDeadline?`<div class="expiry">可退貨至：${new Date(x.returnDeadline).toLocaleString('zh-TW')}</div>`:''}
+            ${refundPreview}
             ${returnText}
           </div>
           <div class="action-row">
@@ -1949,9 +1953,25 @@ function openReturnRequest(encoded){
     ? new Date(selectedReturnProduct.returnDeadline).toLocaleString('zh-TW')
     : '--';
 
+  const usedQty=Number(selectedReturnProduct.usedQuantity||0);
+  const bundleQty=Number(selectedReturnProduct.bundleQuantity||0);
+  const bundlePrice=Number(selectedReturnProduct.bundlePrice||0);
+  const unitOriginalPrice=Number(selectedReturnProduct.unitOriginalPrice||0);
+  const fullUsedGroups=Number(selectedReturnProduct.fullUsedGroups||0);
+  const partialUsedQty=Number(selectedReturnProduct.partialUsedQuantity||0);
+  const refundAmount=Number(selectedReturnProduct.refundAmount||0);
+  const pointsToDeduct=Number(selectedReturnProduct.pointsToDeduct||refundAmount||0);
+
   document.getElementById('returnProductMeta').innerHTML=
-    `原始數量：${Number(selectedReturnProduct.originalQuantity||0)} 件<br>`+
-    `剩餘數量：${Number(selectedReturnProduct.remainingQuantity||0)} 件<br>`+
+    `購買總數量：${Number(selectedReturnProduct.originalQuantity||0)} 件<br>`+
+    `已兌換／預約／轉贈：${usedQty} 件<br>`+
+    `欲退貨剩餘數量：${Number(selectedReturnProduct.remainingQuantity||0)} 件<br>`+
+    (bundleQty>0?`每組：${bundleQty} 件／${money(bundlePrice)}<br>`:'')+
+    (unitOriginalPrice>0?`單個商品原價：${money(unitOriginalPrice)}<br>`:'')+
+    `完整已使用組數：${fullUsedGroups} 組<br>`+
+    `未滿一組已使用：${partialUsedQty} 件<br>`+
+    `<strong>目前試算退款：${money(refundAmount)}</strong><br>`+
+    `會員點數預計扣回：${pointsToDeduct} 點<br>`+
     `退貨期限：${safeText(deadline)}`;
 
   const storeRule=document.getElementById('returnStoreRule');
@@ -1998,6 +2018,7 @@ async function submitReturnRequest(){
     if(error) throw error;
 
     document.getElementById('returnResultCode').textContent=data.returnCode||'--';
+    selectedReturnProduct = Object.assign({}, selectedReturnProduct||{}, data||{});
 
     const returnCode=String(data.returnCode||'');
     const barcodeWrap=document.getElementById('returnBarcodeWrap');
