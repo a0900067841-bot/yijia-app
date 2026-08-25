@@ -897,7 +897,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.0 Points Redeem & Discount</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.1 Points Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1480,11 +1480,13 @@ function renderPoints(p){
 let currentPointBalance=0;
 let pointRewardRows=[];
 let pointDiscountSettings={
-  enabled:true,
-  pointsPerDollar:1,
-  minPoints:1,
-  step:1,
-  maxPoints:0
+  enabled:false,
+  unitPoints:300,
+  unitAmount:1,
+  minPoints:300,
+  step:300,
+  maxPoints:0,
+  maxDiscountPercent:100
 };
 let pointDiscountCountdownTimer=null;
 let pointDiscountExpiresAt=null;
@@ -1519,10 +1521,12 @@ function renderPointRewards(){
   }
 
   host.innerHTML=pointRewardRows.map(r=>{
-    const id=String(r.rewardId||r.id||r.code||'');
+    const id=String(r.rewardId||r.id||r.reward_code||r.code||'');
     const name=r.name||'點數兌換項目';
-    const cost=Number(r.pointsCost??r.points??r.costPoints??0);
-    const stock=Number(r.stock??r.remainingStock??-1);
+    const cost=Number(r.pointsCost??r.points_cost??r.points??r.costPoints??0);
+    const stockLimit=(r.stock_limit??r.stock??r.remainingStock);
+    const redeemedQty=Number(r.redeemed_qty||0);
+    const stock=stockLimit==null?-1:Math.max(0,Number(stockLimit)-redeemedQty);
     const disabled=cost<=0 || currentPointBalance<cost || stock===0;
     const image=r.imageUrl||r.image_url||'';
     return `<div class="reward-card">
@@ -1539,13 +1543,18 @@ function renderPointRewards(){
 }
 
 async function redeemPointReward(rewardId){
-  const reward=pointRewardRows.find(r=>String(r.rewardId||r.id||r.code||'')===String(rewardId));
+  const reward=pointRewardRows.find(r=>String(r.rewardId||r.id||r.reward_code||r.code||'')===String(rewardId));
   if(!reward) return;
-  const cost=Number(reward.pointsCost??reward.points??reward.costPoints??0);
+  const cost=Number(reward.pointsCost??reward.points_cost??reward.points??reward.costPoints??0);
   if(!confirm(`確定使用 ${cost.toLocaleString()} 點兌換「${reward.name||'此項目'}」嗎？`)) return;
 
   try{
-    const {data,error}=await sb.rpc('app_redeem_point_reward',{p_reward_id:String(rewardId)});
+    const requestId='APP-PR-'+Date.now()+'-'+Math.random().toString(36).slice(2,8).toUpperCase();
+    const {data,error}=await sb.rpc('app_redeem_point_reward',{
+      p_reward_id:String(reward.id),
+      p_quantity:1,
+      p_request_id:requestId
+    });
     if(error) throw error;
     alert(`兌換成功\n已使用 ${Number(data?.pointsUsed||cost).toLocaleString()} 點`);
     await loadPoints();
@@ -1561,7 +1570,11 @@ async function loadMyPointRewards(){
   const host=document.getElementById('myPointRewards');
   if(!host) return;
   try{
-    const {data,error}=await sb.rpc('app_get_my_point_rewards');
+    const {data,error}=await sb
+      .from('app_point_reward_redemptions')
+      .select('id,reward_code,reward_name,quantity,points_used,status,fulfillment_code,payload,created_at')
+      .order('created_at',{ascending:false})
+      .limit(50);
     if(error) throw error;
     const rows=Array.isArray(data)?data:[];
     if(!rows.length){
@@ -1570,11 +1583,11 @@ async function loadMyPointRewards(){
     }
     host.innerHTML=rows.map(r=>`
       <div class="my-reward-row">
-        <strong>${safeText(r.rewardName||r.name||'點數兌換')}</strong>
+        <strong>${safeText(r.reward_name||'點數兌換')}</strong>
         <small>
-          使用 ${Number(r.pointsUsed||0).toLocaleString()} 點
-          ${r.redeemedAt?` · ${new Date(r.redeemedAt).toLocaleString('zh-TW')}`:''}
-          ${r.validUntil?`<br>有效至 ${new Date(r.validUntil).toLocaleDateString('zh-TW')}`:''}
+          ${Number(r.quantity||1)} 份 · 使用 ${Number(r.points_used||0).toLocaleString()} 點
+          ${r.created_at?` · ${new Date(r.created_at).toLocaleString('zh-TW')}`:''}
+          ${r.fulfillment_code?`<br>兌換代碼：${safeText(r.fulfillment_code)}`:''}
         </small>
       </div>`).join('');
   }catch(err){
@@ -1591,23 +1604,31 @@ function stopPointDiscountCountdown(){
 }
 
 function getPointDiscountAmount(points){
-  const ratio=Math.max(1,Number(pointDiscountSettings.pointsPerDollar||1));
-  return Math.floor(Number(points||0)/ratio);
+  const unitPoints=Math.max(1,Number(pointDiscountSettings.unitPoints||300));
+  const unitAmount=Math.max(0,Number(pointDiscountSettings.unitAmount||1));
+  const units=Math.floor(Number(points||0)/unitPoints);
+  return units*unitAmount;
 }
 
 async function loadPointDiscountSettings(){
-  try{
-    const row=await getStateRow('001','yj_hq_app_settings');
-    const backend=row?.data?.appBackend||row?.data?.backend||row?.data||{};
-    pointDiscountSettings={
-      enabled:backend.pointDiscountEnabled!==false,
-      pointsPerDollar:Math.max(1,Number(backend.pointDiscountPointsPerDollar||1)),
-      minPoints:Math.max(1,Number(backend.pointDiscountMinPoints||1)),
-      step:Math.max(1,Number(backend.pointDiscountStep||1)),
-      maxPoints:Math.max(0,Number(backend.pointDiscountMaxPoints||0))
-    };
-  }catch(e){
-    console.warn('點數折抵設定讀取失敗，使用預設 1點=1元',e);
+  const {data,error}=await sb.rpc('app_get_point_feature_config');
+  if(error){
+    console.error('點數折抵設定讀取失敗',error);
+    throw error;
+  }
+
+  pointDiscountSettings={
+    enabled:data?.discountEnabled===true,
+    unitPoints:Math.max(1,Number(data?.redeemUnitPoints||300)),
+    unitAmount:Math.max(0,Number(data?.redeemUnitAmount||1)),
+    minPoints:Math.max(1,Number(data?.redeemUnitPoints||300)),
+    step:Math.max(1,Number(data?.redeemUnitPoints||300)),
+    maxPoints:0,
+    maxDiscountPercent:Math.max(0,Number(data?.maxDiscountPercent??100))
+  };
+
+  if(Number.isFinite(Number(data?.availablePoints))){
+    currentPointBalance=Number(data.availablePoints);
   }
 }
 
@@ -1636,7 +1657,12 @@ async function openPointDiscount(){
 
   const rule=document.getElementById('discountRuleText');
   if(rule){
-    rule.textContent=`${pointDiscountSettings.pointsPerDollar} 點折抵 $1，最低 ${pointDiscountSettings.minPoints} 點，依 ${pointDiscountSettings.step} 點為單位`;
+    rule.textContent=`${pointDiscountSettings.unitPoints} 點折抵 ${money(pointDiscountSettings.unitAmount)}，每次以 ${pointDiscountSettings.step} 點為單位`;
+  }
+  const createBtn=document.getElementById('createPointDiscountBtn');
+  if(createBtn){
+    createBtn.disabled=!pointDiscountSettings.enabled;
+    createBtn.textContent=pointDiscountSettings.enabled?'產生點數折抵 QR Code':'目前未開放點數折抵';
   }
   refreshPointDiscountPreview();
 }
@@ -1662,6 +1688,10 @@ function refreshPointDiscountPreview(){
 }
 
 async function createPointDiscountTicket(){
+  if(!pointDiscountSettings.enabled){
+    alert('目前未開放點數折抵。');
+    return;
+  }
   const input=document.getElementById('discountPointsInput');
   const points=Math.floor(Number(input?.value||0));
   if(points<=0){

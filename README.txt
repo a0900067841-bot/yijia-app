@@ -1,36 +1,26 @@
-億家 App v0.10.9.0 Points Redeem & Discount
+億家 App v0.10.9.1 Points Sync
 
-新增：
-1. 點數兌換
-   - 點數頁新增「點數兌換」入口。
-   - 兌換項目由 HQ state：yj_app_point_rewards 讀取。
-   - 兌換成功即扣點，寫入 app_point_transactions。
-   - 同步建立「我的點數兌換」紀錄。
+修正重點：
+- 不再使用 App 自己的 1 點 = $1 規則。
+- 直接讀取 TM / SC 已存在的 app_point_feature_settings。
+- redeem_unit_points = 折抵所需點數。
+- redeem_unit_amount = 可折抵金額。
+- 例如後台目前 300 點折 1 元，App 會顯示並限制為 300、600、900…點。
+- 後台日後改比例，App 自動同步。
 
-2. 點數折抵
-   - 點數頁新增「點數折抵」入口。
-   - 會員在 App 先選要使用的點數。
-   - App 產生 YPD 開頭、600 秒有效的折抵 QR Code。
-   - TM 不再提供點數選擇。
-   - TM 掃 YPD 後取得 points / discountAmount。
-   - 一般商品交易成功後，才呼叫 tm_complete_point_discount_ticket() 正式扣點。
-   - 若交易取消，不會先扣會員點數。
+點數兌換：
+- 直接沿用 TM Alpha 9.02 已預做的 app_point_rewards、
+  app_get_point_rewards()、
+  app_redeem_point_reward(uuid, integer, text)、
+  tm_sync_member_points()。
+- 不再建立另一套兌換規則。
 
-3. SC 可預留的設定
-   yj_hq_app_settings → appBackend：
-   - pointDiscountEnabled
-   - pointDiscountPointsPerDollar
-   - pointDiscountMinPoints
-   - pointDiscountStep
-   - pointDiscountMaxPoints
+點數折抵：
+- App 產生 YPD QR。
+- TM 掃碼只讀取預選點數與折抵金額。
+- 交易成功後才呼叫 tm_complete_point_discount_ticket()。
+- 正式扣點走既有 tm_sync_member_points()，因此 TM / SC / App 同步。
 
-目前預設：
-- 1 點 = $1
-- 最低 1 點
-- 1 點為單位
-- 0 = 不設折抵點數上限
-
-注意：
-- 先執行 points_redeem_discount_backend.sql。
-- 再上傳 index.html。
-- 點數兌換商品若尚未由 SC 上架，App 會正常顯示「目前沒有上架中的點數兌換項目」，不會出現假商品。
+更新順序：
+1. 先執行 points_sync_existing_tm_settings.sql。
+2. 再上傳 index.html。
