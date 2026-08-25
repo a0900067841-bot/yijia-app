@@ -293,6 +293,21 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 #giftQrReader{width:100%;min-height:250px;border-radius:14px;overflow:hidden;background:#111}
 .claim-hint{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.55}
 
+
+.anybuy-detail-card{background:#fff;border:1px solid #eceff1;border-radius:20px;padding:20px;margin-top:14px}
+.anybuy-detail-image{width:100%;aspect-ratio:1/1;object-fit:contain;background:#fff;border-radius:22px}
+.anybuy-detail-meta{display:flex;justify-content:space-between;gap:12px;padding:14px 2px;color:#6b7280}
+.anybuy-price-row{display:flex;align-items:baseline;gap:12px}
+.anybuy-sale-price{font-size:34px;font-weight:900;color:#ea6a00}
+.anybuy-original-price{font-size:20px;color:#9ca3af;text-decoration:line-through}
+.anybuy-detail-title{font-size:25px;font-weight:900;margin-top:10px}
+.anybuy-detail-sub{font-size:18px;color:#ea6a00;margin-top:8px}
+.anybuy-spec-row{display:flex;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid #f1f3f5}
+.anybuy-spec-row:last-child{border-bottom:0}
+.anybuy-buybar{position:sticky;bottom:84px;background:rgba(255,255,255,.96);padding:12px 14px;border-top:1px solid #eceff1;display:flex;gap:10px;z-index:15}
+.anybuy-qty-control{display:flex;border:1px solid #d1d5db;border-radius:14px;overflow:hidden}
+.anybuy-qty-control button{width:42px;height:42px;border:0;background:#f8fafc;font-size:22px}
+.anybuy-qty-control span{min-width:42px;text-align:center;line-height:42px;font-weight:800}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -540,7 +555,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('anybuyCenter')"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.9.9 Refund Calculator</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.0 Purchase Detail</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -770,6 +785,17 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   </div>
 
   <button class="danger-wide" onclick="alert('取消會員屬高風險帳號操作，正式版會加二次確認與後端流程。')">取消會員</button>
+</section>
+
+<section id="anybuyProductDetail" class="view">
+  <div class="header2"><button class="back" onclick="showView('anybuyHome')">‹</button><h2>商品詳情</h2></div>
+  <div id="anybuyProductDetailBody"></div>
+  <div class="anybuy-buybar">
+    <div class="anybuy-qty-control">
+      <button onclick="changeAnybuyDetailQty(-1)">−</button><span id="anybuyDetailQty">1</span><button onclick="changeAnybuyDetailQty(1)">＋</button>
+    </div>
+    <button class="primary" style="flex:1" onclick="buyAnybuyDetailProduct()">立即購買</button>
+  </div>
 </section>
 </main>
 
@@ -2718,5 +2744,57 @@ async function initAuth(){
 }
 document.addEventListener('DOMContentLoaded',()=>{initAuth();setTimeout(loadCart,0);});
 
+
+let anybuyDetailProduct=null, anybuyDetailQty=1;
+function n(v,d=0){v=Number(v);return Number.isFinite(v)?v:d}
+function bundleQty(p){return Math.max(1,n(p.quantity??p.bundleQuantity,1))}
+function originalBundlePrice(p){return Math.max(0,n(p.originalPrice??p.originalBundlePrice,0))}
+function saleBundlePrice(p){return Math.max(0,n(p.price??p.salePrice??p.bundlePrice,0))}
+function limitGroups(p){return Math.max(0,Math.floor(n(p.purchaseLimitGroups??p.limitGroups??p.maxGroups,0)))}
+function openAnybuyProductDetail(p){
+  anybuyDetailProduct=p; anybuyDetailQty=1;
+  const oq=bundleQty(p), op=originalBundlePrice(p), sp=saleBundlePrice(p), lim=limitGroups(p);
+  const img=p.imageUrl||p.image_url||'', act=p.activityContent||p.note||p.description||'';
+  const valid=n(p.validityDays??p.validity_days,0);
+  document.getElementById('anybuyProductDetailBody').innerHTML=`
+    ${img?`<img class="anybuy-detail-image" src="${safeText(img)}">`:`<div class="anybuy-detail-image" style="display:flex;align-items:center;justify-content:center;font-size:80px">🛍️</div>`}
+    <div class="anybuy-detail-meta"><div>可兌換：${valid?`購買後 ${valid} 天內`:'依商品設定'}</div><div>活動時間：${safeText(p.activityStartDate||'—')}～${safeText(p.activityEndDate||'—')}</div></div>
+    <div class="anybuy-detail-card"><div class="anybuy-price-row"><div class="anybuy-sale-price">${money(sp)}</div>${op?`<div class="anybuy-original-price">${money(op)}</div>`:''}</div><div class="anybuy-detail-title">${safeText(p.name||'')}</div>${act?`<div class="anybuy-detail-sub">${safeText(act)}</div>`:''}</div>
+    <div class="anybuy-detail-card">
+      <div class="anybuy-spec-row"><span>原價</span><strong>${op?money(op):'—'}</strong></div>
+      <div class="anybuy-spec-row"><span>售價</span><strong>${money(sp)}</strong></div>
+      <div class="anybuy-spec-row"><span>每組數量</span><strong>${oq} 件</strong></div>
+      <div class="anybuy-spec-row"><span>限購組數</span><strong>${lim?lim+' 組':'不限購'}</strong></div>
+      <div class="anybuy-spec-row"><span>效期</span><strong>${valid?valid+' 天':'依商品設定'}</strong></div>
+    </div>
+    <div class="anybuy-detail-card">
+      <div class="anybuy-spec-row"><span>購買組數</span><strong id="groupsText">1 組</strong></div>
+      <div class="anybuy-spec-row"><span>商品總數量</span><strong id="itemsText">${oq} 件</strong></div>
+      <div class="anybuy-spec-row"><span>小計</span><strong id="subtotalText">${money(sp)}</strong></div>
+    </div>`;
+  document.getElementById('anybuyDetailQty').textContent='1';
+  showView('anybuyProductDetail');
+}
+function changeAnybuyDetailQty(d){
+  if(!anybuyDetailProduct)return;
+  const lim=limitGroups(anybuyDetailProduct);
+  anybuyDetailQty=Math.max(1,anybuyDetailQty+d);
+  if(lim) anybuyDetailQty=Math.min(lim,anybuyDetailQty);
+  document.getElementById('anybuyDetailQty').textContent=anybuyDetailQty;
+  document.getElementById('groupsText').textContent=anybuyDetailQty+' 組';
+  document.getElementById('itemsText').textContent=(anybuyDetailQty*bundleQty(anybuyDetailProduct))+' 件';
+  document.getElementById('subtotalText').textContent=money(anybuyDetailQty*saleBundlePrice(anybuyDetailProduct));
+}
+function buildAnybuyPurchaseSnapshot(p,groups){
+  const bq=bundleQty(p), op=originalBundlePrice(p), sp=saleBundlePrice(p), g=Math.max(1,Math.floor(n(groups,1)));
+  return {...p,cartQuantity:g,bundleQuantity:bq,originalBundlePrice:op,bundlePrice:sp,salePrice:sp,paidAmount:sp*g,totalQuantity:bq*g,originalUnitPrice:bq?op/bq:0,purchaseSnapshot:{capturedAt:new Date().toISOString(),originalBundlePrice:op,saleBundlePrice:sp,bundleQuantity:bq,purchasedGroups:g,paidAmount:sp*g,originalUnitPrice:bq?op/bq:0}};
+}
+async function buyAnybuyDetailProduct(){
+  const snap=buildAnybuyPurchaseSnapshot(anybuyDetailProduct,anybuyDetailQty);
+  if(typeof startAnybuyCheckout==='function') return startAnybuyCheckout(snap,anybuyDetailQty);
+  if(typeof openAnybuyCheckout==='function') return openAnybuyCheckout(snap,anybuyDetailQty);
+  if(typeof buyAnybuyProduct==='function') return buyAnybuyProduct(snap,anybuyDetailQty);
+  alert('找不到目前版本既有購買入口，請把商品列表畫面截圖給我。');
+}
 </script>
 </body></html>
