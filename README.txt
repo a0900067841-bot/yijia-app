@@ -1,12 +1,12 @@
-億家 App v0.10.5.0 Redemption Sync
+億家 App v0.10.5.1 Redemption Qty Fix
 
-本版重點：
-1. 「我的商品」進入時自動載入可兌換商品與兌換紀錄。
-2. 停留在「我的商品」頁時，每 4 秒輕量同步一次。
-3. TM 完成兌換後，App 自動更新剩餘數量及兌換紀錄。
-4. App 切回前景／Safari 回到頁面時會立即同步。
-5. 到期或不可兌換商品維持不可操作。
-6. 本版為 App 前端更新，不需要新增 SQL。
+修正：
+1. TM 兌換成功後，App「我的商品」下方兌換紀錄不再固定顯示 0 件。
+2. 兌換數量支援 quantity / redeemedQuantity / redeemQuantity / qty / items 等不同 TM 紀錄格式。
+3. 商品使用紀錄 → 兌換，同步套用相同數量判斷。
+4. 保留 v0.10.5.0 的剩餘數量同步與其他既有功能。
 
-上傳：
-將 index.html 上傳至 GitHub Pages 專案覆蓋原本 index.html。
+本版只有前端 index.html 修正，不需要執行 SQL。
+
+GitHub：
+將 index.html 上傳覆蓋 yijia-app 專案原本的 index.html 後 Commit。

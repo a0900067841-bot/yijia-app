@@ -606,7 +606,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('redeem');loadShopProducts()"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.5.0 Redemption Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.5.1 Redemption Qty Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2793,6 +2793,68 @@ function openTransferDetail(index){
   showView('transferDetail');
 }
 
+
+function redemptionQty(r){
+  if(!r || typeof r!=='object') return 0;
+
+  const directKeys=[
+    'quantity',
+    'redeemQuantity',
+    'redeemedQuantity',
+    'redeemQty',
+    'redeemedQty',
+    'qty',
+    'count'
+  ];
+
+  for(const key of directKeys){
+    const raw=r[key];
+    if(raw!==undefined && raw!==null && raw!==''){
+      const value=Number(raw);
+      if(Number.isFinite(value)) return value;
+    }
+  }
+
+  // TM redemption records may keep the redeemed lines under items/details.
+  const arrays=[r.items,r.details,r.lines,r.products];
+  for(const arr of arrays){
+    if(Array.isArray(arr)){
+      const total=arr.reduce((sum,item)=>{
+        if(!item || typeof item!=='object') return sum;
+        const raw=
+          item.quantity ??
+          item.redeemQuantity ??
+          item.redeemedQuantity ??
+          item.redeemQty ??
+          item.redeemedQty ??
+          item.qty ??
+          item.count ??
+          0;
+        const value=Number(raw);
+        return sum + (Number.isFinite(value)?value:0);
+      },0);
+      if(total>0) return total;
+    }
+  }
+
+  // Some TM records store before/after remaining quantity instead of a direct qty.
+  const before=Number(
+    r.beforeRemainingQuantity ??
+    r.remainingBefore ??
+    r.previousRemainingQuantity
+  );
+  const after=Number(
+    r.afterRemainingQuantity ??
+    r.remainingAfter ??
+    r.remainingQuantity
+  );
+  if(Number.isFinite(before) && Number.isFinite(after) && before>=after){
+    return before-after;
+  }
+
+  return 0;
+}
+
 async function loadProductUsage(){
   const box=document.getElementById('productUsageList');
   if(!box||!currentUser) return;
@@ -2854,7 +2916,7 @@ function renderProductUsage(){
       return `<div class="history-card2"><div class="top"><div><div class="title">${safeText(first.name||'隨買商品')}</div><div class="meta">購買日期：${new Date(r.paidAt||r.createdAt).toLocaleString('zh-TW')}<br>類別：隨買跨店取</div></div><div class="amount">${money(Number(r.total||0))}</div></div></div>`;
     }
     if(currentUsageTab==='redeem'){
-      return `<div class="history-card2"><div class="top"><div><div class="title">${safeText(r.name||'商品')}</div><div class="meta">兌換日期：${new Date(r.redeemedAt||r.createdAt).toLocaleString('zh-TW')}<br>兌換店舖：${safeText(r.redeemStoreName||r.redeemStoreCode||'--')}</div></div><span class="status-pill">兌換</span></div><div class="meta">兌換數量：${Number(r.quantity||0)}</div></div>`;
+      return `<div class="history-card2"><div class="top"><div><div class="title">${safeText(r.name||'商品')}</div><div class="meta">兌換日期：${new Date(r.redeemedAt||r.createdAt).toLocaleString('zh-TW')}<br>兌換店舖：${safeText(r.redeemStoreName||r.redeemStoreCode||'--')}</div></div><span class="status-pill">兌換</span></div><div class="meta">兌換數量：${redemptionQty(r)}</div></div>`;
     }
     if(currentUsageTab==='refund'){
       return `<div class="history-card2"><div class="top"><div><div class="title">${safeText(r.name||'商品')}</div><div class="meta">申請日期：${new Date(r.createdAt).toLocaleString('zh-TW')}<br>退款方式：${r.returnMode==='original_store'?'原付款門市':'原線上付款方式'}</div></div><span class="status-pill ${String(r.status||'').includes('已退')?'':'warn'}">${safeText(r.status||'退貨申請')}</span></div>${r.refundedAt?`<div class="meta">退款日期：${new Date(r.refundedAt).toLocaleString('zh-TW')}</div>`:''}</div>`;
@@ -2923,7 +2985,7 @@ async function loadRedemptions(){
     <div class="history-card">
       <strong>${safeText(r.name||'商品')}</strong>
       <small>${r.redeemStoreName||r.redeemStoreCode ? '門市：'+safeText(r.redeemStoreName||r.redeemStoreCode)+' · ' : ''}${new Date(r.redeemedAt||r.createdAt).toLocaleString('zh-TW')}</small>
-      <div class="history-qty">兌換 ${Number(r.quantity||0)} 件</div>
+      <div class="history-qty">兌換 ${redemptionQty(r)} 件</div>
     </div>
   `).join('');
 }
