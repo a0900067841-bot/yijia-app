@@ -601,7 +601,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('redeem');loadShopProducts()"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.1.1 Direct Anybuy Home</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.2.0 Order Price Snapshot</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1649,7 +1649,9 @@ function renderCheckout(){
     <div class="checkout-item">
       <div>
         <strong>${safeText(x.name)}</strong>
-        <small>${Number(x.cartQty||1)} 組 × ${money(x.price)}</small>
+        <small>${Number(x.cartQty||1)} 組 × ${money(x.price)}
+          ${Number(x.originalPrice||0)>0?`（原價 ${money(x.originalPrice)}／組）`:''}
+        </small>
       </div>
       <strong>${money(Number(x.cartQty||1)*Number(x.price||0))}</strong>
     </div>
@@ -1756,7 +1758,11 @@ async function createYijiaPayOrder(source){
 
   const payload=cartItems.map(x=>({
     productKey:String(x.code||x.key),
-    cartQty:Number(x.cartQty||1)
+    cartQty:Number(x.cartQty||1),
+    clientOriginalPrice:Number(x.originalPrice||0),
+    clientSalePrice:Number(x.price||0),
+    clientBundleQuantity:Number(x.bundleQuantity||1),
+    clientOriginalUnitPrice:Number(x.originalUnitPrice||0)
   }));
 
   try{
@@ -1798,7 +1804,11 @@ async function createStoreCheckoutOrder(){
 
   const payload=cartItems.map(x=>({
     productKey:String(x.code||x.key),
-    cartQty:Number(x.cartQty||1)
+    cartQty:Number(x.cartQty||1),
+    clientOriginalPrice:Number(x.originalPrice||0),
+    clientSalePrice:Number(x.price||0),
+    clientBundleQuantity:Number(x.bundleQuantity||1),
+    clientOriginalUnitPrice:Number(x.originalUnitPrice||0)
   }));
 
   try{
