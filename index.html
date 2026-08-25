@@ -279,9 +279,20 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .order-detail-row:last-child{border-bottom:0}
 .small-muted{font-size:12px;color:var(--muted)}
 
+
+.gift-share-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.gift-share-link{word-break:break-all;background:#f8faf9;border:1px solid var(--line);border-radius:12px;padding:10px;font-size:12px;color:var(--muted);margin-top:10px}
+.scanner-modal{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:9999;display:none;align-items:center;justify-content:center;padding:18px}
+.scanner-modal.open{display:flex}
+.scanner-card{width:min(390px,100%);background:#fff;border-radius:20px;padding:16px}
+.scanner-card h3{margin:0 0 12px}
+#giftQrReader{width:100%;min-height:250px;border-radius:14px;overflow:hidden;background:#111}
+.claim-hint{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.55}
+
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -525,7 +536,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('anybuyCenter')"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.9.6.4.1 Direct Gift</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.9.7.1 Direct Gift</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -623,20 +634,32 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     </div>
 
     <div id="giftCreateResult" class="form-card" style="display:none">
-      <strong>轉贈已建立</strong>
+      <strong id="giftCreateResultTitle">轉贈已建立</strong>
       <div id="giftCodeText" class="code-box">--</div>
       <div id="giftCodeBarcodeWrap" class="store-barcode-wrap">
         <svg id="giftCodeBarcode"></svg>
       </div>
-      <div class="small-muted">可將領取碼或條碼提供給對方。</div>
+      <div class="small-muted" id="giftCreateHint">可將領取碼或條碼提供給對方。</div>
+
+      <div id="giftSocialShareBox" style="display:none">
+        <div id="giftShareLink" class="gift-share-link"></div>
+        <div class="gift-share-actions">
+          <button type="button" class="secondary-btn" onclick="copyGiftShareLink()">複製連結</button>
+          <button type="button" class="primary-btn" onclick="shareGiftLink()">分享連結</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <div id="giftClaimPanel" style="display:none">
     <div class="form-card">
       <label>輸入領取碼</label>
-      <input id="giftClaimCode" placeholder="YG...">
-      <button class="primary-btn" style="margin-top:12px" onclick="claimGiftTransfer()">領取商品</button>
+      <input id="giftClaimCode" placeholder="YG..." autocapitalize="characters">
+      <div class="gift-share-actions">
+        <button type="button" class="secondary-btn" onclick="openGiftScanner()">掃描條碼</button>
+        <button type="button" class="primary-btn" onclick="claimGiftTransfer()">領取商品</button>
+      </div>
+      <div class="claim-hint">也可以直接點朋友分享的億家 App 領取連結，登入後系統會自動帶入 YG 領取碼。</div>
     </div>
   </div>
 
@@ -747,6 +770,15 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <button id="pdBuyBtn" class="close" onclick="addSelectedToCart()">加入購物車</button>
 
     <button class="danger-wide" style="margin-top:9px" onclick="closeProductModal()">關閉</button>
+  </div>
+</div>
+
+
+<div id="giftScannerModal" class="scanner-modal" onclick="if(event.target===this)closeGiftScanner()">
+  <div class="scanner-card">
+    <h3>掃描禮物領取條碼</h3>
+    <div id="giftQrReader"></div>
+    <button type="button" class="secondary-btn" style="margin-top:12px" onclick="closeGiftScanner()">關閉掃描</button>
   </div>
 </div>
 
@@ -997,6 +1029,7 @@ async function applyUser(user){
     await loadRedemptions();
     loadCart();
     await loadCashReloadQuota();
+    handleGiftDeepLink();
   }catch(err){
     console.error(err);
     setAuthMessage('已登入，但會員資料讀取失敗：'+(err?.message||''),'error');
@@ -2011,6 +2044,114 @@ function setupOrderMonthOptions(){
 let giftProductsCache=[];
 let giftHistoryCache=[];
 
+
+let lastGiftShareCode='';
+let lastGiftShareUrl='';
+let giftHtml5Scanner=null;
+
+function buildGiftShareUrl(code){
+  const base=location.origin+location.pathname;
+  return `${base}?gift=${encodeURIComponent(String(code||''))}`;
+}
+
+async function copyGiftShareLink(){
+  if(!lastGiftShareUrl){alert('目前沒有可分享的領取連結');return;}
+  try{
+    await navigator.clipboard.writeText(lastGiftShareUrl);
+    alert('領取連結已複製');
+  }catch(e){
+    prompt('請複製領取連結',lastGiftShareUrl);
+  }
+}
+
+async function shareGiftLink(){
+  if(!lastGiftShareUrl){alert('目前沒有可分享的領取連結');return;}
+  const shareData={
+    title:'億家 App 禮物',
+    text:`我送你一份億家隨買跨店取商品，領取碼：${lastGiftShareCode}`,
+    url:lastGiftShareUrl
+  };
+  if(navigator.share){
+    try{await navigator.share(shareData);return;}catch(e){
+      if(e?.name==='AbortError') return;
+    }
+  }
+  await copyGiftShareLink();
+}
+
+function selectGiftClaimTab(){
+  const btn=document.querySelector('[data-gift-tab="claim"]');
+  setGiftTab('claim',btn);
+}
+
+function getGiftCodeFromUrl(){
+  try{
+    const u=new URL(location.href);
+    const code=(u.searchParams.get('gift')||'').trim().toUpperCase();
+    return /^YG[A-Z0-9]+$/.test(code)?code:'';
+  }catch(e){return '';}
+}
+
+function handleGiftDeepLink(){
+  const code=getGiftCodeFromUrl();
+  if(!code || !currentUser) return false;
+  showView('giftTransfer');
+  selectGiftClaimTab();
+  const input=document.getElementById('giftClaimCode');
+  if(input) input.value=code;
+  setTimeout(()=>input?.scrollIntoView({behavior:'smooth',block:'center'}),150);
+  return true;
+}
+
+async function openGiftScanner(){
+  const modal=document.getElementById('giftScannerModal');
+  if(!modal){return;}
+  if(!window.Html5Qrcode){
+    alert('此瀏覽器目前無法啟動條碼掃描，請直接輸入 YG 領取碼。');
+    return;
+  }
+  modal.classList.add('open');
+  try{
+    if(giftHtml5Scanner){
+      try{await giftHtml5Scanner.stop();}catch(e){}
+      try{await giftHtml5Scanner.clear();}catch(e){}
+    }
+    giftHtml5Scanner=new Html5Qrcode('giftQrReader');
+    await giftHtml5Scanner.start(
+      {facingMode:'environment'},
+      {fps:10,qrbox:{width:280,height:120}},
+      async decodedText=>{
+        const raw=String(decodedText||'').trim();
+        let code=raw.toUpperCase();
+        try{
+          if(raw.startsWith('http')){
+            const u=new URL(raw);
+            code=(u.searchParams.get('gift')||'').trim().toUpperCase();
+          }
+        }catch(e){}
+        if(!/^YG[A-Z0-9]+$/.test(code)) return;
+        document.getElementById('giftClaimCode').value=code;
+        await closeGiftScanner();
+      },
+      ()=>{}
+    );
+  }catch(err){
+    console.error(err);
+    alert('無法開啟相機掃描，請確認 Safari 已允許相機權限，或直接輸入 YG 領取碼。');
+    await closeGiftScanner();
+  }
+}
+
+async function closeGiftScanner(){
+  const modal=document.getElementById('giftScannerModal');
+  if(modal) modal.classList.remove('open');
+  if(giftHtml5Scanner){
+    try{await giftHtml5Scanner.stop();}catch(e){}
+    try{await giftHtml5Scanner.clear();}catch(e){}
+    giftHtml5Scanner=null;
+  }
+}
+
 function setGiftTab(tab,el){
   document.querySelectorAll('[data-gift-tab]').forEach(b=>b.classList.remove('active'));
   el?.classList.add('active');
@@ -2078,15 +2219,28 @@ async function createGiftTransfer(){
 
     if(resultBox) resultBox.style.display='block';
 
+    const socialShareBox=document.getElementById('giftSocialShareBox');
+    const shareLinkEl=document.getElementById('giftShareLink');
+    const titleEl=document.getElementById('giftCreateResultTitle');
+
     if(data.deliveryMode==='direct'){
+      lastGiftShareCode='';
+      lastGiftShareUrl='';
+      if(titleEl) titleEl.textContent='轉贈完成';
       if(codeText) codeText.textContent='已直接轉贈';
       if(barcodeWrap) barcodeWrap.style.display='none';
+      if(socialShareBox) socialShareBox.style.display='none';
       if(hint) hint.textContent=`商品已直接加入 ${data.receiverPhone||'對方'} 的「我的商品」，不需要領取碼。`;
       alert(`轉贈成功，商品已直接送到 ${data.receiverPhone||'對方會員'} 的 App。`);
     }else{
-      if(codeText) codeText.textContent=data.giftCode||'--';
+      lastGiftShareCode=String(data.giftCode||'');
+      lastGiftShareUrl=buildGiftShareUrl(lastGiftShareCode);
+      if(titleEl) titleEl.textContent='社群轉贈已建立';
+      if(codeText) codeText.textContent=lastGiftShareCode||'--';
       if(barcodeWrap) barcodeWrap.style.display='block';
-      if(hint) hint.textContent='可將領取碼或條碼提供給對方。';
+      if(socialShareBox) socialShareBox.style.display='block';
+      if(shareLinkEl) shareLinkEl.textContent=lastGiftShareUrl;
+      if(hint) hint.textContent='可分享領取連結、YG 領取碼或 CODE128 條碼給對方。此領取碼成功領取一次後立即失效。';
 
       if(window.JsBarcode && data.giftCode){
         try{
@@ -2117,8 +2271,14 @@ async function claimGiftTransfer(){
     if(error) throw error;
     alert(`領取成功：${data.name||'商品'} × ${Number(data.quantity||0)}`);
     document.getElementById('giftClaimCode').value='';
+    try{
+      const u=new URL(location.href);
+      u.searchParams.delete('gift');
+      history.replaceState({},'',u.pathname+u.search+u.hash);
+    }catch(e){}
     await loadGiftTransferData();
     await loadMyProducts();
+    showView('products');
   }catch(err){
     console.error(err);
     alert('領取失敗：'+(err?.message||err));
