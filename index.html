@@ -525,7 +525,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('anybuyCenter')"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.9.6.3.1 Direct Gift</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.9.6.4.1 Direct Gift</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1977,6 +1977,7 @@ function updateHomePendingCount(count){
 
 let anybuyOrdersCache=[];
 let usageCache={purchases:[],redemptions:[],returns:[],expired:[],gifts:[],transfers:[]};
+let usageDetailRows=[];
 let currentUsageTab='purchase';
 
 function toggleAnybuyOrderMenu(){
@@ -2276,9 +2277,9 @@ function maskPhone(phone){
 }
 
 
-function openGiftDetail(encoded){
-  let g;
-  try{g=JSON.parse(JSON.parse(encoded));}catch(e){console.error(e);return;}
+function openGiftDetail(index){
+  const g=usageDetailRows[Number(index)];
+  if(!g){console.error('gift detail not found',index);return;}
 
   const dt=g.claimedAt||g.deliveredAt||g.createdAt;
   const box=document.getElementById('giftDetailBody');
@@ -2304,9 +2305,9 @@ function openGiftDetail(encoded){
   showView('giftDetail');
 }
 
-function openTransferDetail(encoded){
-  let g;
-  try{g=JSON.parse(JSON.parse(encoded));}catch(e){console.error(e);return;}
+function openTransferDetail(index){
+  const g=usageDetailRows[Number(index)];
+  if(!g){console.error('transfer detail not found',index);return;}
 
   const dt=g.deliveredAt||g.createdAt;
   const transferType=g.deliveryMode==='direct'?'手機轉贈':'社群轉贈';
@@ -2385,7 +2386,9 @@ function renderProductUsage(){
     return;
   }
 
-  box.innerHTML=rows.map(r=>{
+  usageDetailRows=rows.slice();
+
+  box.innerHTML=rows.map((r,rowIndex)=>{
     if(currentUsageTab==='purchase'){
       const first=Array.isArray(r.items)?(r.items[0]||{}):{};
       return `<div class="history-card2"><div class="top"><div><div class="title">${safeText(first.name||'隨買商品')}</div><div class="meta">購買日期：${new Date(r.paidAt||r.createdAt).toLocaleString('zh-TW')}<br>類別：隨買跨店取</div></div><div class="amount">${money(Number(r.total||0))}</div></div></div>`;
@@ -2398,7 +2401,7 @@ function renderProductUsage(){
     }
     if(currentUsageTab==='gift'){
       const dt = r.claimedAt||r.deliveredAt||r.createdAt;
-      return `<div class="history-card2" onclick='openGiftDetail(${JSON.stringify(JSON.stringify(r))})' style="cursor:pointer">
+      return `<div class="history-card2" onclick="openGiftDetail(${rowIndex})" style="cursor:pointer">
         <div class="top">
           <div>
             <div class="title">禮物領取</div>
@@ -2406,13 +2409,13 @@ function renderProductUsage(){
           </div>
           <span class="status-pill">禮物領取</span>
         </div>
-        <div class="meta" style="margin-top:10px;color:#1686c9">查看明細</div>
+        <button type="button" class="secondary-btn" style="margin-top:10px;padding:8px 12px;width:auto;color:#1686c9">查看明細</button>
       </div>`;
     }
     if(currentUsageTab==='transfer'){
       const dt = r.deliveredAt||r.createdAt;
       const transferType = r.deliveryMode==='direct' ? '手機轉贈' : '社群轉贈';
-      return `<div class="history-card2" onclick='openTransferDetail(${JSON.stringify(JSON.stringify(r))})' style="cursor:pointer">
+      return `<div class="history-card2" onclick="openTransferDetail(${rowIndex})" style="cursor:pointer">
         <div class="top">
           <div>
             <div class="title">${transferType}</div>
@@ -2420,7 +2423,7 @@ function renderProductUsage(){
           </div>
           <span class="status-pill">${transferType}</span>
         </div>
-        <div class="meta" style="margin-top:10px;color:#1686c9">查看明細</div>
+        <button type="button" class="secondary-btn" style="margin-top:10px;padding:8px 12px;width:auto;color:#1686c9">查看明細</button>
       </div>`;
     }
     return `<div class="history-card2"><div class="top"><div><div class="title">${safeText(r.name||'商品')}</div><div class="meta">有效期限：${r.validUntil?new Date(r.validUntil).toLocaleString('zh-TW'):'--'}<br>剩餘數量：${Number(r.remainingQuantity||0)}</div></div><span class="status-pill red">已逾期</span></div></div>`;
