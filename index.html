@@ -374,6 +374,18 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .order-item-row .name{font-weight:800}
 .order-item-row .meta{font-size:13px;color:#6b7280;margin-top:3px}
 
+
+/* v0.10.6.3 退款／退貨紀錄整合 */
+.refund-box-v1063{margin-top:16px;background:#fff7f4;border:1px solid #ffd9cc;border-radius:16px;padding:14px}
+.refund-box-v1063 h4{margin:0 0 10px;font-size:15px}
+.refund-row-v1063{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px dashed #f0cabb;font-size:13px}
+.refund-row-v1063:last-child{border-bottom:0}
+.refund-status-v1063{display:inline-flex;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:800}
+.refund-status-v1063.pending{background:#fff3d6;color:#8a5b00}
+.refund-status-v1063.done{background:#eaf8ef;color:#17663b}
+.refund-status-v1063.expiry{background:#eef4ff;color:#2257a0}
+.refund-status-v1063.reject{background:#f3f4f6;color:#6b7280}
+
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -638,7 +650,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('redeem');loadShopProducts()"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.6.2 Order Management</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.6.3 Refund History</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2742,6 +2754,8 @@ async function loadReservations(){
 
 let orderManagementRows=[];
 let orderFilter='all';
+let returnRequestRows=[];
+let expiryRefundRows=[];
 
 function normalizeOrderStatus(o){
   const s=String(o.status||o.paymentStatus||'').trim();
@@ -2755,6 +2769,83 @@ function normalizeOrderStatus(o){
 function setOrderFilter(v){
   orderFilter=v||'all';
   renderOrderManagement();
+}
+
+
+function refundStatusInfo(r){
+  const raw=String(
+    r?.status ??
+    r?.refundStatus ??
+    r?.returnStatus ??
+    ''
+  ).trim();
+
+  if(['退款完成','已退款','退貨完成','completed','done','refunded'].includes(raw))
+    return {label:'退款完成',cls:'done'};
+  if(['已拒絕','拒絕','rejected'].includes(raw))
+    return {label:'已拒絕',cls:'reject'};
+  if(['到期退款','expired_refund','expiry_refund'].includes(raw))
+    return {label:'到期退款',cls:'expiry'};
+  if(['申請中','退款中','退貨中','pending','processing'].includes(raw))
+    return {label:raw||'處理中',cls:'pending'};
+
+  return {label:raw||'處理中',cls:'pending'};
+}
+
+function refundMatchesOrder(r,o){
+  if(!r || !o) return false;
+  const orderId=String(o.orderId||o.id||'');
+  const keys=[
+    r.orderId,r.anybuyOrderId,r.sourceOrderId,r.purchaseOrderId,r.originalOrderId
+  ].filter(Boolean).map(String);
+  return !!orderId && keys.includes(orderId);
+}
+
+function collectOrderRefunds(o){
+  const normal=(returnRequestRows||[]).filter(r=>refundMatchesOrder(r,o));
+  const expiry=(expiryRefundRows||[]).filter(r=>refundMatchesOrder(r,o)).map(r=>({
+    ...r,
+    status:r.status||'到期退款',
+    refundType:r.refundType||'到期自動退款'
+  }));
+  return [...normal,...expiry].sort((a,b)=>{
+    const ta=new Date(a.completedAt||a.refundedAt||a.updatedAt||a.createdAt||0).getTime();
+    const tb=new Date(b.completedAt||b.refundedAt||b.updatedAt||b.createdAt||0).getTime();
+    return tb-ta;
+  });
+}
+
+function renderRefundHistoryForOrder(o){
+  const rows=collectOrderRefunds(o);
+  if(!rows.length) return '';
+
+  return `<div class="refund-box-v1063">
+    <h4>退款／退貨紀錄</h4>
+    ${rows.map(r=>{
+      const st=refundStatusInfo(r);
+      const amount=Number(
+        r.refundAmount ??
+        r.amount ??
+        r.creditedAmount ??
+        r.returnAmount ??
+        0
+      );
+      const reason=r.reason||r.refundReason||r.note||r.refundType||'—';
+      const store=r.storeName||r.storeCode||r.refundStoreName||r.refundStoreCode||'';
+      const when=r.completedAt||r.refundedAt||r.updatedAt||r.createdAt||'';
+      return `
+        <div style="padding:8px 0 10px">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+            <strong>${safeText(r.requestId||r.id||r.refundId||'退款紀錄')}</strong>
+            <span class="refund-status-v1063 ${st.cls}">${safeText(st.label)}</span>
+          </div>
+          <div class="refund-row-v1063"><span>退款金額</span><strong>${money(amount)}</strong></div>
+          <div class="refund-row-v1063"><span>原因</span><strong>${safeText(reason)}</strong></div>
+          ${store?`<div class="refund-row-v1063"><span>辦理門市</span><strong>${safeText(store)}</strong></div>`:''}
+          ${when?`<div class="refund-row-v1063"><span>時間</span><strong>${new Date(when).toLocaleString('zh-TW')}</strong></div>`:''}
+        </div>`;
+    }).join('')}
+  </div>`;
 }
 
 async function loadOrderManagement(){
@@ -2772,6 +2863,36 @@ async function loadOrderManagement(){
   }
 
   orderManagementRows=Array.isArray(data)?data:[];
+
+  // 同步讀取既有退貨申請與到期退款紀錄；讀不到時不影響訂單本體顯示。
+  try{
+    const rr=await sb
+      .from('yijia_app_state')
+      .select('data')
+      .eq('store_id','HQ')
+      .eq('data_key','yj_app_return_requests')
+      .maybeSingle();
+    returnRequestRows=Array.isArray(rr?.data?.data)?rr.data.data:
+      Array.isArray(rr?.data)?rr.data:
+      Array.isArray(rr?.data?.data?.rows)?rr.data.data.rows:[];
+  }catch(e){
+    returnRequestRows=[];
+  }
+
+  try{
+    const er=await sb
+      .from('yijia_app_state')
+      .select('data')
+      .eq('store_id','HQ')
+      .eq('data_key','yj_app_expiry_refunds')
+      .maybeSingle();
+    expiryRefundRows=Array.isArray(er?.data?.data)?er.data.data:
+      Array.isArray(er?.data)?er.data:
+      Array.isArray(er?.data?.data?.rows)?er.data.data.rows:[];
+  }catch(e){
+    expiryRefundRows=[];
+  }
+
   renderOrderManagement();
 }
 
@@ -2860,6 +2981,7 @@ function openOrderDetail(idx){
       </div>
 
       <div class="order-detail-row" style="margin-top:10px"><span>訂單總額</span><strong>${money(total)}</strong></div>
+      ${renderRefundHistoryForOrder(o)}
     </div>`;
   host.scrollIntoView({behavior:'smooth',block:'start'});
 }
