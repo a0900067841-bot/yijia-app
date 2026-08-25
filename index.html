@@ -121,6 +121,15 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .qty-big{font-size:22px;font-weight:900;color:var(--green)}
 .expiry{font-size:11px;color:var(--muted)}
 .redeem-open{border:0;border-radius:12px;background:var(--green);color:#fff;padding:9px 12px;font-weight:900}
+.redeem-open:disabled{background:#c7cdc9;color:#fff;cursor:not-allowed}
+.product-status-badge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900;white-space:nowrap}
+.product-status-badge.available{background:#e8f7ee;color:#14773e}
+.product-status-badge.redeemed{background:#eef1f3;color:#56616a}
+.product-status-badge.gifted{background:#fff0e7;color:#b86120}
+.product-status-badge.expired{background:#fff0ef;color:#b2443a}
+.member-product.terminal{background:#fafafa}
+.member-product.terminal .qty-big{color:#6d7680}
+
 .history-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px}
 .history-card strong{display:block}
 .history-card small{display:block;color:var(--muted);margin-top:4px;line-height:1.45}
@@ -606,7 +615,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('redeem');loadShopProducts()"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.5.1 Redemption Qty Fix</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.6.0 Product Status</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2090,6 +2099,43 @@ document.addEventListener('visibilitychange',()=>{
 
 let selectedReturnProduct=null;
 
+function productLifecycleState(x){
+  const status=String(x?.status||'').trim();
+  const remaining=Math.max(0,Number(x?.remainingQuantity||0));
+  const validUntil=x?.validUntil?new Date(x.validUntil):null;
+  const now=new Date();
+  const expiredByTime=!!(validUntil && !Number.isNaN(validUntil.getTime()) && validUntil<=now);
+
+  if(
+    expiredByTime ||
+    status.includes('到期') ||
+    status.includes('逾期') ||
+    status.includes('到期退款') ||
+    status.includes('逾期退款')
+  ){
+    return {key:'expired',label:'已到期退款',canOperate:false};
+  }
+
+  if(
+    status.includes('已轉贈') ||
+    status.includes('轉贈完成') ||
+    status.includes('全數轉贈')
+  ){
+    return {key:'gifted',label:'已轉贈',canOperate:false};
+  }
+
+  if(remaining<=0){
+    return {key:'redeemed',label:'已兌完',canOperate:false};
+  }
+
+  if(status==='可兌換' || !status){
+    return {key:'available',label:'可兌換',canOperate:true};
+  }
+
+  // 未知狀態採保守原則：只有明確「可兌換」才允許操作。
+  return {key:'redeemed',label:status||'不可操作',canOperate:false};
+}
+
 async function loadMyProducts(){
   const box=document.getElementById('myProducts');
   if(!box||!currentUser) return;
@@ -2120,11 +2166,10 @@ async function loadMyProducts(){
     )||{};
     const image=shopProduct.image_url||'';
     const validUntil=x.validUntil?new Date(x.validUntil):null;
-    const canRedeem=x.status==='可兌換'
-      && Number(x.remainingQuantity||0)>0
-      && (!validUntil || validUntil>=new Date());
+    const lifecycle=productLifecycleState(x);
+    const canRedeem=lifecycle.canOperate;
 
-    const returnBtn = (x.returnEligible && x.source!=='會員轉贈')
+    const returnBtn = (lifecycle.canOperate && x.returnEligible && x.source!=='會員轉贈')
       ? `<button class="return-btn" onclick='openReturnRequest(${JSON.stringify(JSON.stringify(x))})'>退貨</button>`
       : '';
 
@@ -2134,16 +2179,19 @@ async function loadMyProducts(){
     const refundPreview = x.returnEligible && x.refundCalculationReady && x.refundAmount!=null
       ? `<div class="return-note">目前試算退款：${money(Number(x.refundAmount||0))}</div>`
       : '';
-    const returnBarcodeBtn = x.returnCode && x.returnMode==='original_store' && x.returnRequestStatus && !String(x.returnRequestStatus).includes('已退貨')
+    const returnBarcodeBtn = lifecycle.canOperate && x.returnCode && x.returnMode==='original_store' && x.returnRequestStatus && !String(x.returnRequestStatus).includes('已退貨')
       ? `<button class="return-btn" onclick="showExistingReturnBarcode('${safeText(x.returnCode)}','${safeText(x.paidStoreName||x.paidStoreCode||'原付款門市')}')">退貨條碼</button>`
       : '';
 
     return `
-      <div class="member-product">
+      <div class="member-product ${lifecycle.canOperate?'':'terminal'}">
         <div class="member-product-top">
           <div class="member-product-pic">${image?`<img src="${safeText(image)}" alt="${safeText(x.name||'商品')}">`:'☕'}</div>
           <div class="member-product-main">
-            <strong>${safeText(x.name||'商品')}</strong>
+            <div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
+              <strong>${safeText(x.name||'商品')}</strong>
+              <span class="product-status-badge ${lifecycle.key}">${safeText(lifecycle.label)}</span>
+            </div>
             <small>原始數量 ${Number(x.originalQuantity||0)} 件</small>
             ${x.activityContent?`<small>${safeText(x.activityContent)}</small>`:''}
           </div>
@@ -2154,14 +2202,14 @@ async function loadMyProducts(){
             <div class="expiry">${validUntil?'有效至 '+validUntil.toLocaleDateString('zh-TW'):'無指定到期日'}</div>
             ${x.paidStoreName?`<div class="expiry">付款門市：${safeText(x.paidStoreName)}</div>`:
               (x.paidStoreCode?`<div class="expiry">付款門市：${safeText(x.paidStoreCode)}</div>`:'')}
-            ${x.returnDeadline?`<div class="expiry">可退貨至：${new Date(x.returnDeadline).toLocaleString('zh-TW')}</div>`:''}
+            ${x.returnDeadline && lifecycle.canOperate?`<div class="expiry">可退貨至：${new Date(x.returnDeadline).toLocaleString('zh-TW')}</div>`:''}\n            ${!lifecycle.canOperate?`<div class="expiry">此商品目前不可兌換、轉贈或退貨</div>`:''}
             ${refundPreview}
             ${returnText}
           </div>
           <div class="action-row">
             ${returnBtn}
             ${returnBarcodeBtn}
-            <button class="redeem-open" ${canRedeem?'':'disabled'} onclick="openBarcode()">${canRedeem?'出示會員條碼':'不可兌換'}</button>
+            <button class="redeem-open" ${canRedeem?'':'disabled'} onclick="openBarcode()">${canRedeem?'出示會員條碼':lifecycle.label}</button>
           </div>
         </div>
       </div>
