@@ -4,7 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0f7a46">
-<title>億家 App v0.6</title>
+<title>億家 App｜隨買跨店取</title>
+<meta name="application-name" content="億家 App">
+<meta name="apple-mobile-web-app-title" content="億家">
+<meta property="og:title" content="億家 App｜隨買跨店取">
+<meta property="og:description" content="億家 App 隨買跨店取商品分享">
 <style>
 :root{--green:#0f7a46;--green2:#eaf6ef;--orange:#f28a2b;--orange2:#fff3e7;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--bg:#f6f8f7;--danger:#d94841}
 *{box-sizing:border-box}html,body{margin:0;background:#dfe5e2;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;color:var(--ink)}body{display:flex;justify-content:center;min-height:100vh}.phone{width:100%;max-width:430px;min-height:100vh;background:var(--bg);position:relative;overflow:hidden}.topbar{padding:calc(12px + env(safe-area-inset-top)) 18px 12px;background:linear-gradient(135deg,var(--green),#0a6b3c);color:white;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:21px}.logo{width:38px;height:38px;border-radius:12px;background:#fff;color:var(--orange);display:grid;place-items:center;font-size:24px;font-weight:900;box-shadow:0 3px 10px rgba(0,0,0,.12)}.iconbtn{width:38px;height:38px;border:0;border-radius:12px;background:rgba(255,255,255,.14);color:#fff;font-size:19px}.content{padding:16px 16px 108px}.hero{background:linear-gradient(135deg,#fff,#fff9f2);border-radius:24px;padding:18px;box-shadow:0 8px 24px rgba(31,41,55,.08);border:1px solid rgba(242,138,43,.15)}.hero-head{display:flex;justify-content:space-between;align-items:flex-start}.eyebrow{font-size:12px;color:var(--muted);margin-bottom:4px}.member-name{font-size:20px;font-weight:800}.points{text-align:right;background:var(--green2);padding:8px 10px;border-radius:14px;min-width:112px}.points b{display:block;color:var(--green);font-size:20px}.points span{font-size:11px;color:var(--muted)}.barcode{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;text-align:center;cursor:pointer}.barcode-lines{height:58px;border-radius:8px;background:repeating-linear-gradient(90deg,#111 0 2px,transparent 2px 4px,#111 4px 5px,transparent 5px 8px,#111 8px 11px,transparent 11px 13px);max-width:290px;margin:0 auto 8px}.barcode small{color:var(--muted)}.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}.q{background:#fff;border:0;border-radius:18px;padding:14px 6px 12px;box-shadow:0 4px 14px rgba(31,41,55,.05);font-size:12px;color:var(--ink)}.q .ico{font-size:25px;display:block;margin-bottom:7px}.section-title{display:flex;align-items:center;justify-content:space-between;margin:20px 2px 10px}.section-title h3{margin:0;font-size:18px}.section-title button{border:0;background:none;color:var(--green);font-weight:700}.banner{border-radius:22px;padding:18px;background:linear-gradient(120deg,var(--orange),#ffad5f);color:#fff;min-height:130px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 7px 18px rgba(242,138,43,.25)}.banner h2{margin:0 0 7px;font-size:22px}.banner p{margin:0;font-size:13px;opacity:.95}.banner .cup{font-size:62px}.cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card{background:#fff;border-radius:18px;padding:14px;border:1px solid var(--line);min-height:112px}.card b{display:block;margin-top:8px}.card small{color:var(--muted)}.badge{display:inline-block;background:var(--orange2);color:#b75a08;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:430px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);z-index:30;backdrop-filter:blur(14px)}.nav button{border:0;background:none;padding:5px 2px;font-size:11px;color:var(--muted)}.nav .ni{font-size:21px;display:block;margin-bottom:3px}.nav button.active{color:var(--green);font-weight:800}.view{display:none}.view.active{display:block}.list{display:flex;flex-direction:column;gap:10px}.row{background:#fff;border-radius:18px;padding:14px;display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line)}.row strong{display:block}.row small{color:var(--muted)}.pill{padding:6px 9px;border-radius:999px;background:var(--green2);color:var(--green);font-size:12px;font-weight:800}.product{background:#fff;border-radius:18px;padding:14px;display:grid;grid-template-columns:54px 1fr auto;gap:12px;align-items:center;border:1px solid var(--line)}.product .pic{width:54px;height:54px;border-radius:14px;background:var(--orange2);display:grid;place-items:center;font-size:28px}.redeem-btn{border:0;border-radius:12px;background:var(--green);color:white;padding:9px 10px;font-weight:800}.header2{display:flex;align-items:center;gap:10px;margin-bottom:14px}.header2 h2{margin:0}.back{border:0;background:#fff;border-radius:12px;width:38px;height:38px;font-size:20px}.bigpoints{background:linear-gradient(135deg,var(--green),#169458);color:#fff;border-radius:24px;padding:20px;margin-bottom:16px}.bigpoints .num{font-size:38px;font-weight:900;margin:4px 0}.history .row{align-items:flex-start}.plus{color:var(--green);font-weight:900}.minus{color:var(--danger);font-weight:900}.note{font-size:12px;color:var(--muted);line-height:1.5}.center{text-align:center}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;align-items:center;justify-content:center;padding:24px}.modal.open{display:flex}.modal-card{background:#fff;border-radius:24px;padding:20px;width:100%;max-width:360px;text-align:center}.modal .barcode-lines{height:110px;margin-top:14px}.close{margin-top:16px;width:100%;border:0;background:var(--green);color:#fff;border-radius:14px;padding:12px;font-weight:800}
@@ -536,7 +540,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('anybuyCenter')"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.9.7.1 Direct Gift</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.9.8 Rights Rules</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -682,14 +686,55 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div class="header2"><button class="back" onclick="showView('anybuyCenter')">‹</button><h2>操作教學</h2></div>
   <div class="guide-card"><strong>1. 購買</strong><div class="note">在「隨買跨店取首頁」選購商品，可使用億家Pay或店舖結帳。</div></div>
   <div class="guide-card"><strong>2. 兌換</strong><div class="note">到門市出示會員條碼，由 TM 顯示可兌換商品並選擇兌換數量；兌換不再收款、不累點。</div></div>
-  <div class="guide-card"><strong>3. 退貨</strong><div class="note">完全未兌換且付款完成後 7 天內才能退貨。店舖結帳需回原付款門市並出示 YR 退貨條碼。</div></div>
+  <div class="guide-card"><strong>3. 退貨</strong><div class="note">會員購買後如需辦理退貨，請攜帶發票至原銷售店舖辦理。已有兌換、預約或轉贈紀錄時，退款依優惠套組實付金額扣抵已使用商品價值後計算；轉贈視同已兌換／領取。</div></div>
 </section>
 
 <section id="anybuyRights" class="view">
   <div class="header2"><button class="back" onclick="showView('anybuyCenter')">‹</button><h2>權益公告</h2></div>
-  <div class="guide-card"><strong>退貨資格</strong><div class="note">商品只要曾兌換任何數量，即不可退貨；完全未兌換且仍在 7 天退貨期限內才可申請。</div></div>
-  <div class="guide-card"><strong>店舖結帳退貨</strong><div class="note">僅能回原付款門市辦理。App 會提供 YR CODE128 退貨條碼供 TM 掃描。</div></div>
-  <div class="guide-card"><strong>隨買跨店取營收</strong><div class="note">購買時不計入日營收；兌換時才依原實付淨額按兌換比例認列，累計不超過原實付金額。</div></div>
+
+  <div class="guide-card">
+    <strong>一般商品退貨與退款</strong>
+    <div class="note">
+      會員購買後如需辦理商品退貨，請攜帶發票至原銷售店舖辦理。若已有兌換、預約、領取或轉贈紀錄，退款將依該筆優惠套組實付金額扣抵已使用商品價值後計算。消費者轉贈商品予他人時，視同已兌換／領取該商品。
+    </div>
+  </div>
+
+  <div class="guide-card">
+    <strong>逾兌換／預約期限一般商品</strong>
+    <div class="note">
+      退款金額＝付款金額－（已兌換／預約組數 × 一組商品金額）－（未滿一組之已兌換／預約商品個數 × 一個商品原價）。<br><br>
+      未滿一組之已兌換／預約商品個數乘以單品原價的扣抵金額，最高以一組商品金額為上限；若計算後退款金額為負數，實際退款金額自動歸零，不另向會員收取費用。轉贈商品視同已兌換／領取。
+    </div>
+  </div>
+
+  <div class="guide-card">
+    <strong>環保杯說明</strong>
+    <div class="note">
+      1. 會員使用本服務購買現煮杯裝飲品，若持環保杯兌換或領取，得依當時法令、活動或系統規則取得對應之環保杯獎勵金或回饋，並回饋至億家錢包或本公司指定帳戶。<br><br>
+      2. 會員應於兌換或領取前主動告知店員使用環保杯，並於收銀機確認當次適用杯數及回饋金額；一經完成交易，除可歸責於本公司之事由外，不得事後爭議。
+    </div>
+  </div>
+
+  <div class="guide-card">
+    <strong>歷程紀錄</strong>
+    <div class="note">
+      本服務之購買、兌換、取貨、轉贈、共享或禮物領取等紀錄，將依系統功能保留一定期間供會員查詢；實際保留期間與呈現方式，以 App 或系統頁面顯示為準。
+    </div>
+  </div>
+
+  <div class="guide-card">
+    <strong>店舖結帳退貨</strong>
+    <div class="note">
+      店舖結帳之退貨應回原銷售店舖辦理；App 會依退貨流程提供 YR CODE128 退貨條碼供 TM 掃描。
+    </div>
+  </div>
+
+  <div class="guide-card">
+    <strong>隨買跨店取營收</strong>
+    <div class="note">
+      購買時不計入日營收；兌換時依原實付淨額按兌換比例認列，累計認列金額不超過原實付金額。
+    </div>
+  </div>
 </section>
 
 <section id="profile" class="view">
