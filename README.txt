@@ -1,23 +1,36 @@
-億家 App v0.10.8.2 Product Redeem QR
+億家 App v0.10.9.0 Points Redeem & Discount
 
-這版把「我的商品」兌換流程改成商品專用 QR：
+新增：
+1. 點數兌換
+   - 點數頁新增「點數兌換」入口。
+   - 兌換項目由 HQ state：yj_app_point_rewards 讀取。
+   - 兌換成功即扣點，寫入 app_point_transactions。
+   - 同步建立「我的點數兌換」紀錄。
 
-1. 「出示會員條碼」改成「出示兌換條碼」。
-2. 會員先選本次兌換數量。
-3. App 呼叫 app_create_redeem_ticket() 產生 YD 開頭的一次性兌換碼。
-4. QR 有效 600 秒。
-5. QR 內容只代表這次選定的商品與數量，不是會員條碼。
-6. 同一會員同一商品重新產生兌換碼時，舊的 pending 碼會取消。
-7. 一般會員條碼仍保留給正常消費結帳集點。
+2. 點數折抵
+   - 點數頁新增「點數折抵」入口。
+   - 會員在 App 先選要使用的點數。
+   - App 產生 YPD 開頭、600 秒有效的折抵 QR Code。
+   - TM 不再提供點數選擇。
+   - TM 掃 YPD 後取得 points / discountAmount。
+   - 一般商品交易成功後，才呼叫 tm_complete_point_discount_ticket() 正式扣點。
+   - 若交易取消，不會先扣會員點數。
 
-TM 串接規則：
-- 掃到 YD 開頭：
-  1) 呼叫 tm_get_app_redeem_ticket(YD...)
-  2) 取得 memberPhone / memberProductId / quantity
-  3) 交給既有 tm_redeem_anybuy 正式兌換流程
-  4) 只有 tm_redeem_anybuy 成功後，才呼叫 tm_complete_app_redeem_ticket(...)
-- 這樣既有的剩餘數量、到期限制、兌換紀錄、營收認列規則都繼續沿用。
+3. SC 可預留的設定
+   yj_hq_app_settings → appBackend：
+   - pointDiscountEnabled
+   - pointDiscountPointsPerDollar
+   - pointDiscountMinPoints
+   - pointDiscountStep
+   - pointDiscountMaxPoints
 
-需要：
-- 先在 Supabase SQL Editor 執行 redeem_ticket_backend.sql 內容一次。
-- 再上傳新的 index.html。
+目前預設：
+- 1 點 = $1
+- 最低 1 點
+- 1 點為單位
+- 0 = 不設折抵點數上限
+
+注意：
+- 先執行 points_redeem_discount_backend.sql。
+- 再上傳 index.html。
+- 點數兌換商品若尚未由 SC 上架，App 會正常顯示「目前沒有上架中的點數兌換項目」，不會出現假商品。

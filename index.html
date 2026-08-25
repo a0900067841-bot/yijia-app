@@ -474,6 +474,35 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .redeem-ticket-code{font-size:12px;color:#8b9299;letter-spacing:.7px;word-break:break-all}
 .redeem-ticket-note{background:#eef9f2;border:1px solid #cfe9d7;color:#17663b;border-radius:14px;padding:12px;margin-top:14px;font-size:13px;line-height:1.6}
 
+
+/* v0.10.9.0 點數兌換／點數折抵 */
+.points-action-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0 18px}
+.points-action-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;cursor:pointer}
+.points-action-card .ico{font-size:30px;margin-bottom:8px}
+.points-action-card strong{display:block;font-size:16px}
+.points-action-card small{display:block;color:#7a828a;margin-top:5px;line-height:1.45}
+.reward-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.reward-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:12px}
+.reward-pic{aspect-ratio:1.2/1;border-radius:14px;background:#fff6ea;display:grid;place-items:center;font-size:36px;overflow:hidden}
+.reward-pic img{width:100%;height:100%;object-fit:cover}
+.reward-card h4{margin:10px 0 4px;font-size:15px}
+.reward-card .cost{font-weight:900;color:#ea6a00;font-size:18px}
+.reward-card .meta{font-size:12px;color:#7a828a;line-height:1.5;margin-top:5px}
+.reward-card button{width:100%;border:0;border-radius:12px;background:var(--green);color:#fff;padding:9px;margin-top:10px;font-weight:800}
+.reward-card button:disabled{opacity:.45}
+.point-discount-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px}
+.point-discount-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #eef0f2}
+.point-discount-row:last-child{border-bottom:0}
+.point-input{width:120px;border:1px solid #d9dee3;border-radius:12px;padding:10px;font-size:18px;text-align:right}
+.discount-preview{background:#eef9f2;border:1px solid #cfe9d7;border-radius:16px;padding:14px;margin-top:14px;color:#17663b}
+.point-qr-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px 18px;text-align:center;margin-top:14px}
+.point-qr{width:220px;height:220px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center}
+.point-qr img,.point-qr canvas{max-width:100%!important;height:auto!important}
+.point-ticket-code{font-size:12px;color:#8b9299;letter-spacing:.7px;word-break:break-all}
+.my-reward-row{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
+.my-reward-row strong{display:block}
+.my-reward-row small{display:block;color:#7a828a;margin-top:5px;line-height:1.5}
+
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -662,14 +691,86 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   </div>
 </section>
 
+
 <section id="points" class="view">
-<div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>億家點數</h2></div>
-<div class="bigpoints"><small>目前可用點數</small><div id="pointsBalance" class="num">-- 點</div><div id="pointsExpiry">等待點數資料表接通</div></div>
-<div class="section-title"><h3>點數紀錄</h3></div>
-<div id="pointsHistory" class="list history">
-  <div class="row"><div><strong>尚未讀取點數紀錄</strong><small>尚無點數紀錄時會顯示在這裡；資料現在直接讀取 Supabase</small></div></div>
-</div>
-<div class="data-wait">這一版不再顯示假點數。登入目前為測試連線版；等確認點數資料表後，再接上真實餘額與紀錄。</div>
+  <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>億家點數</h2></div>
+  <div class="bigpoints">
+    <small>目前可用點數</small>
+    <div id="pointsBalance" class="num">-- 點</div>
+    <div id="pointsExpiry">讀取中…</div>
+  </div>
+
+  <div class="points-action-grid">
+    <div class="points-action-card" onclick="showView('pointRewards');loadPointRewards()">
+      <div class="ico">🎁</div>
+      <strong>點數兌換</strong>
+      <small>直接用億家點數兌換商品或優惠。</small>
+    </div>
+    <div class="points-action-card" onclick="showView('pointDiscount');openPointDiscount()">
+      <div class="ico">🪙</div>
+      <strong>點數折抵</strong>
+      <small>在 App 選擇折抵點數，再出示折抵 QR 給 TM。</small>
+    </div>
+  </div>
+
+  <div class="section-title"><h3>點數紀錄</h3><button onclick="loadPointHistory()">重新整理</button></div>
+  <div id="pointsHistory" class="list history">
+    <div class="row"><div><strong>點數紀錄載入中</strong><small>累點、兌換、折抵與退貨扣點都會顯示在這裡。</small></div></div>
+  </div>
+</section>
+
+
+
+<section id="pointRewards" class="view">
+  <div class="header2"><button class="back" onclick="showView('points')">‹</button><h2>點數兌換</h2></div>
+  <div class="bigpoints">
+    <small>目前可用點數</small>
+    <div id="rewardPointsBalance" class="num">-- 點</div>
+    <div>兌換完成後會立即扣除點數。</div>
+  </div>
+  <div class="section-title"><h3>可兌換項目</h3><button onclick="loadPointRewards()">重新整理</button></div>
+  <div id="pointRewardGrid" class="reward-grid">
+    <div class="empty-box" style="grid-column:1/-1"><div class="big">🎁</div>載入中…</div>
+  </div>
+  <div class="section-title"><h3>我的點數兌換</h3><button onclick="loadMyPointRewards()">重新整理</button></div>
+  <div id="myPointRewards"></div>
+</section>
+
+<section id="pointDiscount" class="view">
+  <div class="header2"><button class="back" onclick="closePointDiscount()">‹</button><h2>點數折抵</h2></div>
+
+  <div id="pointDiscountSetup">
+    <div class="point-discount-card">
+      <div class="point-discount-row">
+        <div><strong>目前可用點數</strong><small style="display:block;color:#7a828a;margin-top:4px">由 App 直接使用，不在 TM 上選擇點數。</small></div>
+        <strong id="discountAvailablePoints">-- 點</strong>
+      </div>
+      <div class="point-discount-row">
+        <div><strong>使用點數</strong><small id="discountRuleText" style="display:block;color:#7a828a;margin-top:4px">讀取折抵規則中…</small></div>
+        <input id="discountPointsInput" class="point-input" type="number" inputmode="numeric" min="1" value="1" oninput="refreshPointDiscountPreview()">
+      </div>
+      <div class="discount-preview">
+        預計折抵 <strong id="discountAmountPreview">$0</strong><br>
+        <span id="discountRemainPreview">折抵完成後剩餘 -- 點</span>
+      </div>
+    </div>
+
+    <button id="createPointDiscountBtn" class="pay-continue" style="margin-top:14px" onclick="createPointDiscountTicket()">產生點數折抵 QR Code</button>
+  </div>
+
+  <div id="pointDiscountQrWrap" style="display:none">
+    <div class="point-qr-card">
+      <div id="pointDiscountCountdown" style="font-size:18px;font-weight:900;margin-bottom:14px">條碼有效期限：600秒</div>
+      <div style="font-size:13px;color:#7a828a;margin-bottom:10px">僅限 億家 門市結帳折抵使用</div>
+      <div id="pointDiscountQr" class="point-qr"></div>
+      <div id="pointDiscountCode" class="point-ticket-code">--</div>
+      <div id="pointDiscountSummary" style="margin-top:14px"></div>
+    </div>
+    <div class="redeem-ticket-note">
+      結帳時直接出示此「點數折抵 QR Code」給 TM 掃描。TM 不再提供點數選擇；點數與折抵金額由 App 先決定，交易成功後才正式扣點。
+    </div>
+    <button class="pay-continue" style="margin-top:14px" onclick="closePointDiscount()">返回點數</button>
+  </div>
 </section>
 
 <section id="redeem" class="view">
@@ -764,10 +865,10 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <div class="grow"><strong>銀行帳戶</strong><small>預留串接</small></div>
       <span>›</span>
     </div>
-    <div class="pay-method">
+    <div class="pay-method" onclick="showView('pointDiscount');openPointDiscount()">
       <div class="method-icon">🪙</div>
-      <div class="grow"><strong>點數折抵</strong><small>付款時可選擇使用億家點數</small></div>
-      <div class="switch on" onclick="this.classList.toggle('on')"></div>
+      <div class="grow"><strong>點數折抵</strong><small>由 App 產生折抵 QR，TM 不再選擇點數</small></div>
+      <span>›</span>
     </div>
   </div>
 
@@ -796,7 +897,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.8.2 Product Redeem QR</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.0 Points Redeem & Discount</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1190,6 +1291,9 @@ function showView(id){
   if(id==='subscriptionManagement') loadSubscriptions();
   if(id==='reservationManagement') loadReservations();
   if(id==='notificationCenter') loadNotificationCenter(true);
+  if(id==='pointRewards') loadPointRewards();
+  if(id==='pointDiscount') openPointDiscount();
+  if(id!=='pointDiscount') stopPointDiscountCountdown();
   if(id==='products'){
     loadMyProducts();
     loadRedemptions();
@@ -1348,7 +1452,7 @@ async function loadPointHistory(){
     box.innerHTML='<div class="row"><div><strong>尚無點數紀錄</strong><small>完成累點、折抵或活動贈點後會顯示在這裡</small></div></div>';
     return;
   }
-  const labels={earn:'消費累點',redeem:'點數折抵',refund_deduct:'退貨扣點',bonus:'活動贈點'};
+  const labels={earn:'消費累點',redeem:'點數折抵',discount:'點數折抵',reward_redeem:'點數兌換',refund_deduct:'退貨扣點',bonus:'活動贈點'};
   box.innerHTML=data.map(t=>{
     const plus=t.points>0;
     return `<div class="row"><div><strong>${labels[t.transaction_type]||t.transaction_type}</strong><small>${t.description||''} · ${new Date(t.created_at).toLocaleString('zh-TW')}</small></div><div class="${plus?'plus':'minus'}">${plus?'+':''}${t.points}</div></div>`;
@@ -1357,15 +1461,279 @@ async function loadPointHistory(){
 
 function renderPoints(p){
   const available=Number(p?.available_points||0);
+  currentPointBalance=available;
   const expiring=Number(p?.expiring_points||0);
   document.getElementById('homePoints').textContent=available.toLocaleString();
   document.getElementById('homeExpiry').textContent=expiring>0 ? expiring.toLocaleString()+' 點即將到期' : '目前無即將到期點數';
   document.getElementById('pointsBalance').textContent=available.toLocaleString()+' 點';
+  const rewardBal=document.getElementById('rewardPointsBalance');
+  if(rewardBal) rewardBal.textContent=available.toLocaleString()+' 點';
+  const discountBal=document.getElementById('discountAvailablePoints');
+  if(discountBal) discountBal.textContent=available.toLocaleString()+' 點';
   document.getElementById('pointsExpiry').textContent=
     expiring>0
       ? expiring.toLocaleString()+' 點將於 '+(p.expiry_date||'指定日期')+' 到期'
       : '目前無即將到期點數';
 }
+
+
+let currentPointBalance=0;
+let pointRewardRows=[];
+let pointDiscountSettings={
+  enabled:true,
+  pointsPerDollar:1,
+  minPoints:1,
+  step:1,
+  maxPoints:0
+};
+let pointDiscountCountdownTimer=null;
+let pointDiscountExpiresAt=null;
+
+async function loadPointRewards(){
+  await loadPoints();
+  const bal=document.getElementById('rewardPointsBalance');
+  if(bal) bal.textContent=currentPointBalance.toLocaleString()+' 點';
+
+  const host=document.getElementById('pointRewardGrid');
+  if(host) host.innerHTML='<div class="empty-box" style="grid-column:1/-1"><div class="big">🎁</div>載入中…</div>';
+
+  try{
+    const {data,error}=await sb.rpc('app_get_point_rewards');
+    if(error) throw error;
+    pointRewardRows=Array.isArray(data)?data:[];
+    renderPointRewards();
+    await loadMyPointRewards();
+  }catch(err){
+    console.error(err);
+    if(host) host.innerHTML=`<div class="empty-box" style="grid-column:1/-1"><div class="big">⚠️</div>${safeText(err.message||'點數兌換資料讀取失敗')}</div>`;
+  }
+}
+
+function renderPointRewards(){
+  const host=document.getElementById('pointRewardGrid');
+  if(!host) return;
+
+  if(!pointRewardRows.length){
+    host.innerHTML='<div class="empty-box" style="grid-column:1/-1"><div class="big">🎁</div>目前沒有上架中的點數兌換項目</div>';
+    return;
+  }
+
+  host.innerHTML=pointRewardRows.map(r=>{
+    const id=String(r.rewardId||r.id||r.code||'');
+    const name=r.name||'點數兌換項目';
+    const cost=Number(r.pointsCost??r.points??r.costPoints??0);
+    const stock=Number(r.stock??r.remainingStock??-1);
+    const disabled=cost<=0 || currentPointBalance<cost || stock===0;
+    const image=r.imageUrl||r.image_url||'';
+    return `<div class="reward-card">
+      <div class="reward-pic">${image?`<img src="${safeText(image)}" alt="">`:'🎁'}</div>
+      <h4>${safeText(name)}</h4>
+      <div class="cost">${cost.toLocaleString()} 點</div>
+      <div class="meta">
+        ${r.description?safeText(r.description):'使用點數直接兌換'}
+        ${stock>=0?`<br>剩餘 ${stock} 份`:''}
+      </div>
+      <button ${disabled?'disabled':''} onclick="redeemPointReward('${safeText(id).replace(/'/g,"&#39;")}')">${currentPointBalance<cost?'點數不足':'立即兌換'}</button>
+    </div>`;
+  }).join('');
+}
+
+async function redeemPointReward(rewardId){
+  const reward=pointRewardRows.find(r=>String(r.rewardId||r.id||r.code||'')===String(rewardId));
+  if(!reward) return;
+  const cost=Number(reward.pointsCost??reward.points??reward.costPoints??0);
+  if(!confirm(`確定使用 ${cost.toLocaleString()} 點兌換「${reward.name||'此項目'}」嗎？`)) return;
+
+  try{
+    const {data,error}=await sb.rpc('app_redeem_point_reward',{p_reward_id:String(rewardId)});
+    if(error) throw error;
+    alert(`兌換成功\n已使用 ${Number(data?.pointsUsed||cost).toLocaleString()} 點`);
+    await loadPoints();
+    await loadPointHistory();
+    await loadPointRewards();
+  }catch(err){
+    console.error(err);
+    alert('點數兌換失敗：'+(err?.message||err));
+  }
+}
+
+async function loadMyPointRewards(){
+  const host=document.getElementById('myPointRewards');
+  if(!host) return;
+  try{
+    const {data,error}=await sb.rpc('app_get_my_point_rewards');
+    if(error) throw error;
+    const rows=Array.isArray(data)?data:[];
+    if(!rows.length){
+      host.innerHTML='<div class="empty-box"><div class="big">🎟️</div>目前沒有點數兌換紀錄</div>';
+      return;
+    }
+    host.innerHTML=rows.map(r=>`
+      <div class="my-reward-row">
+        <strong>${safeText(r.rewardName||r.name||'點數兌換')}</strong>
+        <small>
+          使用 ${Number(r.pointsUsed||0).toLocaleString()} 點
+          ${r.redeemedAt?` · ${new Date(r.redeemedAt).toLocaleString('zh-TW')}`:''}
+          ${r.validUntil?`<br>有效至 ${new Date(r.validUntil).toLocaleDateString('zh-TW')}`:''}
+        </small>
+      </div>`).join('');
+  }catch(err){
+    console.error(err);
+    host.innerHTML='<div class="empty-box">點數兌換紀錄讀取失敗</div>';
+  }
+}
+
+function stopPointDiscountCountdown(){
+  if(pointDiscountCountdownTimer){
+    clearInterval(pointDiscountCountdownTimer);
+    pointDiscountCountdownTimer=null;
+  }
+}
+
+function getPointDiscountAmount(points){
+  const ratio=Math.max(1,Number(pointDiscountSettings.pointsPerDollar||1));
+  return Math.floor(Number(points||0)/ratio);
+}
+
+async function loadPointDiscountSettings(){
+  try{
+    const row=await getStateRow('001','yj_hq_app_settings');
+    const backend=row?.data?.appBackend||row?.data?.backend||row?.data||{};
+    pointDiscountSettings={
+      enabled:backend.pointDiscountEnabled!==false,
+      pointsPerDollar:Math.max(1,Number(backend.pointDiscountPointsPerDollar||1)),
+      minPoints:Math.max(1,Number(backend.pointDiscountMinPoints||1)),
+      step:Math.max(1,Number(backend.pointDiscountStep||1)),
+      maxPoints:Math.max(0,Number(backend.pointDiscountMaxPoints||0))
+    };
+  }catch(e){
+    console.warn('點數折抵設定讀取失敗，使用預設 1點=1元',e);
+  }
+}
+
+async function openPointDiscount(){
+  stopPointDiscountCountdown();
+  document.getElementById('pointDiscountSetup').style.display='block';
+  document.getElementById('pointDiscountQrWrap').style.display='none';
+  document.getElementById('pointDiscountQr').innerHTML='';
+
+  await loadPoints();
+  await loadPointDiscountSettings();
+
+  const avail=document.getElementById('discountAvailablePoints');
+  if(avail) avail.textContent=currentPointBalance.toLocaleString()+' 點';
+
+  const input=document.getElementById('discountPointsInput');
+  if(input){
+    input.min=String(pointDiscountSettings.minPoints);
+    input.step=String(pointDiscountSettings.step);
+    const max=pointDiscountSettings.maxPoints>0
+      ? Math.min(currentPointBalance,pointDiscountSettings.maxPoints)
+      : currentPointBalance;
+    input.max=String(Math.max(0,max));
+    input.value=String(Math.min(Math.max(pointDiscountSettings.minPoints,pointDiscountSettings.step),Math.max(pointDiscountSettings.minPoints,max||pointDiscountSettings.minPoints)));
+  }
+
+  const rule=document.getElementById('discountRuleText');
+  if(rule){
+    rule.textContent=`${pointDiscountSettings.pointsPerDollar} 點折抵 $1，最低 ${pointDiscountSettings.minPoints} 點，依 ${pointDiscountSettings.step} 點為單位`;
+  }
+  refreshPointDiscountPreview();
+}
+
+function refreshPointDiscountPreview(){
+  const input=document.getElementById('discountPointsInput');
+  if(!input) return;
+  let points=Math.floor(Number(input.value||0));
+  const min=pointDiscountSettings.minPoints;
+  const step=pointDiscountSettings.step;
+  const maxSetting=pointDiscountSettings.maxPoints>0?pointDiscountSettings.maxPoints:currentPointBalance;
+  const max=Math.min(currentPointBalance,maxSetting);
+
+  if(points<min) points=min;
+  points=Math.floor(points/step)*step;
+  if(points>max) points=Math.floor(max/step)*step;
+  if(points<0) points=0;
+  input.value=String(points);
+
+  const amount=getPointDiscountAmount(points);
+  document.getElementById('discountAmountPreview').textContent=money(amount);
+  document.getElementById('discountRemainPreview').textContent=`折抵完成後剩餘 ${(currentPointBalance-points).toLocaleString()} 點`;
+}
+
+async function createPointDiscountTicket(){
+  const input=document.getElementById('discountPointsInput');
+  const points=Math.floor(Number(input?.value||0));
+  if(points<=0){
+    alert('請輸入要使用的點數。');
+    return;
+  }
+
+  const btn=document.getElementById('createPointDiscountBtn');
+  btn.disabled=true;
+  btn.textContent='產生中…';
+
+  try{
+    const {data,error}=await sb.rpc('app_create_point_discount_ticket',{p_points:points});
+    if(error) throw error;
+
+    const code=String(data?.discountCode||data?.code||'');
+    if(!code) throw new Error('後端未回傳點數折抵碼');
+
+    pointDiscountExpiresAt=data?.expiresAt?new Date(data.expiresAt):new Date(Date.now()+600000);
+
+    document.getElementById('pointDiscountSetup').style.display='none';
+    document.getElementById('pointDiscountQrWrap').style.display='block';
+    document.getElementById('pointDiscountCode').textContent=code;
+    document.getElementById('pointDiscountSummary').innerHTML=
+      `使用 <strong>${Number(data?.points||points).toLocaleString()} 點</strong><br>`+
+      `折抵 <strong style="color:#ea6a00">${money(Number(data?.discountAmount||getPointDiscountAmount(points)))}</strong>`;
+
+    const qr=document.getElementById('pointDiscountQr');
+    qr.innerHTML='';
+    if(window.QRCode){
+      new QRCode(qr,{text:code,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
+    }else{
+      qr.textContent=code;
+    }
+    startPointDiscountCountdown();
+  }catch(err){
+    console.error(err);
+    alert('點數折抵條碼建立失敗：'+(err?.message||err));
+  }finally{
+    btn.disabled=false;
+    btn.textContent='產生點數折抵 QR Code';
+  }
+}
+
+function startPointDiscountCountdown(){
+  stopPointDiscountCountdown();
+  const tick=()=>{
+    if(!pointDiscountExpiresAt) return;
+    const sec=Math.max(0,Math.ceil((pointDiscountExpiresAt-new Date())/1000));
+    const el=document.getElementById('pointDiscountCountdown');
+    if(el) el.textContent=`條碼有效期限：${sec}秒`;
+    if(sec<=0){
+      stopPointDiscountCountdown();
+      if(el){
+        el.textContent='點數折抵條碼已失效';
+        el.style.color='#b42318';
+      }
+      const qr=document.getElementById('pointDiscountQr');
+      if(qr) qr.innerHTML='<div style="font-size:48px">⌛</div>';
+    }
+  };
+  tick();
+  pointDiscountCountdownTimer=setInterval(tick,1000);
+}
+
+function closePointDiscount(){
+  stopPointDiscountCountdown();
+  showView('points');
+  loadPoints();
+  loadPointHistory();
+}
+
 
 function getDisplayName(){
   return currentMember?.name?.trim()||'會員';
