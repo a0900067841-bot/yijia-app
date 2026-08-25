@@ -454,6 +454,26 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .store-order-summary strong{font-size:26px;color:var(--orange)}
 .store-order-expired{color:#b42318}
 
+
+/* v0.10.8.2 商品專用兌換 QR */
+.redeem-ticket-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px;margin-bottom:14px}
+.redeem-ticket-product{display:flex;gap:12px;align-items:center}
+.redeem-ticket-pic{width:64px;height:64px;border-radius:14px;background:#fff3e8;display:grid;place-items:center;font-size:30px;overflow:hidden}
+.redeem-ticket-pic img{width:100%;height:100%;object-fit:cover}
+.redeem-ticket-main{flex:1}
+.redeem-ticket-main strong{font-size:17px}
+.redeem-ticket-main small{display:block;color:#7a828a;margin-top:4px}
+.redeem-qty-row{display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding-top:16px;border-top:1px solid #edf0f2}
+.redeem-qty-control{display:flex;align-items:center;gap:14px}
+.redeem-qty-control button{width:38px;height:38px;border-radius:50%;border:1px solid #d9dee3;background:#fff;font-size:22px}
+.redeem-qty-control b{font-size:20px;min-width:24px;text-align:center}
+.redeem-ticket-qrbox{background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px 16px;text-align:center}
+.redeem-ticket-countdown{font-size:18px;font-weight:900;margin:4px 0 14px}
+.redeem-ticket-qr{width:220px;height:220px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center}
+.redeem-ticket-qr img,.redeem-ticket-qr canvas{max-width:100%!important;height:auto!important}
+.redeem-ticket-code{font-size:12px;color:#8b9299;letter-spacing:.7px;word-break:break-all}
+.redeem-ticket-note{background:#eef9f2;border:1px solid #cfe9d7;color:#17663b;border-radius:14px;padding:12px;margin-top:14px;font-size:13px;line-height:1.6}
+
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -569,6 +589,54 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
 
 
+
+<section id="redeemTicket" class="view">
+  <div class="header2"><button class="back" onclick="closeRedeemTicket()">‹</button><h2>商品兌換</h2></div>
+
+  <div id="redeemTicketSetup">
+    <div class="redeem-ticket-card">
+      <div class="redeem-ticket-product">
+        <div id="redeemTicketPic" class="redeem-ticket-pic">☕</div>
+        <div class="redeem-ticket-main">
+          <strong id="redeemTicketName">商品</strong>
+          <small id="redeemTicketRemain">剩餘 0 件</small>
+          <small id="redeemTicketExpiry"></small>
+        </div>
+      </div>
+
+      <div class="redeem-qty-row">
+        <div>
+          <strong>本次兌換數量</strong>
+          <small style="display:block;color:#7a828a;margin-top:4px">產生後 600 秒內有效</small>
+        </div>
+        <div class="redeem-qty-control">
+          <button onclick="adjustRedeemTicketQty(-1)">−</button>
+          <b id="redeemTicketQty">1</b>
+          <button onclick="adjustRedeemTicketQty(1)">＋</button>
+        </div>
+      </div>
+    </div>
+
+    <button id="redeemTicketCreateBtn" class="pay-continue" onclick="createRedeemTicket()">產生兌換 QR Code</button>
+  </div>
+
+  <div id="redeemTicketQrWrap" style="display:none">
+    <div class="redeem-ticket-qrbox">
+      <div class="redeem-ticket-countdown" id="redeemTicketCountdown">條碼有效期限：600秒</div>
+      <div style="color:#7a828a;font-size:13px;margin-bottom:10px">僅限 億家 門市兌換使用</div>
+      <div id="redeemTicketQr" class="redeem-ticket-qr"></div>
+      <div id="redeemTicketCode" class="redeem-ticket-code">--</div>
+      <div id="redeemTicketSummary" style="margin-top:14px"></div>
+    </div>
+
+    <div class="redeem-ticket-note">
+      請直接出示此商品兌換 QR Code 給 TM 掃描。此 QR Code 只代表本次選定的商品與數量，不是會員條碼；完成兌換後即不可再次使用。
+    </div>
+
+    <button class="pay-continue" style="margin-top:14px" onclick="cancelRedeemTicketView()">返回我的商品</button>
+  </div>
+</section>
+
 <section id="returnRequest" class="view">
   <div class="header2"><button class="back" onclick="showView('products')">‹</button><h2>申請退貨</h2></div>
   <div class="return-card">
@@ -635,7 +703,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div class="header2"><button class="back" onclick="showView('anybuyCenter')">‹</button><h2>我的商品</h2></div>
 
   <div id="redeemSyncNotice" style="background:#eef9f2;border:1px solid #cfe9d7;color:#17663b;border-radius:16px;padding:12px 14px;margin-bottom:12px;font-size:13px;line-height:1.55;">
-    到門市出示會員條碼，由 TM 選擇本次兌換商品與數量；TM 完成兌換後，本頁會自動更新剩餘數量與兌換紀錄。
+    選擇要兌換的商品與數量後，產生本次商品專用兌換 QR Code；到門市直接給 TM 掃描，不需要出示會員條碼。
   </div>
 
   <div id="myProducts" class="list">
@@ -728,7 +796,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.8.1 Store Checkout QR</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.8.2 Product Redeem QR</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -919,7 +987,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <h3>兌換商品</h3>
     <p>兌換不收款、不累積點數；門市 TM 完成兌換後，App 會同步更新剩餘數量。</p>
     <div class="help-step-v1070"><div class="num">1</div><div class="text">開啟「我的商品」。</div></div>
-    <div class="help-step-v1070"><div class="num">2</div><div class="text">到門市出示會員條碼，由 TM 選擇本次兌換商品與數量。</div></div>
+    <div class="help-step-v1070"><div class="num">2</div><div class="text">在「我的商品」選擇本次兌換數量並產生商品專用兌換 QR Code，再到門市直接給 TM 掃描。</div></div>
     <div class="help-step-v1070"><div class="num">3</div><div class="text">完成後可在「商品使用紀錄」查看兌換紀錄。</div></div>
   </div>
 
@@ -1114,6 +1182,7 @@ let currentMember=null;
 function showView(id){
   if(id!=='storeOrder') stopStoreOrderMonitor();
   if(id!=='products') stopRedemptionSyncMonitor();
+  if(id!=='redeemTicket') stopRedeemTicketCountdown();
   if(id==='checkout'||id==='pay') loadYijiaPaySummary();
   if(id==='orderManagement') loadOrderManagement();
   if(id==='productUsage') loadProductUsage();
@@ -2644,7 +2713,7 @@ async function refreshRedemptionSync(){
       notice.style.borderColor='#afd9bd';
       setTimeout(()=>{
         if(notice){
-          notice.innerHTML='到門市出示會員條碼，由 TM 選擇本次兌換商品與數量；TM 完成兌換後，本頁會自動更新剩餘數量與兌換紀錄。';
+          notice.innerHTML='選擇要兌換的商品與數量後，產生本次商品專用兌換 QR Code；到門市直接給 TM 掃描，不需要出示會員條碼。';
         }
       },5000);
     }
@@ -2669,6 +2738,159 @@ document.addEventListener('visibilitychange',()=>{
     refreshRedemptionSync();
   }
 });
+
+
+let selectedRedeemProduct=null;
+let redeemTicketQty=1;
+let redeemTicketCountdownTimer=null;
+let redeemTicketExpiresAt=null;
+
+function stopRedeemTicketCountdown(){
+  if(redeemTicketCountdownTimer){
+    clearInterval(redeemTicketCountdownTimer);
+    redeemTicketCountdownTimer=null;
+  }
+}
+
+function openRedeemTicket(encoded){
+  try{
+    selectedRedeemProduct=JSON.parse(encoded);
+  }catch(e){
+    console.error(e);
+    alert('商品資料開啟失敗，請重新整理後再試。');
+    return;
+  }
+
+  const lifecycle=productLifecycleState(selectedRedeemProduct);
+  const remain=Math.max(0,Number(selectedRedeemProduct?.remainingQuantity||0));
+  if(!lifecycle.canOperate || remain<=0){
+    alert('此商品目前不可兌換。');
+    return;
+  }
+
+  redeemTicketQty=1;
+  document.getElementById('redeemTicketQty').textContent='1';
+  document.getElementById('redeemTicketName').textContent=selectedRedeemProduct.name||'商品';
+  document.getElementById('redeemTicketRemain').textContent=`剩餘 ${remain} 件`;
+
+  const expiry=document.getElementById('redeemTicketExpiry');
+  if(expiry){
+    expiry.textContent=selectedRedeemProduct.validUntil
+      ? '有效至 '+new Date(selectedRedeemProduct.validUntil).toLocaleDateString('zh-TW')
+      : '無指定到期日';
+  }
+
+  const pic=document.getElementById('redeemTicketPic');
+  const shopProduct=shopProductsCache.find(p=>
+    String(p.code||'')===String(selectedRedeemProduct.code||'') ||
+    String(p.id||'')===String(selectedRedeemProduct.productId||'')
+  )||{};
+  if(pic){
+    const image=shopProduct.image_url||'';
+    pic.innerHTML=image?`<img src="${safeText(image)}" alt="">`:'☕';
+  }
+
+  document.getElementById('redeemTicketSetup').style.display='block';
+  document.getElementById('redeemTicketQrWrap').style.display='none';
+  document.getElementById('redeemTicketQr').innerHTML='';
+  stopRedeemTicketCountdown();
+  showView('redeemTicket');
+}
+
+function adjustRedeemTicketQty(delta){
+  if(!selectedRedeemProduct) return;
+  const remain=Math.max(1,Number(selectedRedeemProduct.remainingQuantity||1));
+  redeemTicketQty=Math.max(1,Math.min(remain,redeemTicketQty+Number(delta||0)));
+  document.getElementById('redeemTicketQty').textContent=String(redeemTicketQty);
+}
+
+async function createRedeemTicket(){
+  if(!selectedRedeemProduct) return;
+
+  const btn=document.getElementById('redeemTicketCreateBtn');
+  btn.disabled=true;
+  btn.textContent='產生中…';
+
+  try{
+    const {data,error}=await sb.rpc('app_create_redeem_ticket',{
+      p_member_product_id:String(selectedRedeemProduct.id),
+      p_quantity:Number(redeemTicketQty)
+    });
+    if(error) throw error;
+
+    const code=String(data?.redeemCode||data?.code||'');
+    if(!code) throw new Error('後端未回傳兌換碼');
+
+    redeemTicketExpiresAt=data?.expiresAt?new Date(data.expiresAt):new Date(Date.now()+600000);
+
+    document.getElementById('redeemTicketSetup').style.display='none';
+    document.getElementById('redeemTicketQrWrap').style.display='block';
+    document.getElementById('redeemTicketCode').textContent=code;
+    document.getElementById('redeemTicketSummary').innerHTML=
+      `<strong>${safeText(data?.productName||selectedRedeemProduct.name||'商品')}</strong><br>`+
+      `本次兌換 ${Number(data?.quantity||redeemTicketQty)} 件`;
+
+    const qr=document.getElementById('redeemTicketQr');
+    qr.innerHTML='';
+    if(window.QRCode){
+      new QRCode(qr,{
+        text:code,
+        width:220,
+        height:220,
+        correctLevel:QRCode.CorrectLevel.M
+      });
+    }else{
+      qr.innerHTML=`<div style="font-size:14px;color:#777">${safeText(code)}</div>`;
+    }
+
+    startRedeemTicketCountdown();
+  }catch(err){
+    console.error(err);
+    alert('兌換條碼建立失敗：'+(err?.message||err));
+  }finally{
+    btn.disabled=false;
+    btn.textContent='產生兌換 QR Code';
+  }
+}
+
+function startRedeemTicketCountdown(){
+  stopRedeemTicketCountdown();
+
+  const update=()=>{
+    if(!redeemTicketExpiresAt) return;
+    const sec=Math.max(0,Math.ceil((redeemTicketExpiresAt-new Date())/1000));
+    const el=document.getElementById('redeemTicketCountdown');
+    if(el) el.textContent=`條碼有效期限：${sec}秒`;
+
+    if(sec<=0){
+      stopRedeemTicketCountdown();
+      if(el){
+        el.textContent='兌換條碼已失效';
+        el.style.color='#b42318';
+      }
+      const qr=document.getElementById('redeemTicketQr');
+      if(qr) qr.innerHTML='<div style="font-size:48px">⌛</div>';
+    }
+  };
+
+  update();
+  redeemTicketCountdownTimer=setInterval(update,1000);
+}
+
+function closeRedeemTicket(){
+  stopRedeemTicketCountdown();
+  selectedRedeemProduct=null;
+  showView('products');
+}
+
+function cancelRedeemTicketView(){
+  stopRedeemTicketCountdown();
+  selectedRedeemProduct=null;
+  loadMyProducts();
+  loadRedemptions();
+  showView('products');
+}
+
 
 let selectedReturnProduct=null;
 
@@ -2782,7 +3004,7 @@ async function loadMyProducts(){
           <div class="action-row">
             ${returnBtn}
             ${returnBarcodeBtn}
-            <button class="redeem-open" ${canRedeem?'':'disabled'} onclick="openBarcode()">${canRedeem?'出示會員條碼':lifecycle.label}</button>
+            <button class="redeem-open" ${canRedeem?'':'disabled'} onclick='openRedeemTicket(${JSON.stringify(JSON.stringify(x))})'>${canRedeem?'出示兌換條碼':lifecycle.label}</button>
           </div>
         </div>
       </div>

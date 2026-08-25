@@ -1,23 +1,23 @@
-億家 App v0.10.8.1 Store Checkout QR
+億家 App v0.10.8.2 Product Redeem QR
 
-本版調整「隨買跨店取 → 店舖結帳」：
+這版把「我的商品」兌換流程改成商品專用 QR：
 
-1. 一般會員條碼保留
-   - 用於一般正常結帳的會員識別與集點。
-   - 不作為隨買商品購買結帳碼。
+1. 「出示會員條碼」改成「出示兌換條碼」。
+2. 會員先選本次兌換數量。
+3. App 呼叫 app_create_redeem_ticket() 產生 YD 開頭的一次性兌換碼。
+4. QR 有效 600 秒。
+5. QR 內容只代表這次選定的商品與數量，不是會員條碼。
+6. 同一會員同一商品重新產生兌換碼時，舊的 pending 碼會取消。
+7. 一般會員條碼仍保留給正常消費結帳集點。
 
-2. 隨買店舖結帳
-   - 購物車 → 付款資訊頁 → 店舖結帳。
-   - 直接產生「本次商品訂單專用 QR Code」。
-   - 不需要先出示會員條碼。
-   - QR Code 內容沿用既有 YS paymentCode，所以 TM 掃描後仍走原本店舖結帳訂單邏輯。
-   - 顯示商品項數、應付金額、剩餘有效秒數。
-   - 條碼失效後不可再使用。
-   - TM 收款完成後自動更新，商品加入「我的商品」。
+TM 串接規則：
+- 掃到 YD 開頭：
+  1) 呼叫 tm_get_app_redeem_ticket(YD...)
+  2) 取得 memberPhone / memberProductId / quantity
+  3) 交給既有 tm_redeem_anybuy 正式兌換流程
+  4) 只有 tm_redeem_anybuy 成功後，才呼叫 tm_complete_app_redeem_ticket(...)
+- 這樣既有的剩餘數量、到期限制、兌換紀錄、營收認列規則都繼續沿用。
 
-3. 條碼有效時間
-   - App 依後端既有 paymentDeadline / expiresAt 倒數顯示。
-   - 不在前端自行竄改後端付款期限。
-
-本版不用跑 SQL，不修改既有 TM / Supabase 店舖結帳核心邏輯。
-只需更新 index.html。
+需要：
+- 先在 Supabase SQL Editor 執行 redeem_ticket_backend.sql 內容一次。
+- 再上傳新的 index.html。
