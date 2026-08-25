@@ -351,6 +351,29 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .anybuy-submenu.open{display:block}
 .anybuy-submenu button{display:block;width:100%;border:0;background:transparent;text-align:left;padding:14px 24px 14px 68px;font-size:16px}
 
+
+/* v0.10.6.2 訂單管理整理 */
+.order-card-v1062{background:#fff;border:1px solid #e9edf0;border-radius:18px;padding:15px;margin-bottom:12px}
+.order-card-v1062 .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.order-card-v1062 .id{font-weight:800;font-size:16px}
+.order-card-v1062 .meta{font-size:13px;color:#6b7280;line-height:1.55;margin-top:5px}
+.order-card-v1062 .amount{font-size:20px;font-weight:900;color:#ea6a00;margin-top:8px}
+.order-status-pill{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:800}
+.order-status-pill.pending{background:#fff5df;color:#9a5b00}
+.order-status-pill.paid{background:#eaf8ef;color:#17663b}
+.order-status-pill.cancel{background:#f2f3f5;color:#6b7280}
+.order-status-pill.return{background:#fff0f0;color:#b42318}
+.order-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.order-actions button{border:1px solid #dfe3e8;background:#fff;border-radius:12px;padding:9px 12px}
+.order-actions button.primary{background:#1683d8;color:#fff;border-color:#1683d8}
+.order-detail-sheet{background:#fff;border:1px solid #e9edf0;border-radius:18px;padding:16px;margin-top:12px}
+.order-detail-row{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid #f1f3f5}
+.order-detail-row:last-child{border-bottom:0}
+.order-item-row{padding:11px 0;border-bottom:1px dashed #e5e7eb}
+.order-item-row:last-child{border-bottom:0}
+.order-item-row .name{font-weight:800}
+.order-item-row .meta{font-size:13px;color:#6b7280;margin-top:3px}
+
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -615,7 +638,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('redeem');loadShopProducts()"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.6.1 Usage History</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.6.2 Order Management</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -639,20 +662,24 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   </div>
 </section>
 
+
 <section id="orderManagement" class="view">
-  <div class="header2"><button class="back" onclick="showView('anybuyCenter')">‹</button><h2>訂單管理</h2></div>
-  <div class="shop-toolbar">
-    <select id="orderMonth" class="shop-search" onchange="renderOrderManagement()"></select>
-    <select id="orderStatus" class="shop-filter" onchange="renderOrderManagement()">
-      <option value="">全部狀態</option>
-      <option value="待付款">待付款</option>
-      <option value="已付款">已付款</option>
-      <option value="已取消">已取消</option>
-      <option value="已退貨">已退貨</option>
-    </select>
+  <div class="header2">
+    <button class="back" onclick="showView('anybuyCenter')">‹</button>
+    <h2>訂單管理</h2>
   </div>
-  <div id="orderManagementList"><div class="empty-panel">訂單載入中…</div></div>
+
+  <div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:12px">
+    <button class="tabbtn" onclick="setOrderFilter('all')">全部</button>
+    <button class="tabbtn" onclick="setOrderFilter('pending')">待付款</button>
+    <button class="tabbtn" onclick="setOrderFilter('paid')">已付款</button>
+    <button class="tabbtn" onclick="setOrderFilter('closed')">已取消／退款</button>
+  </div>
+
+  <div id="orderManagementList"></div>
+  <div id="orderDetailHost"></div>
 </section>
+
 
 
 
@@ -2712,19 +2739,143 @@ async function loadReservations(){
     </div>`).join('');
 }
 
+
+let orderManagementRows=[];
+let orderFilter='all';
+
+function normalizeOrderStatus(o){
+  const s=String(o.status||o.paymentStatus||'').trim();
+  if(['待付款','pending','未付款'].includes(s)) return {key:'pending',label:'待付款',cls:'pending'};
+  if(['已付款','付款完成','paid'].includes(s)) return {key:'paid',label:'已付款',cls:'paid'};
+  if(['已取消','取消','cancelled','canceled'].includes(s)) return {key:'closed',label:'已取消',cls:'cancel'};
+  if(['退款完成','已退款','退貨完成','退款中','退貨中'].includes(s)) return {key:'closed',label:s,cls:'return'};
+  return {key:'paid',label:s||'已付款',cls:'paid'};
+}
+
+function setOrderFilter(v){
+  orderFilter=v||'all';
+  renderOrderManagement();
+}
+
 async function loadOrderManagement(){
-  const box=document.getElementById('orderManagementList');
-  if(!box||!currentUser) return;
-  setupOrderMonthOptions();
-  box.innerHTML='<div class="empty-panel">訂單載入中…</div>';
+  const host=document.getElementById('orderManagementList');
+  const detail=document.getElementById('orderDetailHost');
+  if(!host) return;
+  if(detail) detail.innerHTML='';
+
+  host.innerHTML='<div class="empty-box"><div class="big">🧾</div>訂單載入中…</div>';
+
   const {data,error}=await sb.rpc('app_get_anybuy_order_history');
   if(error){
-    console.error(error);
-    box.innerHTML=`<div class="empty-panel">訂單讀取失敗<br><small>${safeText(error.message)}</small></div>`;
+    host.innerHTML=`<div class="empty-box"><div class="big">⚠️</div>${safeText(error.message||'訂單載入失敗')}</div>`;
     return;
   }
-  anybuyOrdersCache=Array.isArray(data)?data:[];
+
+  orderManagementRows=Array.isArray(data)?data:[];
   renderOrderManagement();
+}
+
+function renderOrderManagement(){
+  const host=document.getElementById('orderManagementList');
+  if(!host) return;
+
+  const rows=(orderManagementRows||[]).filter(o=>{
+    if(orderFilter==='all') return true;
+    return normalizeOrderStatus(o).key===orderFilter;
+  });
+
+  if(!rows.length){
+    host.innerHTML='<div class="empty-box"><div class="big">🧾</div>目前沒有符合的訂單</div>';
+    return;
+  }
+
+  host.innerHTML=rows.map((o,idx)=>{
+    const st=normalizeOrderStatus(o);
+    const total=Number(o.total??o.amount??0);
+    const paymentCode=o.paymentCode||'';
+    const paidStore=o.paidStoreName||o.paidStoreCode||'';
+    const created=o.createdAt||o.paidAt||'';
+    return `<div class="order-card-v1062">
+      <div class="top">
+        <div>
+          <div class="id">${safeText(o.orderId||'訂單')}</div>
+          <div class="meta">
+            ${created?`建立時間：${new Date(created).toLocaleString('zh-TW')}<br>`:''}
+            付款方式：${safeText(o.paymentMethod||'—')}
+            ${paidStore?`<br>原付款門市：${safeText(paidStore)}`:''}
+            ${paymentCode?`<br>付款碼：${safeText(paymentCode)}`:''}
+          </div>
+        </div>
+        <span class="order-status-pill ${st.cls}">${safeText(st.label)}</span>
+      </div>
+      <div class="amount">${money(total)}</div>
+      <div class="order-actions">
+        <button onclick="openOrderDetail(${idx})">查看明細</button>
+        ${st.key==='pending' && paymentCode?`<button class="primary" onclick="openPendingOrder(${idx})">付款條碼</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openOrderDetail(idx){
+  const o=orderManagementRows[idx];
+  if(!o) return;
+  const host=document.getElementById('orderDetailHost');
+  if(!host) return;
+
+  const st=normalizeOrderStatus(o);
+  const items=Array.isArray(o.items)?o.items:[];
+  const total=Number(o.total??o.amount??0);
+
+  host.innerHTML=`
+    <div class="order-detail-sheet">
+      <h3 style="margin-top:0">訂單明細</h3>
+      <div class="order-detail-row"><span>訂單編號</span><strong>${safeText(o.orderId||'—')}</strong></div>
+      <div class="order-detail-row"><span>訂單狀態</span><strong>${safeText(st.label)}</strong></div>
+      <div class="order-detail-row"><span>付款方式</span><strong>${safeText(o.paymentMethod||'—')}</strong></div>
+      ${o.paymentCode?`<div class="order-detail-row"><span>店舖付款碼</span><strong>${safeText(o.paymentCode)}</strong></div>`:''}
+      ${(o.paidStoreName||o.paidStoreCode)?`<div class="order-detail-row"><span>原付款門市</span><strong>${safeText(o.paidStoreName||o.paidStoreCode)}</strong></div>`:''}
+      ${o.tmSaleId?`<div class="order-detail-row"><span>TM交易編號</span><strong>${safeText(o.tmSaleId)}</strong></div>`:''}
+      ${o.paidAt?`<div class="order-detail-row"><span>付款時間</span><strong>${new Date(o.paidAt).toLocaleString('zh-TW')}</strong></div>`:''}
+      ${o.paymentDeadline?`<div class="order-detail-row"><span>付款期限</span><strong>${new Date(o.paymentDeadline).toLocaleString('zh-TW')}</strong></div>`:''}
+
+      <div style="margin-top:16px;font-weight:900">商品明細</div>
+      <div>
+        ${items.length?items.map(i=>{
+          const groups=Number(i.cartQuantity??i.groups??1);
+          const bundleQty=Number(i.bundleQuantity??i.quantity??1);
+          const sale=Number(i.bundlePrice??i.salePrice??i.price??0);
+          const original=Number(i.originalBundlePrice??i.originalPrice??0);
+          const paid=Number(i.paidAmount??sale*groups);
+          return `<div class="order-item-row">
+            <div class="name">${safeText(i.name||'商品')}</div>
+            <div class="meta">
+              ${groups} 組 × 每組 ${bundleQty} 件<br>
+              售價 ${money(sale)}／組
+              ${original>0?` · 原價 ${money(original)}／組`:''}<br>
+              本品項實付 ${money(paid)}
+            </div>
+          </div>`;
+        }).join(''):'<div class="meta">無商品明細</div>'}
+      </div>
+
+      <div class="order-detail-row" style="margin-top:10px"><span>訂單總額</span><strong>${money(total)}</strong></div>
+    </div>`;
+  host.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function openPendingOrder(idx){
+  const o=orderManagementRows[idx];
+  if(!o) return;
+  const code=o.paymentCode||'';
+  if(!code) return;
+  currentStoreOrder=o;
+  showView('storeOrder');
+  setTimeout(()=>{
+    const codeEl=document.getElementById('storeOrderCode');
+    if(codeEl) codeEl.textContent=code;
+    if(typeof renderStoreOrderBarcode==='function') renderStoreOrderBarcode(code);
+  },0);
 }
 
 function renderOrderManagement(){
