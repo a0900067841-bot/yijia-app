@@ -310,6 +310,38 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .anybuy-qty-control{display:flex;border:1px solid #d1d5db;border-radius:14px;overflow:hidden}
 .anybuy-qty-control button{width:42px;height:42px;border:0;background:#f8fafc;font-size:22px}
 .anybuy-qty-control span{min-width:42px;text-align:center;line-height:42px;font-weight:800}
+
+.anybuy-head{display:flex;align-items:center;gap:10px;padding:8px 0 12px}
+.anybuy-head .back,.anybuy-head .hamb{width:42px;height:42px;border:0;background:#fff;border-radius:12px;font-size:28px}
+.anybuy-head h2{flex:1;text-align:center;margin:0;font-size:24px}
+.anybuy-cat-strip{display:flex;gap:8px;overflow-x:auto;white-space:nowrap;padding:8px 0 12px}
+.anybuy-cat-strip button{border:1.5px solid #1683d8;background:#fff;color:#1683d8;border-radius:999px;padding:8px 13px;font-size:15px}
+.anybuy-grid-v101{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.anybuy-card-v101{background:#fff;border:1px solid #e9ecef;border-radius:16px;overflow:hidden;position:relative}
+.anybuy-card-v101 img{width:100%;aspect-ratio:1/1;object-fit:contain;background:#fff;display:block}
+.anybuy-card-v101 .imgph{width:100%;aspect-ratio:1/1;display:grid;place-items:center;font-size:58px;background:#fff}
+.anybuy-card-v101 .badge{position:absolute;left:50%;transform:translateX(-50%);top:28%;background:#f58220;color:#fff;border-radius:999px;padding:7px 10px;font-size:13px;font-weight:800;white-space:nowrap}
+.anybuy-card-v101 .info{padding:10px 11px 12px}
+.anybuy-card-v101 .name{font-size:16px;line-height:1.35;min-height:43px}
+.anybuy-card-v101 .prices{display:flex;gap:7px;align-items:baseline;margin-top:5px}
+.anybuy-card-v101 .sale{font-size:23px;color:#e96f18;font-weight:900}
+.anybuy-card-v101 .orig{font-size:15px;color:#a0a7b1;text-decoration:line-through}
+.anybuy-card-v101 .act{font-size:13px;color:#e96f18;margin-top:4px;padding-right:32px;min-height:18px}
+.anybuy-card-v101 .cartmini{position:absolute;right:8px;bottom:8px;border:0;background:transparent;font-size:24px}
+.anybuy-drawer-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;display:none}
+.anybuy-drawer-mask.open{display:block}
+.anybuy-drawer{position:absolute;left:0;top:0;bottom:0;width:min(88vw,380px);background:#fff;overflow:auto;box-shadow:10px 0 30px rgba(0,0,0,.18)}
+.anybuy-drawer-title{display:flex;align-items:center;gap:12px;padding:24px 20px 18px;border-bottom:1px solid #eee}
+.anybuy-drawer-title button{border:0;background:transparent;font-size:34px}
+.anybuy-drawer-title strong{font-size:24px}
+.anybuy-menu-row{display:flex;align-items:center;gap:14px;padding:20px;border-bottom:1px solid #f1f3f5;font-size:19px}
+.anybuy-menu-row.active{background:#eaf6ff}
+.anybuy-menu-row .icon{width:34px;text-align:center;font-size:24px}
+.anybuy-menu-row .arr{margin-left:auto;color:#6b7280}
+.anybuy-submenu{display:none;background:#fafafa}
+.anybuy-submenu.open{display:block}
+.anybuy-submenu button{display:block;width:100%;border:0;background:transparent;text-align:left;padding:14px 24px 14px 68px;font-size:16px}
+
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -453,22 +485,34 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 </div>
 <div class="data-wait">這一版不再顯示假點數。登入目前為測試連線版；等確認點數資料表後，再接上真實餘額與紀錄。</div>
 </section>
+
 <section id="redeem" class="view">
-  <div class="header2" style="justify-content:space-between">
-    <div style="display:flex;align-items:center;gap:10px">
-      <button class="back" onclick="showView('anybuyCenter')">‹</button><h2>隨買跨店取首頁</h2>
-    </div>
-    <button class="back" onclick="showView('anybuyCenter')" aria-label="功能選單">☰</button>
+  <div class="anybuy-head">
+    <button class="back" onclick="showView('home')">‹</button>
+    <button class="hamb" onclick="openAnybuyDrawer()">☰</button>
+    <h2>隨買跨店取</h2>
+    <button class="hamb" onclick="document.getElementById('shopSearch').focus()">⌕</button>
   </div>
+
+  <div class="anybuy-cat-strip">
+    <button onclick="setAnybuyFilter('')">全部</button>
+    <button onclick="setAnybuyFilter('限時閃購')">限時閃購</button>
+    <button onclick="setAnybuyFilter('嚴選')">億家嚴選</button>
+    <button onclick="setAnybuyFilter('訂閱')">訂閱</button>
+    <button onclick="setAnybuyFilter('超值')">億家超值</button>
+    <button onclick="setAnybuyFilter('經典')">億家經典</button>
+  </div>
+
   <div class="shop-toolbar">
     <input id="shopSearch" class="shop-search" placeholder="搜尋隨買商品" oninput="renderShopProducts()">
     <button class="shop-filter" onclick="loadShopProducts()">重新整理</button>
   </div>
-  <div id="shopProducts" class="product-grid">
+
+  <div id="shopProducts" class="anybuy-grid-v101">
     <div class="empty-box" style="grid-column:1/-1"><div class="big">🛍️</div>商品載入中…</div>
   </div>
-  <p class="note">「隨買」商品資料由總部 SC 同步。店舖結帳會建立 TM 共用的 YS 待付款訂單；付款完成後商品同步至「我的商品」。</p>
 </section>
+
 <section id="products" class="view">
   <div class="header2"><button class="back" onclick="showView('anybuyCenter')">‹</button><h2>我的商品</h2></div>
   <div id="myProducts" class="list">
@@ -557,7 +601,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('anybuyCenter')"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.0.4 Limit Field Fix</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.1.0 Anybuy Home Menu</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1365,38 +1409,59 @@ async function loadShopProducts(){
   await loadSCAppState();
 }
 
+
+let anybuyFilterText='';
+
+function setAnybuyFilter(v){
+  anybuyFilterText=v||'';
+  renderShopProducts();
+}
+
+function anybuyStartLabel(p){
+  const s=p.activityStartDate||'';
+  if(!s) return '';
+  const d=new Date(s);
+  if(Number.isNaN(d.getTime()) || Date.now()>=d.getTime()) return '';
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  const dd=String(d.getDate()).padStart(2,'0');
+  const hh=String(d.getHours()).padStart(2,'0');
+  const mi=String(d.getMinutes()).padStart(2,'0');
+  return `${mm}/${dd} ${hh}:${mi} 開始搶購`;
+}
+
 function renderShopProducts(){
-  const box=document.getElementById('shopProducts');
-  if(!box) return;
+  const host=document.getElementById('shopProducts');
+  if(!host) return;
   const q=(document.getElementById('shopSearch')?.value||'').trim().toLowerCase();
-  const rows=shopProductsCache.filter(p=>
-    !q || (p.name||'').toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q)
-  );
+  const rows=(shopProductsCache||[]).filter(p=>{
+    const t=`${p.name||''} ${p.category||''} ${p.activityContent||''} ${p.description||''}`.toLowerCase();
+    if(q && !t.includes(q)) return false;
+    if(anybuyFilterText && !t.includes(anybuyFilterText.toLowerCase())) return false;
+    return true;
+  });
 
   if(!rows.length){
-    box.innerHTML='<div class="empty-box" style="grid-column:1/-1"><div class="big">🛒</div>目前沒有可選購的隨買商品</div>';
+    host.innerHTML='<div class="empty-box" style="grid-column:1/-1"><div class="big">🛍️</div>目前沒有符合的商品</div>';
     return;
   }
 
-  box.innerHTML=rows.map(p=>`
-    <div class="shop-item" onclick="openAnybuyProductDetailById('${p.id}')">
-      <div class="shop-img">${productImageHtml(p)}</div>
-      <div class="shop-body">
-        <div class="shop-name">${safeText(p.name)}</div>
-        <div class="shop-desc">${safeText(p.description||'跨店取商品')}</div>
-        ${p.activityContent ? `<div class="activity-badge">${safeText(p.activityContent)}</div>` : ''}
-        ${(p.activityStartDate||p.activityEndDate) ? `<div class="activity-range">活動：${safeText(p.activityStartDate||'即日起')} ～ ${safeText(p.activityEndDate||'未定')}</div>` : ''}
-        <div class="shop-info-grid">
-          <div class="shop-info-chip">數量：${Number(p.quantity||0)}</div>
-          <div class="shop-info-chip">效期：${Number(p.validityDays||0)} 天</div>
-        </div>
-        <div class="shop-bottom" style="margin-top:10px">
-          <div class="shop-price2">${money(p.price)}</div>
-          <button class="shop-buy" onclick="event.stopPropagation();openAnybuyProductDetailById('${p.id}')">選購</button>
-        </div>
+  host.innerHTML=rows.map(p=>{
+    const sp=Number(p.price||0);
+    const op=Number(p.originalPrice||0);
+    const badge=anybuyStartLabel(p);
+    const img=p.image_url||'';
+    const act=p.activityContent||'';
+    return `<div class="anybuy-card-v101" onclick="openAnybuyProductDetailById('${String(p.id||'').replaceAll("'","")}')">
+      ${img?`<img src="${safeText(img)}" alt="">`:`<div class="imgph">🛍️</div>`}
+      ${badge?`<div class="badge">${safeText(badge)}</div>`:''}
+      <div class="info">
+        <div class="name">${safeText(p.name||'')}</div>
+        <div class="prices"><span class="sale">${money(sp)}</span>${op>0?`<span class="orig">${money(op)}</span>`:''}</div>
+        <div class="act">${safeText(act)}</div>
       </div>
-    </div>
-  `).join('');
+      <button class="cartmini" onclick="event.stopPropagation();openAnybuyProductDetailById('${String(p.id||'').replaceAll("'","")}')">🛒</button>
+    </div>`;
+  }).join('');
 }
 
 function openProductModal(id){
@@ -2912,5 +2977,57 @@ async function buyAnybuyDetailProduct(){
   });
 })();
 
+
+function openAnybuyDrawer(){document.getElementById('anybuyDrawerMask')?.classList.add('open')}
+function closeAnybuyDrawer(e){
+  if(e && e.target!==document.getElementById('anybuyDrawerMask')) return;
+  document.getElementById('anybuyDrawerMask')?.classList.remove('open')
+}
+function toggleAnybuySubmenu(id){document.getElementById(id)?.classList.toggle('open')}
+
 </script>
+
+<div id="anybuyDrawerMask" class="anybuy-drawer-mask" onclick="closeAnybuyDrawer(event)">
+  <aside class="anybuy-drawer" onclick="event.stopPropagation()">
+    <div class="anybuy-drawer-title">
+      <button onclick="closeAnybuyDrawer()">‹</button>
+      <strong>隨買跨店取</strong>
+    </div>
+
+    <div class="anybuy-menu-row active" onclick="showView('redeem');closeAnybuyDrawer()">
+      <span class="icon">⌂</span><span>隨買跨店取首頁</span>
+    </div>
+
+    <div class="anybuy-menu-row" onclick="showView('products');loadMyProducts();closeAnybuyDrawer()">
+      <span class="icon">🛍️</span><span>我的商品</span>
+    </div>
+
+    <div class="anybuy-menu-row" onclick="toggleAnybuySubmenu('giftSub')">
+      <span class="icon">🎁</span><span>轉贈或領取商品</span><span class="arr">⌄</span>
+    </div>
+    <div id="giftSub" class="anybuy-submenu">
+      <button onclick="showView('giftTransfer');closeAnybuyDrawer()">轉贈／領取商品</button>
+      <button onclick="showView('productUsage');closeAnybuyDrawer()">禮物／轉贈紀錄</button>
+    </div>
+
+    <div class="anybuy-menu-row" onclick="toggleAnybuySubmenu('orderSub')">
+      <span class="icon">🧾</span><span>訂單紀錄</span><span class="arr">⌄</span>
+    </div>
+    <div id="orderSub" class="anybuy-submenu">
+      <button onclick="showView('anybuyOrders');closeAnybuyDrawer()">訂單管理</button>
+      <button onclick="showView('subscriptions');closeAnybuyDrawer()">訂閱管理</button>
+      <button onclick="showView('reservations');closeAnybuyDrawer()">預約管理</button>
+      <button onclick="showView('productUsage');closeAnybuyDrawer()">商品使用紀錄</button>
+    </div>
+
+    <div class="anybuy-menu-row" onclick="showView('anybuyGuide');closeAnybuyDrawer()">
+      <span class="icon">ⓘ</span><span>操作教學</span>
+    </div>
+
+    <div class="anybuy-menu-row" onclick="showView('anybuyRights');closeAnybuyDrawer()">
+      <span class="icon">🛡️</span><span>權益公告</span>
+    </div>
+  </aside>
+</div>
+
 </body></html>
