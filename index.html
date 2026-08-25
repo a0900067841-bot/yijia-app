@@ -557,7 +557,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('anybuyCenter')"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.0.3 Price & Cart Drag</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.0.4 Limit Field Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1224,7 +1224,7 @@ async function loadSCAppState(){
       ),
       groupCount:Number(p.groupCount??p.groups??p.groupQuantity??1),
       purchaseLimitGroups:Number(
-        p.purchaseLimitGroups??p.purchase_limit_groups??
+        p.maxPurchaseGroups??p.purchaseLimitGroups??p.purchase_limit_groups??
         p.limitGroups??p.maxGroups??0
       ),
       image_url:p.imageUrl||p.image_url||'',
@@ -1460,7 +1460,7 @@ function addSelectedToCart(){
 function addToCart(p, groups=1){
   const key=String(p.code||p.id||'');
   const addGroups=Math.max(1,Number(groups||1));
-  const limit=Math.max(0,Number(p.purchaseLimitGroups??p.limitGroups??p.maxGroups??0));
+  const limit=Math.max(0,Number(p.maxPurchaseGroups??p.purchaseLimitGroups??p.limitGroups??p.maxGroups??0));
   const found=cartItems.find(x=>x.key===key);
 
   if(found){
@@ -2772,7 +2772,7 @@ function n(v,d=0){v=Number(v);return Number.isFinite(v)?v:d}
 function bundleQty(p){return Math.max(1,n(p.quantity??p.bundleQuantity,1))}
 function originalBundlePrice(p){return Math.max(0,n(p.originalPrice??p.original_price??p.originalBundlePrice??p.listPrice??p.regularPrice,0))}
 function saleBundlePrice(p){return Math.max(0,n(p.price??p.salePrice??p.bundlePrice,0))}
-function limitGroups(p){return Math.max(0,Math.floor(n(p.purchaseLimitGroups??p.purchase_limit_groups??p.limitGroups??p.maxGroups,0)))}
+function limitGroups(p){return Math.max(0,Math.floor(n(p.maxPurchaseGroups??p.purchaseLimitGroups??p.purchase_limit_groups??p.limitGroups??p.maxGroups,0)))}
 function openAnybuyProductDetailById(id){
   const p=shopProductsCache.find(x=>String(x.id)===String(id))||null;
   if(!p) return;
