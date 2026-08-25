@@ -555,7 +555,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('anybuyCenter')"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.0.1 Detail Click Fix</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.0.2 Login Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1461,11 +1461,11 @@ function addToCart(p, groups=1){
       id:p.id||'',
       code:p.code||'',
       name:p.name||'商品',
-      price:Number(p.bundlePrice??p.salePrice??p.price||0),
-      originalPrice:Number(p.originalBundlePrice??p.originalPrice||0),
+      price:Number((p.bundlePrice??p.salePrice??p.price) || 0),
+      originalPrice:Number((p.originalBundlePrice??p.originalPrice) || 0),
       image_url:p.image_url||p.imageUrl||'',
       validityDays:Number(p.validityDays||0),
-      bundleQuantity:Number(p.bundleQuantity??p.quantity||1),
+      bundleQuantity:Number((p.bundleQuantity??p.quantity) || 1),
       purchaseLimitGroups:limit,
       originalUnitPrice:Number(p.originalUnitPrice||0),
       purchaseSnapshot:p.purchaseSnapshot||null,
