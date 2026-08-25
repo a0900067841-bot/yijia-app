@@ -386,6 +386,19 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .refund-status-v1063.expiry{background:#eef4ff;color:#2257a0}
 .refund-status-v1063.reject{background:#f3f4f6;color:#6b7280}
 
+
+/* v0.10.7.0 操作教學／權益公告 */
+.help-card-v1070{background:#fff;border:1px solid #e7ebef;border-radius:18px;padding:15px;margin-bottom:12px}
+.help-card-v1070 h3{margin:0 0 8px;font-size:17px}
+.help-card-v1070 p{margin:0;color:#5f6670;line-height:1.65;font-size:14px}
+.help-step-v1070{display:flex;gap:10px;align-items:flex-start;margin-top:12px}
+.help-step-v1070 .num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#eef7f2;color:#17663b;font-weight:900;flex:0 0 auto}
+.help-step-v1070 .text{font-size:14px;line-height:1.55;color:#30343a}
+.rights-box-v1070{background:#fffaf3;border:1px solid #ffe0b5;border-radius:16px;padding:14px;margin-bottom:12px}
+.rights-box-v1070 h4{margin:0 0 8px;color:#8a5400}
+.rights-box-v1070 p{margin:0;color:#5e5140;line-height:1.65;font-size:14px}
+.help-note-v1070{background:#eef6ff;border:1px solid #cfe1ff;border-radius:14px;padding:12px;color:#315b8c;font-size:13px;line-height:1.6}
+
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -650,7 +663,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('redeem');loadShopProducts()"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.6.3 Refund History</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.7.0 Help & Rights</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -796,54 +809,89 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div id="reservationList"><div class="empty-panel">預約資料載入中…</div></div>
 </section>
 
+
 <section id="anybuyGuide" class="view">
-  <div class="header2"><button class="back" onclick="showView('redeem');loadShopProducts()">‹</button><h2>操作教學</h2></div>
-  <div class="guide-card"><strong>1. 購買</strong><div class="note">在「隨買跨店取首頁」選購商品，可使用億家Pay或店舖結帳。</div></div>
-  <div class="guide-card"><strong>2. 兌換</strong><div class="note">到門市出示會員條碼，由 TM 顯示可兌換商品並選擇兌換數量；兌換不再收款、不累點。</div></div>
-  <div class="guide-card"><strong>3. 退貨</strong><div class="note">會員購買後如需辦理退貨，請攜帶發票至原銷售店舖辦理。已有兌換、預約或轉贈紀錄時，退款依優惠套組實付金額扣抵已使用商品價值後計算；轉贈視同已兌換／領取。</div></div>
+  <div class="header2">
+    <button class="back" onclick="showView('anybuyCenter')">‹</button>
+    <h2>操作教學</h2>
+  </div>
+
+  <div class="help-card-v1070">
+    <h3>購買隨買商品</h3>
+    <p>在「隨買」選擇商品與購買組數，確認內容後建立訂單。</p>
+    <div class="help-step-v1070"><div class="num">1</div><div class="text">進入「隨買」並選擇商品。</div></div>
+    <div class="help-step-v1070"><div class="num">2</div><div class="text">選擇購買組數；每組數量、售價與限購組數依商品設定顯示。</div></div>
+    <div class="help-step-v1070"><div class="num">3</div><div class="text">確認訂單後，依付款方式完成付款；店舖付款會產生 YS 付款碼。</div></div>
+  </div>
+
+  <div class="help-card-v1070">
+    <h3>門市付款</h3>
+    <p>店舖付款訂單完成建立後，請在付款期限內至門市出示付款碼。</p>
+    <div class="help-step-v1070"><div class="num">1</div><div class="text">打開訂單管理中的待付款訂單。</div></div>
+    <div class="help-step-v1070"><div class="num">2</div><div class="text">出示 YS 付款條碼給門市 TM 掃描。</div></div>
+    <div class="help-step-v1070"><div class="num">3</div><div class="text">付款完成後，商品會加入「我的商品」。</div></div>
+  </div>
+
+  <div class="help-card-v1070">
+    <h3>兌換商品</h3>
+    <p>兌換不收款、不累積點數；門市 TM 完成兌換後，App 會同步更新剩餘數量。</p>
+    <div class="help-step-v1070"><div class="num">1</div><div class="text">開啟「我的商品」。</div></div>
+    <div class="help-step-v1070"><div class="num">2</div><div class="text">到門市出示會員條碼，由 TM 選擇本次兌換商品與數量。</div></div>
+    <div class="help-step-v1070"><div class="num">3</div><div class="text">完成後可在「商品使用紀錄」查看兌換紀錄。</div></div>
+  </div>
+
+  <div class="help-card-v1070">
+    <h3>轉贈／領取商品</h3>
+    <p>可直接轉贈給已註冊會員，或產生社群領取碼分享給他人。</p>
+    <div class="help-step-v1070"><div class="num">1</div><div class="text">直接轉贈：輸入收件會員手機號碼，完成後商品直接加入對方帳號。</div></div>
+    <div class="help-step-v1070"><div class="num">2</div><div class="text">社群領取：產生領取碼／分享連結，由收件人自行領取。</div></div>
+    <div class="help-step-v1070"><div class="num">3</div><div class="text">已轉贈商品不可退貨，商品原效期不會重算。</div></div>
+  </div>
+
+  <div class="help-note-v1070">
+    商品若已到期、已兌完、已完成退款或已轉贈完畢，App 會自動限制後續操作。
+  </div>
 </section>
+
+
 
 <section id="anybuyRights" class="view">
-  <div class="header2"><button class="back" onclick="showView('anybuyCenter')">‹</button><h2>權益公告</h2></div>
-
-  <div class="guide-card">
-    <strong>一般商品退貨與退款</strong>
-    <div class="note">
-      會員購買後如需辦理商品退貨，請攜帶發票至原銷售店舖辦理。若已有兌換、預約、領取或轉贈紀錄，退款將依該筆優惠套組實付金額扣抵已使用商品價值後計算。消費者轉贈商品予他人時，視同已兌換／領取該商品。
-    </div>
+  <div class="header2">
+    <button class="back" onclick="showView('anybuyCenter')">‹</button>
+    <h2>權益公告</h2>
   </div>
 
-  <div class="guide-card">
-    <strong>逾兌換／預約期限一般商品</strong>
-    <div class="note">
-      退款金額＝付款金額－（已兌換／預約組數 × 一組商品金額）－（未滿一組之已兌換／預約商品個數 × 一個商品原價）。<br><br>
-      未滿一組之已兌換／預約商品個數乘以單品原價的扣抵金額，最高以一組商品金額為上限；若計算後退款金額為負數，實際退款金額自動歸零，不另向會員收取費用。轉贈商品視同已兌換／領取。
-    </div>
+  <div class="rights-box-v1070">
+    <h4>商品效期</h4>
+    <p>商品效期依購買時商品設定計算。依目前規則，到期日當天凌晨 00:00 起即視為到期，商品不可再兌換、轉贈或領取。</p>
   </div>
 
-  <div class="guide-card">
-    <strong>環保杯說明</strong>
-    <div class="note">
-      1. 會員使用本服務購買現煮杯裝飲品，若持環保杯兌換或領取，得依當時法令、活動或系統規則取得對應之環保杯獎勵金或回饋，並回饋至億家錢包或本公司指定帳戶。<br><br>
-      2. 會員應於兌換或領取前主動告知店員使用環保杯，並於收銀機確認當次適用杯數及回饋金額；一經完成交易，除可歸責於本公司之事由外，不得事後爭議。
-    </div>
+  <div class="rights-box-v1070">
+    <h4>到期自動退款</h4>
+    <p>尚未兌換的剩餘數量，會依購買當時實際支付價格計算退款；不使用商品原價，也不使用到期當下的現行售價。</p>
   </div>
 
-  <div class="guide-card">
-    <strong>歷程紀錄</strong>
-    <div class="note">
-      本服務之購買、兌換、取貨、轉贈、共享或禮物領取等紀錄，將依系統功能保留一定期間供會員查詢；實際保留期間與呈現方式，以 App 或系統頁面顯示為準。
-    </div>
+  <div class="rights-box-v1070">
+    <h4>退貨／退款</h4>
+    <p>商品需完全未兌換，且購買後 7 天內才可申請退貨。只要曾經兌換過，即不可辦理退貨。</p>
   </div>
 
-  <div class="guide-card">
-    <strong>店舖結帳退貨</strong>
-    <div class="note">
-      店舖結帳之退貨應回原銷售店舖辦理；App 會依退貨流程提供 YR CODE128 退貨條碼供 TM 掃描。
-    </div>
+  <div class="rights-box-v1070">
+    <h4>店舖付款退貨</h4>
+    <p>店舖付款訂單如符合退貨條件，須回原付款門市辦理；線上付款訂單則依線上退款流程辦理。</p>
   </div>
 
+  <div class="rights-box-v1070">
+    <h4>轉贈商品</h4>
+    <p>完成轉贈後，受贈商品來源會標示為「會員轉贈」，且不可再辦理原訂單退貨。商品效期沿用原商品效期。</p>
+  </div>
+
+  <div class="rights-box-v1070">
+    <h4>點數與營收</h4>
+    <p>購買隨買商品可依規則累積點數；兌換本身不再累積點數。營收於實際兌換時依購買當時實付金額比例認列。</p>
+  </div>
 </section>
+
 
 <section id="profile" class="view">
   <div class="header2"><button class="back" onclick="showView('me')">‹</button><h2>會員資料</h2></div>
