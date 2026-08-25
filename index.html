@@ -356,7 +356,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 <section id="home" class="view active">
 <div id="appAnnouncement" class="announcement"></div>
 <div class="hero"><div class="hero-head"><div><div class="eyebrow">億家會員</div><div id="memberName" class="member-name">您好</div><div id="memberEmail" class="member-email"></div></div><div class="points" onclick="showView('points')"><span>可用點數</span><b id="homePoints">--</b><span id="homeExpiry">等待點數資料表</span></div></div><div class="barcode" onclick="openBarcode()"><svg id="homeBarcode" class="real-barcode"></svg><small>點一下放大會員條碼</small></div></div>
-<div class="quick"><button class="q" onclick="showView('points')"><span class="ico">🪙</span>億家點數</button><button class="q" onclick="showView('anybuyCenter')"><span class="ico">☕</span>隨買跨店取</button><button class="q" onclick="showView('products')"><span class="ico">🛍️</span>我的商品</button><button class="q" onclick="showView('coupons')"><span class="ico">🎟️</span>優惠券</button></div>
+<div class="quick"><button class="q" onclick="showView('points')"><span class="ico">🪙</span>億家點數</button><button class="q" onclick="showView('redeem');loadShopProducts()"><span class="ico">☕</span>隨買跨店取</button><button class="q" onclick="showView('products')"><span class="ico">🛍️</span>我的商品</button><button class="q" onclick="showView('coupons')"><span class="ico">🎟️</span>優惠券</button></div>
 <div class="section-title"><h3>本期活動</h3><button>更多</button></div><div class="banner"><div><h2>億家會員專屬</h2><p>活動內容將由總部 App 後台設定同步顯示</p></div><div class="cup">🥤</div></div>
 <div class="section-title"><h3>我的服務</h3></div><div class="cards"><div class="card"><span class="badge">跨店取</span><b>待兌換 5 件</b><small>查看已購買商品</small></div><div class="card"><span class="badge">點數</span><b>本月 +320 點</b><small>查看累點明細</small></div><div class="card"><span class="badge">訂單</span><b>我的訂單</b><small>商城／預購紀錄</small></div><div class="card"><span class="badge">會員</span><b>個人資料</b><small>帳號與通知設定</small></div></div>
 </section>
@@ -598,10 +598,10 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div class="header2"><h2>我的</h2></div>
   <div class="list">
     <div class="row" onclick="showView('profile')"><div><strong>會員資料</strong><small>姓名、生日、性別、Email、地址、國籍</small></div><span>›</span></div>
-    <div class="row" onclick="showView('anybuyCenter')"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
+    <div class="row" onclick="showView('redeem');loadShopProducts()"><div><strong>隨買跨店取服務</strong><small>我的商品、訂單、使用紀錄、退貨</small></div><span>›</span></div>
     <div class="row" onclick="showView('orderManagement')"><div><strong>我的訂單</strong><small>隨買跨店取與線上支付訂單</small></div><span>›</span></div>
     <div class="row"><div><strong>通知設定</strong><small>活動與服務通知</small></div><span>›</span></div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.1.0 Anybuy Home Menu</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.1.1 Direct Anybuy Home</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -744,7 +744,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 </section>
 
 <section id="anybuyGuide" class="view">
-  <div class="header2"><button class="back" onclick="showView('anybuyCenter')">‹</button><h2>操作教學</h2></div>
+  <div class="header2"><button class="back" onclick="showView('redeem');loadShopProducts()">‹</button><h2>操作教學</h2></div>
   <div class="guide-card"><strong>1. 購買</strong><div class="note">在「隨買跨店取首頁」選購商品，可使用億家Pay或店舖結帳。</div></div>
   <div class="guide-card"><strong>2. 兌換</strong><div class="note">到門市出示會員條碼，由 TM 顯示可兌換商品並選擇兌換數量；兌換不再收款、不累點。</div></div>
   <div class="guide-card"><strong>3. 退貨</strong><div class="note">會員購買後如需辦理退貨，請攜帶發票至原銷售店舖辦理。已有兌換、預約或轉贈紀錄時，退款依優惠套組實付金額扣抵已使用商品價值後計算；轉贈視同已兌換／領取。</div></div>
@@ -850,7 +850,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <span id="cartCount" class="cart-count hidden">0</span>
 </button>
 
-<nav class="nav"><button class="active" data-view="home" onclick="showView('home')"><span class="ni">🏠</span>首頁</button><button data-view="anybuyCenter" onclick="showView('anybuyCenter')"><span class="ni">☕</span>隨買</button><button data-view="pay" onclick="showView('pay')"><span class="ni">💳</span>億家Pay</button><button data-view="points" onclick="showView('points')"><span class="ni">🪙</span>點數</button><button data-view="me" onclick="showView('me')"><span class="ni">👤</span>我的</button></nav>
+<nav class="nav"><button class="active" data-view="home" onclick="showView('home')"><span class="ni">🏠</span>首頁</button><button data-view="anybuyCenter" onclick="showView('redeem');loadShopProducts()"><span class="ni">☕</span>隨買</button><button data-view="pay" onclick="showView('pay')"><span class="ni">💳</span>億家Pay</button><button data-view="points" onclick="showView('points')"><span class="ni">🪙</span>點數</button><button data-view="me" onclick="showView('me')"><span class="ni">👤</span>我的</button></nav>
 </div>
 
 <div id="appServiceOverlay" class="app-service-overlay">
