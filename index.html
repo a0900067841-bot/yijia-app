@@ -1463,7 +1463,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div class="list">
     <div class="row" onclick="showView('walletLedger');loadWalletLedger()">
       <div>
-        <strong>付款、儲值、退款統一紀錄</strong>
+        <strong>付款、儲值、退款、到期退款統一紀錄</strong>
         <small>所有億家Pay錢包異動集中查看</small>
       </div>
       <span>›</span>
@@ -1624,7 +1624,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.3 Wallet Unified Ledger</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.4 Wallet Ledger Notifications</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -4203,6 +4203,12 @@ function markAllNotificationsRead(){
 }
 
 function openNotification(id){
+  if(item?.type==='walletLedger' || item?.linkView==='walletLedger'){
+    showView('walletLedger');
+    loadWalletLedger();
+    return;
+  }
+
   const n=(notificationRows||[]).find(x=>x.id===id);
   if(!n) return;
   markNotificationRead(id);
@@ -4284,7 +4290,64 @@ function renderNotificationCenter(){
   }).join('');
 }
 
+
+function walletLedgerNotificationTitle(entryType){
+  if(entryType==='payment') return '億家Pay付款完成';
+  if(entryType==='reload') return '億家Pay儲值完成';
+  if(entryType==='refund') return '億家Pay退款完成';
+  if(entryType==='expiry_refund') return '億家Pay到期退款';
+  if(entryType==='adjustment') return '億家Pay錢包調整';
+  return '億家Pay錢包異動';
+}
+
+function walletLedgerNotificationBody(row){
+  const amount=Number(row?.amount||0);
+  const incoming=amount>=0;
+  const amountText=(incoming?'+ ':'- ')+money(Math.abs(amount));
+  const parts=[amountText];
+
+  if(row?.balanceAfter!=null){
+    parts.push('餘額 '+money(Number(row.balanceAfter||0)));
+  }
+  if(row?.storeCode){
+    parts.push('門市 '+String(row.storeCode));
+  }
+
+  return parts.join(' · ');
+}
+
+async function syncWalletLedgerNotifications(){
+  if(!currentUser) return [];
+
+  try{
+    const {data,error}=await sb.rpc('app_get_my_yijiapay_wallet_ledger');
+    if(error) throw error;
+
+    const rows=Array.isArray(data)?data:[];
+    const allowed=new Set(['payment','reload','refund','expiry_refund','adjustment']);
+
+    return rows
+      .filter(r=>allowed.has(r.entryType))
+      .slice(0,80)
+      .map(r=>({
+        id:'wallet-ledger-'+String(r.id||r.sourceId||r.tmSaleId||r.createdAt||Math.random()),
+        type:'walletLedger',
+        title:walletLedgerNotificationTitle(r.entryType),
+        body:walletLedgerNotificationBody(r),
+        createdAt:r.createdAt||new Date().toISOString(),
+        linkView:'walletLedger',
+        walletEntryType:r.entryType,
+        walletEntryId:r.id||null
+      }));
+  }catch(e){
+    console.warn('錢包帳本通知同步失敗',e);
+    return [];
+  }
+}
+
 async function loadNotificationCenter(render=true){
+  const walletLedgerNotifications = await syncWalletLedgerNotifications();
+
   if(!currentUser) return;
   const host=document.getElementById('notificationCenterList');
   if(render && host) host.innerHTML='<div class="empty-panel">通知載入中…</div>';
@@ -4297,7 +4360,14 @@ async function loadNotificationCenter(render=true){
   }
 
   updateNotificationUnreadBadge();
-  if(render) renderNotificationCenter();
+  if(render) 
+  if(Array.isArray(notifications)){
+    walletLedgerNotifications.forEach(n=>{
+      if(!notifications.some(x=>x?.id===n.id)) notifications.push(n);
+    });
+    notifications.sort((a,b)=>new Date(b?.createdAt||0)-new Date(a?.createdAt||0));
+  }
+renderNotificationCenter();
 }
 
 window.addEventListener('focus',()=>{
