@@ -974,6 +974,30 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .wallet-ledger-amount.in{color:#137743}
 .wallet-ledger-amount.out{color:#b42318}
 .wallet-ledger-meta{font-size:12px;color:#7a828a;line-height:1.55;margin-top:6px}
+
+/* v0.10.13.6 儲值測試正式接通 */
+.reload-member-card{
+  background:#fff;border:1px solid var(--line);border-radius:18px;
+  padding:16px;margin:14px 0;text-align:center
+}
+.reload-member-card .label{
+  font-size:12px;color:#7a828a;margin-bottom:8px
+}
+.reload-member-code{
+  font-size:22px;font-weight:900;letter-spacing:1px;margin-top:8px
+}
+.reload-live-status{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  font-size:12px;color:#6b7280;margin-top:8px
+}
+.reload-live-dot{
+  width:8px;height:8px;border-radius:999px;background:#2f9e44
+}
+.reload-success{
+  display:none;background:#eef8f1;border:1px solid #cfe9d5;
+  color:#176c34;border-radius:14px;padding:12px 14px;margin-top:12px;
+  font-weight:800;text-align:center
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -1536,11 +1560,22 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="reload-progress"><div id="reloadPageProgressBar"></div></div>
   </div>
 
+  <div class="reload-member-card">
+    <div class="label">TM 儲值請掃描會員條碼</div>
+    <svg id="reloadMemberBarcode"></svg>
+    <div id="reloadMemberCodeText" class="reload-member-code">--</div>
+    <div class="reload-live-status">
+      <span class="reload-live-dot"></span>
+      <span id="reloadLiveStatusText">等待 TM 儲值</span>
+    </div>
+    <div id="reloadSuccessNotice" class="reload-success">儲值完成，餘額已更新</div>
+  </div>
+
   <div class="list" style="margin-top:14px">
     <div class="row">
       <div>
         <strong>門市現金儲值</strong>
-        <small>請至億家門市，由 TM 掃描會員資料後完成現金儲值。</small>
+        <small>TM 掃描上方會員條碼後，輸入儲值金額並收取現金即可完成。</small>
       </div>
       <span>›</span>
     </div>
@@ -1627,7 +1662,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.5 Points Core Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.6 Reload Test Ready</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2011,6 +2046,8 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(id!=='payReload') stopReloadLiveMonitor();
+
   if(['points','pointCenter','pointsCenter','pointHistory','pointRewards','pointDiscount'].includes(id)){
     setTimeout(()=>syncPointsCoreFromHq(),0);
   }
@@ -2035,7 +2072,7 @@ function showView(id){
   if(id==='reservationManagement') loadReservations();
   if(id==='notificationCenter') loadNotificationCenter(true);
   if(id==='payHistory') loadYijiaPayHistoryPage();
-  if(id==='payReload') loadYijiaPayReloadPage();
+  if(id==='payReload') loadYijiaPayReloadPage(true);
   if(id==='walletLedger') loadWalletLedger();
   if(id==='points'){
     loadPoints();
@@ -7287,8 +7324,109 @@ async function loadWalletLedger(){
   }
 }
 
-async function loadYijiaPayReloadPage(){
+
+let reloadLiveTimer=null;
+let reloadLastNewestId=null;
+let reloadPageActive=false;
+
+function stopReloadLiveMonitor(){
+  reloadPageActive=false;
+  if(reloadLiveTimer){
+    clearInterval(reloadLiveTimer);
+    reloadLiveTimer=null;
+  }
+}
+
+function renderReloadMemberBarcode(){
+  const code =
+    currentMember?.memberNo ||
+    currentMember?.member_no ||
+    currentMember?.phone ||
+    currentUser?.phone ||
+    '';
+
+  const text=document.getElementById('reloadMemberCodeText');
+  if(text) text.textContent=code||'--';
+
+  const svg=document.getElementById('reloadMemberBarcode');
+  if(!svg || !code) return;
+
+  try{
+    if(typeof JsBarcode==='function'){
+      JsBarcode('#reloadMemberBarcode',String(code),{
+        format:'CODE128',
+        displayValue:false,
+        height:58,
+        margin:4,
+        width:2
+      });
+    }
+  }catch(e){
+    console.warn('儲值會員條碼產生失敗',e);
+  }
+}
+
+function setReloadLiveStatus(text){
+  const el=document.getElementById('reloadLiveStatusText');
+  if(el) el.textContent=text||'';
+}
+
+function showReloadSuccessNotice(){
+  const el=document.getElementById('reloadSuccessNotice');
+  if(!el) return;
+  el.style.display='block';
+  setTimeout(()=>{ el.style.display='none'; },3500);
+}
+
+async function pollReloadResult(){
+  if(!reloadPageActive || !currentUser) return;
+
+  try{
+    const {data,error}=await sb.rpc('app_get_my_yijiapay_reload_summary');
+    if(error) throw error;
+
+    const rows=Array.isArray(data?.recentReloads)?data.recentReloads:[];
+    const newest=rows[0]||null;
+    const newestId=newest?.id||newest?.tmSaleId||newest?.createdAt||null;
+
+    if(reloadLastNewestId===null){
+      reloadLastNewestId=newestId;
+      return;
+    }
+
+    if(newestId && newestId!==reloadLastNewestId){
+      reloadLastNewestId=newestId;
+      showReloadSuccessNotice();
+      setReloadLiveStatus('儲值完成，已同步最新餘額');
+      await loadYijiaPayReloadPage(false);
+
+      // 同步支付頁錢包餘額，方便立刻回億家Pay測試付款。
+      try{
+        if(typeof loadYijiaPaySummary==='function'){
+          await loadYijiaPaySummary(false);
+        }
+      }catch(_){}
+
+      setTimeout(()=>{
+        if(reloadPageActive) setReloadLiveStatus('等待 TM 儲值');
+      },3500);
+    }
+  }catch(e){
+    console.warn('儲值即時同步失敗',e);
+  }
+}
+
+function startReloadLiveMonitor(){
+  stopReloadLiveMonitor();
+  reloadPageActive=true;
+  setReloadLiveStatus('等待 TM 儲值');
+  reloadLiveTimer=setInterval(pollReloadResult,2500);
+}
+
+async function loadYijiaPayReloadPage(startMonitor=true){
   if(!currentUser) return;
+
+  renderReloadMemberBarcode();
 
   const host=document.getElementById('reloadHistoryList');
   if(host) host.innerHTML='<div class="pay-history-empty">讀取中…</div>';
@@ -7320,6 +7458,15 @@ async function loadYijiaPayReloadPage(){
     renderCashReloadQuota(used);
 
     if(!host) return;
+
+    const newest=rows[0]||null;
+    const newestId=newest?.id||newest?.tmSaleId||newest?.createdAt||null;
+    if(reloadLastNewestId===null) reloadLastNewestId=newestId;
+
+    if(startMonitor && !reloadPageActive){
+      startReloadLiveMonitor();
+    }
+
     if(!rows.length){
       host.innerHTML='<div class="pay-history-empty">目前沒有儲值紀錄</div>';
       return;
