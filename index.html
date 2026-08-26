@@ -668,6 +668,24 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .payhub-discount-box{min-width:160px;border:1px solid #dfe4e8;border-radius:999px;padding:8px 14px;display:flex;justify-content:space-between;gap:15px;color:#7a828a;background:#fff}
 .payhub-discount-box b{color:var(--green);font-size:20px}
 .payhub-bottom-note{margin-top:12px;color:#7a828a;font-size:12px}
+
+/* v0.10.10.8 即將到期點數明細 */
+.points-expiry-card{
+  background:#fff;border:1px solid var(--line);border-radius:18px;
+  padding:15px;margin:14px 0 18px
+}
+.points-expiry-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.points-expiry-head strong{font-size:17px}
+.points-expiry-total{color:#c47a00;font-weight:900}
+.points-expiry-list{margin-top:10px}
+.points-expiry-row{
+  display:flex;justify-content:space-between;gap:12px;
+  padding:11px 0;border-top:1px solid #edf0f2
+}
+.points-expiry-row:first-child{border-top:0}
+.points-expiry-row small{display:block;color:#7a828a;margin-top:3px}
+.points-expiry-row b{white-space:nowrap}
+.points-expiry-empty{color:#7a828a;font-size:13px;padding-top:8px}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -865,6 +883,17 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div id="pointsExpiry">讀取中…</div>
   </div>
 
+
+
+  <div class="points-expiry-card">
+    <div class="points-expiry-head">
+      <strong>即將到期點數</strong>
+      <span id="pointsExpiryTotal" class="points-expiry-total">0 點</span>
+    </div>
+    <div id="pointsExpiryList" class="points-expiry-list">
+      <div class="points-expiry-empty">目前沒有即將到期點數</div>
+    </div>
+  </div>
 
   <div class="points-month-summary">
     <div class="points-month-box plus">
@@ -1154,7 +1183,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.7 Pay + Points Combined UI</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.8 Points Expiry Detail</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1553,6 +1582,7 @@ function showView(id){
     loadPointHistory();
     loadPointBusinessHistory();
     loadPointRulesSummary();
+    loadPointExpiryDetail();
     startPointsLiveSync();
   }else{
     stopPointsLiveSync();
@@ -1761,6 +1791,49 @@ function openPointHistoryDetail(index){
 function closePointHistoryDetail(){
   const mask=document.getElementById('pointHistoryDetailMask');
   if(mask) mask.style.display='none';
+}
+
+
+async function loadPointExpiryDetail(){
+  const totalEl=document.getElementById('pointsExpiryTotal');
+  const listEl=document.getElementById('pointsExpiryList');
+  if(!totalEl || !listEl) return;
+
+  try{
+    const {data,error}=await sb.rpc('app_get_my_expiring_points');
+    if(error) throw error;
+
+    const rows=Array.isArray(data?.rows)?data.rows:[];
+    const total=Number(data?.totalExpiringPoints||0);
+
+    totalEl.textContent=`${total.toLocaleString()} 點`;
+
+    if(!rows.length){
+      listEl.innerHTML='<div class="points-expiry-empty">目前沒有即將到期點數</div>';
+      return;
+    }
+
+    listEl.innerHTML=rows.map(r=>`
+      <div class="points-expiry-row">
+        <div>
+          <strong>${safeText(r.label||'點數')}</strong>
+          <small>${safeText(r.expiryDate||'未指定日期')}</small>
+        </div>
+        <b>${Number(r.points||0).toLocaleString()} 點</b>
+      </div>
+    `).join('');
+  }catch(e){
+    console.warn('即將到期點數讀取失敗',e);
+
+    // 保底沿用 app_points 的彙總值，不讓整塊顯示錯誤。
+    const text=document.getElementById('pointsExpiry')?.textContent||'';
+    const m=text.match(/([\d,]+)\s*點/);
+    const fallback=m?Number(String(m[1]).replace(/,/g,'')):0;
+    totalEl.textContent=`${fallback.toLocaleString()} 點`;
+    listEl.innerHTML=fallback>0
+      ? '<div class="points-expiry-empty">詳細到期批次同步中</div>'
+      : '<div class="points-expiry-empty">目前沒有即將到期點數</div>';
+  }
 }
 
 function renderPointsMonthlySummary(rows){
@@ -1991,6 +2064,7 @@ function startPointsLiveSync(){
       await loadPoints();
       await loadPointHistory();
       await loadPointRulesSummary();
+      await loadPointExpiryDetail();
     }catch(e){
       console.warn('點數頁自動同步失敗',e);
     }
@@ -2406,8 +2480,8 @@ function renderPointDiscountHub(){
   if(amt) amt.textContent=Number(getPointDiscountAmount(selected)||0).toLocaleString('zh-TW',{maximumFractionDigits:2});
   if(btn) btn.classList.toggle('on',pointDiscountEnabledByUser);
 
-  const expiryText=document.getElementById('pointsExpiry')?.textContent||'目前無即將到期點數';
-  if(exp) exp.textContent=expiryText;
+  const expiryTotal=document.getElementById('pointsExpiryTotal')?.textContent||'0 點';
+  if(exp) exp.textContent=expiryTotal==='0 點'?'目前無即將到期點數':`即將到期 ${expiryTotal}`;
 
   renderPointDiscountMemberCode();
 }

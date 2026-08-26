@@ -1,17 +1,12 @@
-億家 App v0.10.10.7 Pay + Points Combined UI
+億家 App v0.10.10.8 Points Expiry Detail
 
-依參考畫面調整：
-- 點數折抵頁改成「億家錢包 / 點數折抵」整合式介面。
-- 上方頁籤可切回億家錢包。
-- 顯示目前可用點數。
-- 顯示會員條碼。
-- 顯示目前點數。
-- 新增「折抵」勾選。
-- 折抵金額依選擇點數即時計算。
-- 顯示即將到期點數。
-- 保留 1倍 / 2倍 / 3倍 / 最多 快速選擇。
-- 未勾選折抵時不可產生 YPD QR。
-- TM / SC 點數同步與規則不變。
+新增：
+- 點數頁新增「即將到期點數」明細。
+- 優先顯示每個到期日期與對應點數。
+- 若 HQ 會員 pointLedger 有 expiryDate，直接依日期彙總。
+- 若 HQ 沒有明細，回退使用 app_points.expiring_points / expiry_date。
+- 億家Pay / 點數折抵整合頁也同步顯示即將到期點數摘要。
 
-此版純前端，不需 SQL。
-直接上傳 index.html。
+更新：
+1. 執行 points_expiry_detail_backend.sql
+2. 上傳 index.html
