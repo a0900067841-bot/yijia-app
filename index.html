@@ -874,6 +874,24 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 @keyframes yijiaPaySpin{
   to{transform:rotate(360deg)}
 }
+
+/* v0.10.12.6 億家Pay完整交易紀錄 */
+.pay-history-toolbar{
+  display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px
+}
+.pay-history-toolbar button{
+  border:1px solid #dfe4e8;background:#fff;color:#68717a;
+  border-radius:999px;padding:8px 13px;font-weight:900
+}
+.pay-history-toolbar button.active{
+  border-color:var(--green);background:#eef8f1;color:var(--green)
+}
+.pay-history-summary{
+  background:#fff;border:1px solid var(--line);border-radius:16px;
+  padding:14px 16px;margin-bottom:14px
+}
+.pay-history-summary strong{font-size:20px;color:var(--green)}
+.pay-history-summary small{display:block;color:#7a828a;margin-top:4px}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -1358,7 +1376,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
   <div class="section-title">
     <h3>最近交易</h3>
-    <button onclick="loadYijiaPayHistory()">重新整理</button>
+    <button onclick="showView('payHistory');loadYijiaPayHistoryPage()">全部</button>
   </div>
   <div id="yijiaPayHistoryList" class="pay-history-list">
     <div class="pay-history-empty">讀取中…</div>
@@ -1373,6 +1391,29 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <p class="note">億家Pay的信用卡資料不會直接存放在 App 或 Supabase；正式扣款需由合法金流服務商以 Token／付款憑證處理。</p>
 </section>
 
+
+<section id="payHistory" class="view">
+  <div class="header2">
+    <button class="back" onclick="showView('pay')">‹</button>
+    <h2>億家Pay交易紀錄</h2>
+  </div>
+
+  <div id="payHistorySummary" class="pay-history-summary">
+    <strong>$0</strong>
+    <small>目前篩選交易總額</small>
+  </div>
+
+  <div class="pay-history-toolbar">
+    <button id="payHistoryFilterAll" class="active" onclick="setPayHistoryFilter('all')">全部</button>
+    <button id="payHistoryFilterMonth" onclick="setPayHistoryFilter('month')">本月</button>
+    <button id="payHistoryFilter30" onclick="setPayHistoryFilter('30d')">近30天</button>
+  </div>
+
+  <div id="yijiaPayHistoryPageList" class="pay-history-list">
+    <div class="pay-history-empty">讀取中…</div>
+  </div>
+</section>
+
 <section id="me" class="view">
   <div class="header2"><h2>我的</h2></div>
   <div class="list">
@@ -1384,7 +1425,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.4 Pay Complete Refresh</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.6 Pay History Page</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1787,6 +1828,7 @@ function showView(id){
   if(id==='subscriptionManagement') loadSubscriptions();
   if(id==='reservationManagement') loadReservations();
   if(id==='notificationCenter') loadNotificationCenter(true);
+  if(id==='payHistory') loadYijiaPayHistoryPage();
   if(id==='points'){
     loadPoints();
     loadPointHistory();
@@ -1810,7 +1852,7 @@ function showView(id){
   if(target) target.classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>{
     const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','productUsage','giftDetail','transferDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
-    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : (id==='notificationCenter'?'me':id);
+    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : (id==='notificationCenter'?'me':(id==='payHistory'?'pay':id));
     b.classList.toggle('active',b.dataset.view===activeView);
   });
   window.scrollTo({top:0,behavior:'smooth'});
@@ -4630,6 +4672,91 @@ async function loadYijiaPayHistory(){
     `).join('');
   }catch(e){
     console.warn('億家Pay交易紀錄讀取失敗',e);
+    host.innerHTML='<div class="pay-history-empty">交易紀錄讀取失敗</div>';
+  }
+}
+
+
+let payHistoryPageRows=[];
+let payHistoryFilter='all';
+
+function setPayHistoryFilter(filter){
+  payHistoryFilter=filter||'all';
+  document.getElementById('payHistoryFilterAll')?.classList.toggle('active',payHistoryFilter==='all');
+  document.getElementById('payHistoryFilterMonth')?.classList.toggle('active',payHistoryFilter==='month');
+  document.getElementById('payHistoryFilter30')?.classList.toggle('active',payHistoryFilter==='30d');
+  renderYijiaPayHistoryPage();
+}
+
+function filteredPayHistoryRows(){
+  const rows=Array.isArray(payHistoryPageRows)?payHistoryPageRows:[];
+  if(payHistoryFilter==='all') return rows;
+
+  const now=new Date();
+  return rows.filter(r=>{
+    const d=r.usedAt?new Date(r.usedAt):null;
+    if(!d || Number.isNaN(d.getTime())) return false;
+
+    if(payHistoryFilter==='month'){
+      return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
+    }
+
+    if(payHistoryFilter==='30d'){
+      return (now-d)<=30*24*60*60*1000;
+    }
+
+    return true;
+  });
+}
+
+function renderYijiaPayHistoryPage(){
+  const host=document.getElementById('yijiaPayHistoryPageList');
+  const summary=document.getElementById('payHistorySummary');
+  if(!host) return;
+
+  const rows=filteredPayHistoryRows();
+  const total=rows.reduce((sum,r)=>sum+Number(r.amount||0),0);
+
+  if(summary){
+    summary.innerHTML=`<strong>${money(total)}</strong><small>目前篩選 ${rows.length} 筆已完成交易</small>`;
+  }
+
+  if(!rows.length){
+    host.innerHTML='<div class="pay-history-empty">目前沒有符合條件的億家Pay交易</div>';
+    return;
+  }
+
+  host.innerHTML=rows.map(r=>`
+    <div class="pay-history-row" onclick="openPayCompleteByCode('${safeText(r.payCode||'')}')">
+      <div class="pay-history-top">
+        <strong>${r.amount!=null?money(Number(r.amount||0)):'億家Pay付款'}</strong>
+        <span class="pay-history-status">已完成</span>
+      </div>
+      <div class="pay-history-meta">
+        ${r.usedAt?new Date(r.usedAt).toLocaleString('zh-TW'):'--'}
+        ${r.usedStoreCode?`<br>門市：${safeText(r.usedStoreCode)}`:''}
+        ${r.tmSaleId?`<br>交易編號：${safeText(r.tmSaleId)}`:''}
+        ${r.payCode?`<br>付款碼：${safeText(r.payCode)}`:''}
+        <br><span style="color:var(--green);font-weight:800">查看完成明細</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadYijiaPayHistoryPage(){
+  const host=document.getElementById('yijiaPayHistoryPageList');
+  if(!host || !currentUser) return;
+
+  host.innerHTML='<div class="pay-history-empty">讀取中…</div>';
+
+  try{
+    const {data,error}=await sb.rpc('app_get_my_yijiapay_pay_history');
+    if(error) throw error;
+
+    payHistoryPageRows=Array.isArray(data)?data:[];
+    renderYijiaPayHistoryPage();
+  }catch(e){
+    console.warn('億家Pay完整交易紀錄讀取失敗',e);
     host.innerHTML='<div class="pay-history-empty">交易紀錄讀取失敗</div>';
   }
 }
