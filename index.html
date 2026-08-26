@@ -535,6 +535,34 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .point-history-card .status{display:inline-block;margin-top:8px;padding:4px 8px;border-radius:999px;background:#eef6ff;color:#315b8c;font-size:12px;font-weight:800}
 .point-history-card .status.ok{background:#eaf8ef;color:#17663b}
 .point-history-card .status.bad{background:#fff1f0;color:#b42318}
+
+/* v0.10.9.6 逾期商品顯示 */
+.member-product.expired-product{opacity:.62;position:relative}
+.member-product.expired-product .member-product-pic{position:relative}
+.member-product.expired-product .member-product-pic::after{
+  content:'已過期';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  background:rgba(55,55,55,.82);color:#fff;border-radius:12px;padding:8px 10px;
+  font-size:12px;font-weight:900;white-space:nowrap
+}
+.member-product.expired-product .qty-big{color:#7c858d}
+.expired-date-label{display:inline-flex;gap:5px;align-items:center;margin-top:7px;color:#1681c4;font-size:13px}
+.expired-info-btn{
+  width:34px;height:34px;border-radius:50%;border:2px solid #8b9299;background:#fff;
+  color:#6f767d;font-weight:900;font-size:18px;display:grid;place-items:center;padding:0
+}
+.expired-modal-mask{
+  position:fixed;inset:0;background:rgba(0,0,0,.46);z-index:9999;
+  display:none;align-items:center;justify-content:center;padding:22px
+}
+.expired-modal{
+  width:min(430px,100%);background:#fff;border-radius:24px;padding:28px 22px;text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.18)
+}
+.expired-modal .icon{font-size:58px;line-height:1;color:#ff6b6b}
+.expired-modal h3{font-size:25px;margin:12px 0;color:#ff6068}
+.expired-modal p{font-size:16px;line-height:1.75;margin:0;color:#30343a}
+.expired-modal .refund{margin-top:12px;padding:12px;border-radius:14px;background:#f5f7f8;color:#5f666d;font-size:13px;line-height:1.6}
+.expired-modal button{width:100%;margin-top:20px;border:0;border-radius:15px;background:var(--green);color:#fff;padding:13px;font-size:17px;font-weight:900}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -956,7 +984,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.5 Points History</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.6 Expired Product UX</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -3685,13 +3713,20 @@ function productLifecycleState(x){
   const expiredByTime=!!(validUntil && !Number.isNaN(validUntil.getTime()) && validUntil<=now);
 
   if(
+    status.includes('到期退款') ||
+    status.includes('逾期退款') ||
+    status.includes('已到期退款')
+  ){
+    return {key:'expired-refunded',label:'已到期退款',canOperate:false,isExpired:true,isRefunded:true};
+  }
+
+  if(
     expiredByTime ||
     status.includes('到期') ||
     status.includes('逾期') ||
-    status.includes('到期退款') ||
-    status.includes('逾期退款')
+    status.includes('過期')
   ){
-    return {key:'expired',label:'已到期退款',canOperate:false};
+    return {key:'expired',label:'已過期',canOperate:false,isExpired:true,isRefunded:false};
   }
 
   if(
@@ -3710,7 +3745,6 @@ function productLifecycleState(x){
     return {key:'available',label:'可兌換',canOperate:true};
   }
 
-  // 未知狀態採保守原則：只有明確「可兌換」才允許操作。
   return {key:'redeemed',label:status||'不可操作',canOperate:false};
 }
 
@@ -3735,7 +3769,12 @@ async function loadMyProducts(){
     return;
   }
 
-  updateHomePendingCount(rows.reduce((sum,x)=>sum+Number(x.remainingQuantity||0),0));
+  updateHomePendingCount(
+    rows.reduce((sum,x)=>{
+      const lifecycle=productLifecycleState(x);
+      return sum+(lifecycle.canOperate?Number(x.remainingQuantity||0):0);
+    },0)
+  );
 
   box.innerHTML=rows.map(x=>{
     const shopProduct=shopProductsCache.find(p=>
@@ -3762,13 +3801,16 @@ async function loadMyProducts(){
       : '';
 
     return `
-      <div class="member-product ${lifecycle.canOperate?'':'terminal'}">
+      <div class="member-product ${lifecycle.canOperate?'':'terminal'} ${lifecycle.isExpired?'expired-product':''}">
         <div class="member-product-top">
           <div class="member-product-pic">${image?`<img src="${safeText(image)}" alt="${safeText(x.name||'商品')}">`:'☕'}</div>
           <div class="member-product-main">
             <div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
               <strong>${safeText(x.name||'商品')}</strong>
-              <span class="product-status-badge ${lifecycle.key}">${safeText(lifecycle.label)}</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="product-status-badge ${lifecycle.key}">${safeText(lifecycle.label)}</span>
+                ${lifecycle.isExpired?`<button class="expired-info-btn" onclick='event.stopPropagation();openExpiredProductModal(${JSON.stringify(JSON.stringify(x))})'>i</button>`:''}
+              </div>
             </div>
             <small>原始數量 ${Number(x.originalQuantity||0)} 件</small>
             ${x.activityContent?`<small>${safeText(x.activityContent)}</small>`:''}
@@ -3777,10 +3819,14 @@ async function loadMyProducts(){
         <div class="qty-wrap">
           <div>
             <div class="qty-big">剩餘 ${Number(x.remainingQuantity||0)}</div>
-            <div class="expiry">${validUntil?'有效至 '+validUntil.toLocaleDateString('zh-TW'):'無指定到期日'}</div>
+            ${lifecycle.isExpired
+              ? `<div class="expired-date-label">📅 兌換期限 ${validUntil?validUntil.toLocaleDateString('zh-TW'):'--'}</div>`
+              : `<div class="expiry">${validUntil?'有效至 '+validUntil.toLocaleDateString('zh-TW'):'無指定到期日'}</div>`}
             ${x.paidStoreName?`<div class="expiry">付款門市：${safeText(x.paidStoreName)}</div>`:
               (x.paidStoreCode?`<div class="expiry">付款門市：${safeText(x.paidStoreCode)}</div>`:'')}
-            ${x.returnDeadline && lifecycle.canOperate?`<div class="expiry">可退貨至：${new Date(x.returnDeadline).toLocaleString('zh-TW')}</div>`:''}\n            ${!lifecycle.canOperate?`<div class="expiry">此商品目前不可兌換、轉贈或退貨</div>`:''}
+            ${x.returnDeadline && lifecycle.canOperate?`<div class="expiry">可退貨至：${new Date(x.returnDeadline).toLocaleString('zh-TW')}</div>`:''}\n            ${lifecycle.isExpired
+              ? `<div class="expiry">${lifecycle.isRefunded?'剩餘未兌換金額已進入到期退款流程':'已超過兌換期限，不可兌換'}</div>`
+              : (!lifecycle.canOperate?`<div class="expiry">此商品目前不可兌換、轉贈或退貨</div>`:'')}
             ${refundPreview}
             ${returnText}
           </div>
@@ -3793,6 +3839,45 @@ async function loadMyProducts(){
       </div>
     `;
   }).join('');
+}
+
+
+function closeExpiredProductModal(){
+  const mask=document.getElementById('expiredProductModalMask');
+  if(mask) mask.style.display='none';
+}
+
+function openExpiredProductModal(encoded){
+  let x=null;
+  try{x=JSON.parse(encoded)}catch(e){console.error(e);return}
+  const lifecycle=productLifecycleState(x);
+  const valid=x?.validUntil?new Date(x.validUntil):null;
+  const remain=Math.max(0,Number(x?.remainingQuantity||0));
+  const title=document.getElementById('expiredProductModalTitle');
+  const text=document.getElementById('expiredProductModalText');
+  const refund=document.getElementById('expiredProductModalRefund');
+
+  if(title) title.textContent=lifecycle.isRefunded?'此商品已到期退款':'此商品已逾期';
+  if(text){
+    text.innerHTML=
+      `「${safeText(x?.name||'商品')}」已超過兌換期限，現在不可兌換、轉贈或退貨。`+
+      (valid?`<br>兌換期限：${valid.toLocaleDateString('zh-TW')}`:'');
+  }
+
+  if(refund){
+    if(lifecycle.isRefunded){
+      refund.innerHTML=
+        `剩餘 ${remain} 件的未使用價值已依購買時實際付款金額進行到期退款。<br>`+
+        `退款結果可至「訂單／退款紀錄」與通知中心查看。`;
+    }else{
+      refund.innerHTML=
+        `系統會依購買時實際付款金額，計算剩餘 ${remain} 件的未使用價值。<br>`+
+        `依目前規則，商品於到期日 00:00 起失效並自動進行退款；完成後會更新狀態與退款紀錄。`;
+    }
+  }
+
+  const mask=document.getElementById('expiredProductModalMask');
+  if(mask) mask.style.display='flex';
 }
 
 function openReturnRequest(encoded){
@@ -5159,6 +5244,17 @@ function toggleAnybuySubmenu(id){document.getElementById(id)?.classList.toggle('
       <span class="icon">🛡️</span><span>權益公告</span>
     </div>
   </aside>
+</div>
+
+
+<div id="expiredProductModalMask" class="expired-modal-mask" onclick="if(event.target===this)closeExpiredProductModal()">
+  <div class="expired-modal">
+    <div class="icon">ⓧ</div>
+    <h3 id="expiredProductModalTitle">此商品已逾期</h3>
+    <p id="expiredProductModalText">此商品已超過兌換期限，不可兌換。</p>
+    <div id="expiredProductModalRefund" class="refund"></div>
+    <button onclick="closeExpiredProductModal()">確定</button>
+  </div>
 </div>
 
 </body></html>
