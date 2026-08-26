@@ -622,6 +622,19 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   width:100%;margin-top:18px;border:0;border-radius:14px;background:var(--green);
   color:#fff;padding:13px;font-size:17px;font-weight:900
 }
+
+.point-ticket-list{margin-top:14px}
+.point-ticket-row{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
+.point-ticket-top{display:flex;justify-content:space-between;gap:12px}
+.point-ticket-code2{font-weight:900;word-break:break-all}
+.point-ticket-meta{font-size:12px;color:#7a828a;line-height:1.6;margin-top:6px}
+.point-ticket-badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#eef6ff;color:#315b8c;font-size:12px;font-weight:800;white-space:nowrap}
+.point-ticket-badge.used{background:#eaf8ef;color:#17663b}
+.point-ticket-badge.expired,.point-ticket-badge.cancelled{background:#fff1f0;color:#b42318}
+.point-ticket-actions{display:flex;gap:8px;margin-top:12px}
+.point-ticket-actions button{flex:1;border:0;border-radius:11px;padding:9px;font-weight:900}
+.point-ticket-actions .primary{background:var(--green);color:#fff}
+.point-ticket-actions .danger{background:#fff1f0;color:#b42318}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -932,6 +945,14 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     </div>
 
     <button id="createPointDiscountBtn" class="pay-continue" style="margin-top:14px" onclick="createPointDiscountTicket()">產生點數折抵 QR Code</button>
+
+    <div class="section-title" style="margin-top:22px">
+      <h3>最近折抵條碼</h3>
+      <button onclick="loadMyPointDiscountTickets()">重新整理</button>
+    </div>
+    <div id="myPointDiscountTickets" class="point-ticket-list">
+      <div class="empty-box">讀取中…</div>
+    </div>
   </div>
 
   <div id="pointDiscountQrWrap" style="display:none">
@@ -1074,7 +1095,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.3 Point Rule Sync Fix</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.4 Point Discount Ticket Manager</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2308,6 +2329,7 @@ async function openPointDiscount(){
     createBtn.textContent=pointDiscountSettings.enabled?'產生點數折抵 QR Code':'目前未開放點數折抵';
   }
   refreshPointDiscountPreview();
+  await loadMyPointDiscountTickets();
 }
 
 function refreshPointDiscountPreview(){
@@ -2328,6 +2350,120 @@ function refreshPointDiscountPreview(){
   const amount=getPointDiscountAmount(points);
   document.getElementById('discountAmountPreview').textContent=money(amount);
   document.getElementById('discountRemainPreview').textContent=`折抵完成後剩餘 ${(currentPointBalance-points).toLocaleString()} 點`;
+}
+
+
+let myPointDiscountTicketRows=[];
+
+function pointDiscountTicketStatusText(status){
+  const s=String(status||'pending');
+  if(s==='pending') return '待使用';
+  if(s==='used') return '已折抵';
+  if(s==='expired') return '已失效';
+  if(s==='cancelled') return '已取消';
+  return s;
+}
+
+function pointDiscountTicketCanReopen(row){
+  if(String(row?.status||'')!=='pending') return false;
+  const exp=row?.expiresAt?new Date(row.expiresAt):null;
+  return !!(exp && !Number.isNaN(exp.getTime()) && exp>new Date());
+}
+
+async function loadMyPointDiscountTickets(){
+  const host=document.getElementById('myPointDiscountTickets');
+  if(!host) return;
+
+  try{
+    const {data,error}=await sb.rpc('app_get_my_point_discount_tickets');
+    if(error) throw error;
+
+    myPointDiscountTicketRows=Array.isArray(data)?data:[];
+    if(!myPointDiscountTicketRows.length){
+      host.innerHTML='<div class="empty-box">目前沒有點數折抵條碼</div>';
+      return;
+    }
+
+    host.innerHTML=myPointDiscountTicketRows.map((r,index)=>{
+      const status=String(r.status||'pending');
+      const canReopen=pointDiscountTicketCanReopen(r);
+      return `<div class="point-ticket-row">
+        <div class="point-ticket-top">
+          <div>
+            <div class="point-ticket-code2">${safeText(r.discountCode||'')}</div>
+            <div class="point-ticket-meta">
+              使用 ${Number(r.points||0).toLocaleString()} 點 · 折抵 ${money(Number(r.discountAmount||0))}
+              ${r.createdAt?`<br>建立：${new Date(r.createdAt).toLocaleString('zh-TW')}`:''}
+              ${r.expiresAt?`<br>有效至：${new Date(r.expiresAt).toLocaleString('zh-TW')}`:''}
+            </div>
+          </div>
+          <span class="point-ticket-badge ${safeText(status)}">${safeText(pointDiscountTicketStatusText(status))}</span>
+        </div>
+        ${canReopen?`<div class="point-ticket-actions">
+          <button class="primary" onclick="reopenPointDiscountTicket(${index})">再次出示 QR</button>
+          <button class="danger" onclick="cancelPointDiscountTicket(${index})">取消</button>
+        </div>`:''}
+      </div>`;
+    }).join('');
+  }catch(e){
+    console.error(e);
+    host.innerHTML='<div class="empty-box">折抵條碼紀錄讀取失敗</div>';
+  }
+}
+
+function reopenPointDiscountTicket(index){
+  const row=myPointDiscountTicketRows[Number(index)];
+  if(!row || !pointDiscountTicketCanReopen(row)){
+    alert('此折抵條碼已無法使用。');
+    loadMyPointDiscountTickets();
+    return;
+  }
+
+  activePointDiscountCode=String(row.discountCode||'');
+  pointDiscountExpiresAt=new Date(row.expiresAt);
+
+  document.getElementById('pointDiscountSetup').style.display='none';
+  document.getElementById('pointDiscountQrWrap').style.display='block';
+
+  document.getElementById('pointDiscountCode').textContent=activePointDiscountCode;
+  document.getElementById('pointDiscountSummary').innerHTML=
+    `使用 <strong>${Number(row.points||0).toLocaleString()} 點</strong><br>`+
+    `折抵 <strong style="color:#ea6a00">${money(Number(row.discountAmount||0))}</strong>`;
+
+  const qr=document.getElementById('pointDiscountQr');
+  qr.innerHTML='';
+  if(window.QRCode){
+    new QRCode(qr,{text:activePointDiscountCode,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
+  }else{
+    qr.textContent=activePointDiscountCode;
+  }
+
+  const syncBox=document.getElementById('pointDiscountSyncStatus');
+  if(syncBox){
+    syncBox.className='point-sync-status';
+    syncBox.innerHTML='等待 TM 完成交易，本頁會自動同步點數與折抵結果。';
+  }
+
+  startPointDiscountCountdown();
+  startPointDiscountStatusMonitor();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+async function cancelPointDiscountTicket(index){
+  const row=myPointDiscountTicketRows[Number(index)];
+  if(!row || String(row.status||'')!=='pending') return;
+  if(!confirm('確定取消這張點數折抵條碼嗎？')) return;
+
+  try{
+    const {error}=await sb.rpc('app_cancel_point_discount_ticket',{
+      p_discount_code:String(row.discountCode||'')
+    });
+    if(error) throw error;
+    await loadMyPointDiscountTickets();
+  }catch(e){
+    console.error(e);
+    alert('取消失敗：'+(e?.message||e));
+  }
 }
 
 async function createPointDiscountTicket(){
@@ -2377,6 +2513,7 @@ async function createPointDiscountTicket(){
     }
     startPointDiscountCountdown();
     startPointDiscountStatusMonitor();
+    loadMyPointDiscountTickets();
   }catch(err){
     console.error(err);
     alert('點數折抵條碼建立失敗：'+(err?.message||err));
