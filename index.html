@@ -1393,7 +1393,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
   <div class="pay-quick-actions">
     <button type="button" onclick="switchPayCodeMode('pay')">出示付款碼</button>
-    <button class="secondary" type="button" onclick="alert('儲值功能後續接入')">儲值</button>
+    <button class="secondary" type="button" onclick="showView('payReload');loadYijiaPayReloadPage()">儲值</button>
   </div>
 
   <div class="reload-quota">
@@ -1443,6 +1443,46 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <p class="note">億家Pay的信用卡資料不會直接存放在 App 或 Supabase；正式扣款需由合法金流服務商以 Token／付款憑證處理。</p>
 </section>
 
+
+
+<section id="payReload" class="view">
+  <div class="header2">
+    <button class="back" onclick="showView('pay')">‹</button>
+    <h2>億家Pay儲值</h2>
+  </div>
+
+  <div class="pay-screen-balance">
+    目前錢包餘額 <span id="reloadWalletBalance">$0</span>
+  </div>
+
+  <div class="reload-quota">
+    <div class="reload-quota-head">
+      <strong>本月現金儲值額度</strong>
+      <span id="reloadPageLimitLabel">每月上限由總部設定</span>
+    </div>
+    <div id="reloadPageUsedText" class="reload-quota-amount">$0 / $5,000</div>
+    <div id="reloadPageRemainText" class="reload-quota-sub">本月剩餘可儲值 $5,000</div>
+    <div class="reload-progress"><div id="reloadPageProgressBar"></div></div>
+  </div>
+
+  <div class="list" style="margin-top:14px">
+    <div class="row">
+      <div>
+        <strong>門市現金儲值</strong>
+        <small>請至億家門市，由 TM 掃描會員資料後完成現金儲值。</small>
+      </div>
+      <span>›</span>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <h3>最近儲值</h3>
+    <button onclick="loadYijiaPayReloadPage()">重新整理</button>
+  </div>
+  <div id="reloadHistoryList" class="pay-history-list">
+    <div class="pay-history-empty">讀取中…</div>
+  </div>
+</section>
 
 <section id="payHistory" class="view">
   <div class="header2">
@@ -1516,7 +1556,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.1 Wallet Refund Core</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.2 Wallet Reload Core</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1920,6 +1960,7 @@ function showView(id){
   if(id==='reservationManagement') loadReservations();
   if(id==='notificationCenter') loadNotificationCenter(true);
   if(id==='payHistory') loadYijiaPayHistoryPage();
+  if(id==='payReload') loadYijiaPayReloadPage();
   if(id==='points'){
     loadPoints();
     loadPointHistory();
@@ -1943,7 +1984,7 @@ function showView(id){
   if(target) target.classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>{
     const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','productUsage','giftDetail','transferDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
-    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : (id==='notificationCenter'?'me':(id==='payHistory'?'pay':id));
+    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : (id==='notificationCenter'?'me':((id==='payHistory'||id==='payReload')?'pay':id));
     b.classList.toggle('active',b.dataset.view===activeView);
   });
   window.scrollTo({top:0,behavior:'smooth'});
@@ -5037,6 +5078,7 @@ async function loadYijiaPaySummary(forceNewPayCode=false){
     await loadCurrentPayCode();
   }
   await loadYijiaPayHistory();
+  await loadCashReloadQuota();
   updateCheckoutPayAvailability();
 }
 
@@ -6946,10 +6988,23 @@ window.MONTHLY_CASH_RELOAD_LIMIT_DYNAMIC=5000;
 window.currentCashReloadUsed=0;
 
 async function loadCashReloadQuota(){
-  // v0.7.1 先保留 0 元作為正式資料表接入前的預設值。
-  // 後續接 app_pay_reload_transactions 後改由 Supabase 加總本月 cash reload。
-  const used = 0;
-  renderCashReloadQuota(used);
+  if(!currentUser){
+    renderCashReloadQuota(0);
+    return;
+  }
+
+  try{
+    const {data,error}=await sb.rpc('app_get_my_yijiapay_reload_summary');
+    if(error) throw error;
+
+    const limit=Number(data?.monthlyLimit??5000);
+    const used=Number(data?.usedThisMonth??0);
+    window.MONTHLY_CASH_RELOAD_LIMIT_DYNAMIC=Number.isFinite(limit)?limit:5000;
+    renderCashReloadQuota(used);
+  }catch(e){
+    console.warn('現金儲值額度讀取失敗',e);
+    renderCashReloadQuota(0);
+  }
 }
 
 function renderCashReloadQuota(usedValue){
@@ -6967,6 +7022,67 @@ function renderCashReloadQuota(usedValue){
   if(remainEl) remainEl.textContent='本月剩餘可儲值 $'+remain.toLocaleString('zh-TW');
   const lbl=document.getElementById('reloadLimitLabel'); if(lbl) lbl.textContent='每月上限 NT$'+limit.toLocaleString('zh-TW');
   if(bar) bar.style.width=pct+'%';
+}
+
+
+async function loadYijiaPayReloadPage(){
+  if(!currentUser) return;
+
+  const host=document.getElementById('reloadHistoryList');
+  if(host) host.innerHTML='<div class="pay-history-empty">讀取中…</div>';
+
+  try{
+    const {data,error}=await sb.rpc('app_get_my_yijiapay_reload_summary');
+    if(error) throw error;
+
+    const balance=Number(data?.walletBalance??0);
+    const limit=Math.max(0,Number(data?.monthlyLimit??5000));
+    const used=Math.max(0,Number(data?.usedThisMonth??0));
+    const remain=Math.max(0,Number(data?.remainingThisMonth??(limit-used)));
+    const pct=limit>0?Math.min(100,(used/limit)*100):100;
+    const rows=Array.isArray(data?.recentReloads)?data.recentReloads:[];
+
+    const balanceEl=document.getElementById('reloadWalletBalance');
+    const limitEl=document.getElementById('reloadPageLimitLabel');
+    const usedEl=document.getElementById('reloadPageUsedText');
+    const remainEl=document.getElementById('reloadPageRemainText');
+    const bar=document.getElementById('reloadPageProgressBar');
+
+    if(balanceEl) balanceEl.textContent=money(balance);
+    if(limitEl) limitEl.textContent='每月上限 NT$'+limit.toLocaleString('zh-TW');
+    if(usedEl) usedEl.textContent=money(used)+' / '+money(limit);
+    if(remainEl) remainEl.textContent='本月剩餘可儲值 '+money(remain);
+    if(bar) bar.style.width=pct+'%';
+
+    window.MONTHLY_CASH_RELOAD_LIMIT_DYNAMIC=limit;
+    renderCashReloadQuota(used);
+
+    if(!host) return;
+    if(!rows.length){
+      host.innerHTML='<div class="pay-history-empty">目前沒有儲值紀錄</div>';
+      return;
+    }
+
+    host.innerHTML=rows.map(r=>`
+      <div class="pay-history-row">
+        <div class="pay-history-top">
+          <strong>現金儲值 ${money(Number(r.amount||0))}</strong>
+          <span class="pay-history-status">已入帳</span>
+        </div>
+        <div class="pay-history-meta">
+          ${r.createdAt?new Date(r.createdAt).toLocaleString('zh-TW'):'--'}
+          ${r.storeCode?`<br>門市：${safeText(r.storeCode)}`:''}
+          ${r.tmSaleId?`<br>交易編號：${safeText(r.tmSaleId)}`:''}
+          ${(r.balanceBefore!=null&&r.balanceAfter!=null)
+            ?`<br>錢包：${money(Number(r.balanceBefore||0))} → ${money(Number(r.balanceAfter||0))}`
+            :''}
+        </div>
+      </div>
+    `).join('');
+  }catch(e){
+    console.error('億家Pay儲值資料讀取失敗',e);
+    if(host) host.innerHTML='<div class="pay-history-empty">儲值資料讀取失敗</div>';
+  }
 }
 
 async function initAuth(){
