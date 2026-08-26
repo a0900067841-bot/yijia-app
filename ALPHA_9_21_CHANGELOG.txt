@@ -1,6 +1,0 @@
-TM Alpha 9.21
-- 億家Pay改為 POS 銷售交易成功落地後才呼叫 tm_complete_yijiapay_pay_code 四參數正式扣款。
-- 付款碼掃描階段只做 tm_get_yijiapay_pay_code 驗證與餘額檢查。
-- 正式扣款失敗時自動作廢剛建立的 POS 交易，避免留下正常銷售。
-- 已扣款後若 POS 完成階段發生例外，呼叫 tm_compensate_yijiapay_payment 自動撤銷並恢復錢包。
-- 會員交易後同步失敗不再把已成功 POS 交易誤判為付款失敗。
