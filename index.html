@@ -635,6 +635,21 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .point-ticket-actions button{flex:1;border:0;border-radius:11px;padding:9px;font-weight:900}
 .point-ticket-actions .primary{background:var(--green);color:#fff}
 .point-ticket-actions .danger{background:#fff1f0;color:#b42318}
+
+.point-quick-wrap{margin-top:12px}
+.point-quick-title{font-size:12px;color:#7a828a;margin-bottom:8px}
+.point-quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.point-quick-grid button{
+  border:1px solid #dfe4e8;background:#fff;border-radius:12px;
+  padding:10px 4px;font-weight:900;color:#26313a
+}
+.point-quick-grid button:active{transform:scale(.97)}
+.point-quick-grid button.max{background:#eef8f1;color:#137743;border-color:#cce8d5}
+.point-quick-grid button:disabled{opacity:.4}
+.point-discount-cap{
+  margin-top:10px;padding:10px 12px;border-radius:12px;
+  background:#f7f9fa;color:#69727a;font-size:12px;line-height:1.6
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -937,6 +952,16 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <div class="point-discount-row">
         <div><strong>使用點數</strong><small id="discountRuleText" style="display:block;color:#7a828a;margin-top:4px">讀取折抵規則中…</small></div>
         <input id="discountPointsInput" class="point-input" type="number" inputmode="numeric" min="1" value="1" oninput="refreshPointDiscountPreview()">
+        <div class="point-quick-wrap" style="grid-column:1/-1">
+          <div class="point-quick-title">快速選擇</div>
+          <div class="point-quick-grid">
+            <button id="pointQuick1" type="button" onclick="setPointDiscountQuick(1)">--</button>
+            <button id="pointQuick2" type="button" onclick="setPointDiscountQuick(2)">--</button>
+            <button id="pointQuick3" type="button" onclick="setPointDiscountQuick(3)">--</button>
+            <button id="pointQuickMax" class="max" type="button" onclick="setPointDiscountMax()">最多</button>
+          </div>
+          <div id="pointDiscountCap" class="point-discount-cap">正在計算可使用點數…</div>
+        </div>
       </div>
       <div class="discount-preview">
         預計折抵 <strong id="discountAmountPreview">$0</strong><br>
@@ -1095,7 +1120,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.4 Point Discount Ticket Manager</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.5 Point Discount Quick Select</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1785,6 +1810,7 @@ function renderPoints(p){
   if(rewardBal) rewardBal.textContent=available.toLocaleString()+' 點';
   const discountBal=document.getElementById('discountAvailablePoints');
   if(discountBal) discountBal.textContent=available.toLocaleString()+' 點';
+  if(document.getElementById('pointQuick1')) renderPointDiscountQuickButtons();
   document.getElementById('pointsExpiry').textContent=
     expiring>0
       ? expiring.toLocaleString()+' 點將於 '+(p.expiry_date||'指定日期')+' 到期'
@@ -2323,6 +2349,14 @@ async function openPointDiscount(){
   if(rule){
     rule.textContent=`${pointDiscountSettings.unitPoints} 點折抵 ${money(pointDiscountSettings.unitAmount)}，每次以 ${pointDiscountSettings.step} 點為單位`;
   }
+  const input=document.getElementById('discountPointsInput');
+  if(input){
+    const unit=Math.max(1,Number(pointDiscountSettings.unitPoints||300));
+    const nowVal=Math.max(0,Number(input.value||0));
+    if(nowVal<unit || nowVal%unit!==0) input.value=String(unit);
+  }
+  renderPointDiscountQuickButtons();
+
   const createBtn=document.getElementById('createPointDiscountBtn');
   if(createBtn){
     createBtn.disabled=!pointDiscountSettings.enabled;
@@ -2332,7 +2366,64 @@ async function openPointDiscount(){
   await loadMyPointDiscountTickets();
 }
 
+
+function largestUsablePointDiscount(){
+  const unit=Math.max(1,Number(pointDiscountSettings.unitPoints||300));
+  return Math.floor(Math.max(0,currentPointBalance)/unit)*unit;
+}
+
+function setPointDiscountQuick(multiplier){
+  const unit=Math.max(1,Number(pointDiscountSettings.unitPoints||300));
+  const max=largestUsablePointDiscount();
+  const target=unit*Math.max(1,Number(multiplier||1));
+  const input=document.getElementById('discountPointsInput');
+  if(!input) return;
+  if(max<=0){
+    alert('目前點數不足以進行折抵。');
+    return;
+  }
+  input.value=String(Math.min(target,max));
+  refreshPointDiscountPreview();
+}
+
+function setPointDiscountMax(){
+  const input=document.getElementById('discountPointsInput');
+  if(!input) return;
+  const max=largestUsablePointDiscount();
+  if(max<=0){
+    alert('目前點數不足以進行折抵。');
+    return;
+  }
+  input.value=String(max);
+  refreshPointDiscountPreview();
+}
+
+function renderPointDiscountQuickButtons(){
+  const unit=Math.max(1,Number(pointDiscountSettings.unitPoints||300));
+  const max=largestUsablePointDiscount();
+
+  [1,2,3].forEach(n=>{
+    const btn=document.getElementById('pointQuick'+n);
+    if(!btn) return;
+    const pts=unit*n;
+    btn.textContent=`${pts.toLocaleString()} 點`;
+    btn.disabled=pts>currentPointBalance;
+  });
+
+  const maxBtn=document.getElementById('pointQuickMax');
+  if(maxBtn) maxBtn.disabled=max<=0;
+
+  const cap=document.getElementById('pointDiscountCap');
+  if(cap){
+    const amount=getPointDiscountAmount(max);
+    cap.innerHTML=max>0
+      ? `目前最多可選 <b>${max.toLocaleString()} 點</b>，依現行規則可折抵 <b>${money(amount)}</b>。`
+      : `目前可用點數未達最低折抵門檻 ${unit.toLocaleString()} 點。`;
+  }
+}
+
 function refreshPointDiscountPreview(){
+  renderPointDiscountQuickButtons();
   const input=document.getElementById('discountPointsInput');
   if(!input) return;
   let points=Math.floor(Number(input.value||0));
