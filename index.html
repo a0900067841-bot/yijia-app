@@ -806,6 +806,36 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .pay-screen-code-card.qr-active .pay-screen-code-host svg{
   display:none!important;
 }
+
+/* v0.10.11.7 付款碼狀態同步 */
+.pay-code-status-box{
+  margin-top:10px;padding:10px 12px;border-radius:12px;
+  background:#f7f9fa;color:#69727a;font-size:12px;line-height:1.55
+}
+.pay-code-status-box.ok{background:#eaf8ef;color:#17663b}
+.pay-code-status-box.error{background:#fff1f0;color:#b42318}
+.pay-complete-mask{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10040;
+  display:none;align-items:flex-end;justify-content:center
+}
+.pay-complete-sheet{
+  width:min(520px,100%);background:#fff;border-radius:24px 24px 0 0;
+  padding:22px 18px calc(24px + env(safe-area-inset-bottom))
+}
+.pay-complete-sheet .icon{text-align:center;font-size:52px}
+.pay-complete-sheet h3{text-align:center;font-size:22px;margin:8px 0 4px}
+.pay-complete-sheet p{text-align:center;color:#69727a;margin:4px 0 18px}
+.pay-complete-rows{border-top:1px solid #edf0f2}
+.pay-complete-row{
+  display:flex;justify-content:space-between;gap:14px;padding:12px 2px;
+  border-bottom:1px solid #edf0f2
+}
+.pay-complete-row span{color:#7a828a}
+.pay-complete-row b{text-align:right;word-break:break-all}
+.pay-complete-close{
+  width:100%;margin-top:18px;border:0;border-radius:14px;background:var(--green);
+  color:#fff;padding:13px;font-size:17px;font-weight:900
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -1249,6 +1279,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     </div>
     <div id="payCodeText" class="pay-screen-code-text">--</div>
     <div id="payCodeCloudStatus" class="pay-screen-bottom-note">正在取得安全付款碼…</div>
+    <div id="payCodeLiveStatus" class="pay-code-status-box">等待 TM 掃描付款碼</div>
     <div id="payCodeBottomNote" class="pay-screen-bottom-note">結帳時請出示付款條碼。</div>
   </div>
 
@@ -1312,7 +1343,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.6 Pay Code Cloud Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.7 Pay Code Status Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1696,6 +1727,7 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(id!=='pay') stopPayCodeStatusMonitor();
   if(id!=='storeOrder') stopStoreOrderMonitor();
   if(id!=='products') stopRedemptionSyncMonitor();
   if(id!=='redeemTicket') stopRedeemTicketCountdown();
@@ -1824,8 +1856,12 @@ function startPayCodeCountdown(){
 }
 
 async function refreshPayCode(){
+  stopPayCodeStatusMonitor();
   const ok=await ensurePayCodeState(true);
-  if(ok) renderPayCode();
+  if(ok){
+    renderPayCode();
+    startPayCodeStatusMonitor();
+  }
 }
 
 function switchPayCodeMode(mode){
@@ -1896,9 +1932,104 @@ function renderPayCode(){
     : '結帳時請出示付款條碼。';
 }
 
+
+let payCodeStatusTimer=null;
+let lastCompletedPayCode='';
+
+function setPayCodeLiveStatus(text,kind=''){
+  const el=document.getElementById('payCodeLiveStatus');
+  if(!el) return;
+  el.textContent=text||'';
+  el.className='pay-code-status-box'+(kind?` ${kind}`:'');
+}
+
+function stopPayCodeStatusMonitor(){
+  if(payCodeStatusTimer){
+    clearInterval(payCodeStatusTimer);
+    payCodeStatusTimer=null;
+  }
+}
+
+function openPayCompleteSheet(data){
+  document.getElementById('payCompleteCode').textContent=data?.payCode||currentPayCode||'--';
+  document.getElementById('payCompleteTime').textContent=data?.usedAt
+    ? new Date(data.usedAt).toLocaleString('zh-TW')
+    : new Date().toLocaleString('zh-TW');
+  document.getElementById('payCompleteStore').textContent=data?.usedStoreCode||'--';
+  document.getElementById('payCompleteSale').textContent=data?.tmSaleId||'--';
+  const mask=document.getElementById('payCompleteMask');
+  if(mask) mask.style.display='flex';
+}
+
+function closePayCompleteSheet(){
+  const mask=document.getElementById('payCompleteMask');
+  if(mask) mask.style.display='none';
+}
+
+async function checkCurrentPayCodeStatus(){
+  if(!currentUser || !currentPayCode) return;
+
+  try{
+    const {data,error}=await sb.rpc('app_get_yijiapay_pay_code_status',{
+      p_pay_code:currentPayCode
+    });
+    if(error) throw error;
+    if(!data?.found) return;
+
+    const status=String(data.status||'pending');
+
+    if(status==='pending'){
+      setPayCodeLiveStatus('等待 TM 掃描付款碼');
+      return;
+    }
+
+    if(status==='used'){
+      setPayCodeLiveStatus('付款完成', 'ok');
+      stopPayCodeStatusMonitor();
+
+      if(lastCompletedPayCode!==currentPayCode){
+        lastCompletedPayCode=currentPayCode;
+        openPayCompleteSheet(data);
+        try{
+          await loadYijiaPaySummary();
+        }catch(e){}
+      }
+      return;
+    }
+
+    if(status==='expired'){
+      setPayCodeLiveStatus('付款碼已到期，正在更新…','error');
+      stopPayCodeStatusMonitor();
+      await refreshPayCode();
+      startPayCodeStatusMonitor();
+      return;
+    }
+
+    if(status==='cancelled'){
+      setPayCodeLiveStatus('付款碼已取消，正在更新…','error');
+      stopPayCodeStatusMonitor();
+      await refreshPayCode();
+      startPayCodeStatusMonitor();
+    }
+  }catch(e){
+    console.warn('付款碼狀態同步失敗',e);
+    setPayCodeLiveStatus('付款狀態同步中斷，稍後自動重試','error');
+  }
+}
+
+function startPayCodeStatusMonitor(){
+  stopPayCodeStatusMonitor();
+  if(!currentPayCode) return;
+
+  setPayCodeLiveStatus('等待 TM 掃描付款碼');
+  payCodeStatusTimer=setInterval(checkCurrentPayCodeStatus,3000);
+  checkCurrentPayCodeStatus();
+}
+
 async function loadCurrentPayCode(){
   const ok=await ensurePayCodeState(false);
   renderPayCode();
+  if(ok) startPayCodeStatusMonitor();
   return ok;
 }
 
@@ -6558,6 +6689,23 @@ function toggleAnybuySubmenu(id){document.getElementById(id)?.classList.toggle('
       <div class="point-reward-receipt-row"><span>兌換券代碼</span><b id="pointRewardReceiptCode">--</b></div>
     </div>
     <button class="point-reward-receipt-close" onclick="closePointRewardReceipt()">關閉</button>
+  </div>
+</div>
+
+
+<div id="payCompleteMask" class="pay-complete-mask"
+     onclick="if(event.target===this)closePayCompleteSheet()">
+  <div class="pay-complete-sheet">
+    <div class="icon">✅</div>
+    <h3>付款完成</h3>
+    <p>億家Pay 付款碼已由門市完成交易</p>
+    <div class="pay-complete-rows">
+      <div class="pay-complete-row"><span>付款碼</span><b id="payCompleteCode">--</b></div>
+      <div class="pay-complete-row"><span>完成時間</span><b id="payCompleteTime">--</b></div>
+      <div class="pay-complete-row"><span>門市</span><b id="payCompleteStore">--</b></div>
+      <div class="pay-complete-row"><span>TM 交易編號</span><b id="payCompleteSale">--</b></div>
+    </div>
+    <button class="pay-complete-close" onclick="closePayCompleteSheet()">關閉</button>
   </div>
 </div>
 
