@@ -944,6 +944,36 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .pay-monthly-card span{display:block;color:#7a828a;font-size:12px;margin-bottom:5px}
 .pay-monthly-card strong{font-size:20px;color:var(--green)}
 .pay-monthly-card small{display:block;color:#7a828a;margin-top:4px;font-size:11px}
+
+/* v0.10.13.3 統一錢包帳本 */
+.wallet-ledger-summary{
+  background:#fff;border:1px solid var(--line);border-radius:18px;
+  padding:15px 16px;margin-bottom:14px
+}
+.wallet-ledger-summary strong{font-size:22px;color:var(--green)}
+.wallet-ledger-summary small{display:block;color:#7a828a;margin-top:4px}
+.wallet-ledger-filter{
+  display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px
+}
+.wallet-ledger-filter button{
+  border:1px solid #dfe4e8;background:#fff;color:#65707a;border-radius:999px;
+  padding:8px 12px;font-weight:900
+}
+.wallet-ledger-filter button.active{
+  border-color:var(--green);background:#eef8f1;color:var(--green)
+}
+.wallet-ledger-row{
+  background:#fff;border:1px solid var(--line);border-radius:16px;
+  padding:13px 14px;margin-bottom:10px
+}
+.wallet-ledger-row-top{
+  display:flex;justify-content:space-between;gap:12px;align-items:center
+}
+.wallet-ledger-row-top strong{font-size:15px}
+.wallet-ledger-amount{font-size:17px;font-weight:900}
+.wallet-ledger-amount.in{color:#137743}
+.wallet-ledger-amount.out{color:#b42318}
+.wallet-ledger-meta{font-size:12px;color:#7a828a;line-height:1.55;margin-top:6px}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -1427,6 +1457,20 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   </div>
 
   <div class="section-title">
+    <h3>錢包帳本</h3>
+    <button onclick="showView('walletLedger');loadWalletLedger()">查看全部</button>
+  </div>
+  <div class="list">
+    <div class="row" onclick="showView('walletLedger');loadWalletLedger()">
+      <div>
+        <strong>付款、儲值、退款統一紀錄</strong>
+        <small>所有億家Pay錢包異動集中查看</small>
+      </div>
+      <span>›</span>
+    </div>
+  </div>
+
+  <div class="section-title">
     <h3>最近交易</h3>
     <button onclick="showView('payHistory');loadYijiaPayHistoryPage()">全部</button>
   </div>
@@ -1444,6 +1488,30 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 </section>
 
 
+
+
+<section id="walletLedger" class="view">
+  <div class="header2">
+    <button class="back" onclick="showView('pay')">‹</button>
+    <h2>億家Pay錢包帳本</h2>
+  </div>
+
+  <div id="walletLedgerSummary" class="wallet-ledger-summary">
+    <strong>$0</strong>
+    <small>目前錢包餘額</small>
+  </div>
+
+  <div class="wallet-ledger-filter">
+    <button id="walletLedgerFilterAll" class="active" onclick="setWalletLedgerFilter('all')">全部</button>
+    <button id="walletLedgerFilterPayment" onclick="setWalletLedgerFilter('payment')">付款</button>
+    <button id="walletLedgerFilterReload" onclick="setWalletLedgerFilter('reload')">儲值</button>
+    <button id="walletLedgerFilterRefund" onclick="setWalletLedgerFilter('refund')">退款</button>
+  </div>
+
+  <div id="walletLedgerList">
+    <div class="pay-history-empty">讀取中…</div>
+  </div>
+</section>
 
 <section id="payReload" class="view">
   <div class="header2">
@@ -1556,7 +1624,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.2 Wallet Reload Core</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.3 Wallet Unified Ledger</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1961,6 +2029,7 @@ function showView(id){
   if(id==='notificationCenter') loadNotificationCenter(true);
   if(id==='payHistory') loadYijiaPayHistoryPage();
   if(id==='payReload') loadYijiaPayReloadPage();
+  if(id==='walletLedger') loadWalletLedger();
   if(id==='points'){
     loadPoints();
     loadPointHistory();
@@ -1984,7 +2053,7 @@ function showView(id){
   if(target) target.classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>{
     const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','productUsage','giftDetail','transferDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
-    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : (id==='notificationCenter'?'me':((id==='payHistory'||id==='payReload')?'pay':id));
+    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : (id==='notificationCenter'?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger')?'pay':id));
     b.classList.toggle('active',b.dataset.view===activeView);
   });
   window.scrollTo({top:0,behavior:'smooth'});
@@ -7024,6 +7093,122 @@ function renderCashReloadQuota(usedValue){
   if(bar) bar.style.width=pct+'%';
 }
 
+
+
+let walletLedgerRows=[];
+let walletLedgerFilter='all';
+
+function walletLedgerTypeLabel(type){
+  if(type==='payment') return '付款';
+  if(type==='reload') return '現金儲值';
+  if(type==='refund') return '退款';
+  if(type==='expiry_refund') return '到期退款';
+  if(type==='adjustment') return '錢包調整';
+  return type||'錢包異動';
+}
+
+function setWalletLedgerFilter(filter){
+  walletLedgerFilter=filter||'all';
+
+  document.getElementById('walletLedgerFilterAll')?.classList.toggle('active',walletLedgerFilter==='all');
+  document.getElementById('walletLedgerFilterPayment')?.classList.toggle('active',walletLedgerFilter==='payment');
+  document.getElementById('walletLedgerFilterReload')?.classList.toggle('active',walletLedgerFilter==='reload');
+  document.getElementById('walletLedgerFilterRefund')?.classList.toggle('active',walletLedgerFilter==='refund');
+
+  renderWalletLedger();
+}
+
+function filteredWalletLedgerRows(){
+  const rows=Array.isArray(walletLedgerRows)?walletLedgerRows:[];
+  if(walletLedgerFilter==='all') return rows;
+  if(walletLedgerFilter==='refund'){
+    return rows.filter(r=>r.entryType==='refund'||r.entryType==='expiry_refund');
+  }
+  return rows.filter(r=>r.entryType===walletLedgerFilter);
+}
+
+function renderWalletLedger(){
+  const host=document.getElementById('walletLedgerList');
+  if(!host) return;
+
+  const rows=filteredWalletLedgerRows();
+
+  if(!rows.length){
+    host.innerHTML='<div class="pay-history-empty">目前沒有符合條件的錢包紀錄</div>';
+    return;
+  }
+
+  host.innerHTML=rows.map(r=>{
+    const amount=Number(r.amount||0);
+    const incoming=amount>=0;
+    const amountText=(incoming?'+ ':'- ')+money(Math.abs(amount));
+
+    return `
+      <div class="wallet-ledger-row">
+        <div class="wallet-ledger-row-top">
+          <strong>${safeText(walletLedgerTypeLabel(r.entryType))}</strong>
+          <span class="wallet-ledger-amount ${incoming?'in':'out'}">${amountText}</span>
+        </div>
+        <div class="wallet-ledger-meta">
+          ${r.createdAt?new Date(r.createdAt).toLocaleString('zh-TW'):'--'}
+          ${(r.balanceBefore!=null&&r.balanceAfter!=null)
+            ?`<br>餘額：${money(Number(r.balanceBefore||0))} → ${money(Number(r.balanceAfter||0))}`
+            :''}
+          ${r.storeCode?`<br>門市：${safeText(r.storeCode)}`:''}
+          ${r.tmSaleId?`<br>交易編號：${safeText(r.tmSaleId)}`:''}
+          ${r.description?`<br>${safeText(r.description)}`:''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadWalletLedger(){
+  if(!currentUser) return;
+
+  const host=document.getElementById('walletLedgerList');
+  if(host) host.innerHTML='<div class="pay-history-empty">讀取中…</div>';
+
+  try{
+    const [{data:ledger,error:ledgerError},{data:balanceData,error:balanceError}]
+      = await Promise.all([
+        sb.rpc('app_get_my_yijiapay_wallet_ledger'),
+        sb.rpc('app_get_yijiapay_wallet_balance')
+      ]);
+
+    if(ledgerError) throw ledgerError;
+
+    walletLedgerRows=Array.isArray(ledger)?ledger:[];
+
+    const balance = !balanceError
+      ? Number(balanceData?.walletBalance??balanceData?.balance??0)
+      : 0;
+
+    const summary=document.getElementById('walletLedgerSummary');
+    if(summary){
+      const paymentTotal=walletLedgerRows
+        .filter(r=>r.entryType==='payment')
+        .reduce((sum,r)=>sum+Math.abs(Number(r.amount||0)),0);
+
+      const reloadTotal=walletLedgerRows
+        .filter(r=>r.entryType==='reload')
+        .reduce((sum,r)=>sum+Number(r.amount||0),0);
+
+      const refundTotal=walletLedgerRows
+        .filter(r=>r.entryType==='refund'||r.entryType==='expiry_refund')
+        .reduce((sum,r)=>sum+Number(r.amount||0),0);
+
+      summary.innerHTML=
+        `<strong>${money(balance)}</strong>`+
+        `<small>目前錢包餘額 · 付款 ${money(paymentTotal)} · 儲值 ${money(reloadTotal)} · 退款 ${money(refundTotal)}</small>`;
+    }
+
+    renderWalletLedger();
+  }catch(e){
+    console.error('錢包帳本讀取失敗',e);
+    if(host) host.innerHTML='<div class="pay-history-empty">錢包帳本讀取失敗</div>';
+  }
+}
 
 async function loadYijiaPayReloadPage(){
   if(!currentUser) return;
