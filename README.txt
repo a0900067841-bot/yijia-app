@@ -1,11 +1,12 @@
-億家 App v0.10.9.8 Point Ledger Sync
+億家 App v0.10.9.9 Points Rules Summary
 
 新增：
-- 點數紀錄改為直接讀 TM / SC 正式同步事件。
-- 一般消費累點、活動贈點、點數折抵、點數兌換、退貨扣點都會進同一份明細。
-- 每筆可顯示異動後餘額。
-- App 專屬點數交易仍保留，並以 source_id 避免重複。
+- 點數頁顯示目前 TM / SC 共用點數規則。
+- 消費累點：直接讀 earnAmount / earnPoints。
+- 點數折抵：直接讀 redeemUnitPoints / redeemUnitAmount。
+- 顯示「點數兌換 / 點數折抵」目前是否開放。
+- 顯示「已同步 TM／SC」。
+- 點數頁自動同步時，規則也會一起重新讀取。
 
-更新：
-1. 執行 point_ledger_sync_backend.sql
-2. 上傳 index.html
+此版純前端，不需 SQL。
+只要上傳新的 index.html。

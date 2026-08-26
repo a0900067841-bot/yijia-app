@@ -563,6 +563,20 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .expired-modal p{font-size:16px;line-height:1.75;margin:0;color:#30343a}
 .expired-modal .refund{margin-top:12px;padding:12px;border-radius:14px;background:#f5f7f8;color:#5f666d;font-size:13px;line-height:1.6}
 .expired-modal button{width:100%;margin-top:20px;border:0;border-radius:15px;background:var(--green);color:#fff;padding:13px;font-size:17px;font-weight:900}
+
+/* v0.10.9.9 點數規則摘要 */
+.points-rule-card{
+  background:#fff;border:1px solid var(--line);border-radius:18px;
+  padding:16px;margin:14px 0 18px
+}
+.points-rule-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+.points-rule-head strong{font-size:17px}
+.points-rule-sync{font-size:12px;color:#7a828a}
+.points-rule-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.points-rule-item{background:#f7f9fa;border-radius:14px;padding:12px}
+.points-rule-item small{display:block;color:#7a828a;margin-bottom:5px}
+.points-rule-item b{font-size:16px}
+.points-rule-status{margin-top:10px;font-size:12px;color:#6f767d;line-height:1.6}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -758,6 +772,24 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <small>目前可用點數</small>
     <div id="pointsBalance" class="num">-- 點</div>
     <div id="pointsExpiry">讀取中…</div>
+  </div>
+
+  <div class="points-rule-card">
+    <div class="points-rule-head">
+      <strong>點數規則</strong>
+      <span id="pointsRuleSync" class="points-rule-sync">讀取中…</span>
+    </div>
+    <div class="points-rule-grid">
+      <div class="points-rule-item">
+        <small>消費累點</small>
+        <b id="pointsEarnRule">--</b>
+      </div>
+      <div class="points-rule-item">
+        <small>點數折抵</small>
+        <b id="pointsDiscountRule">--</b>
+      </div>
+    </div>
+    <div id="pointsFeatureStatus" class="points-rule-status">同步功能狀態中…</div>
   </div>
 
   <div class="points-action-grid">
@@ -984,7 +1016,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.8 Point Ledger Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.9 Points Rules Summary</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1382,6 +1414,7 @@ function showView(id){
     loadPoints();
     loadPointHistory();
     loadPointBusinessHistory();
+    loadPointRulesSummary();
     startPointsLiveSync();
   }else{
     stopPointsLiveSync();
@@ -1677,6 +1710,46 @@ function renderPointBusinessHistory(){
   }).join('');
 }
 
+
+async function loadPointRulesSummary(){
+  const earnEl=document.getElementById('pointsEarnRule');
+  const discountEl=document.getElementById('pointsDiscountRule');
+  const syncEl=document.getElementById('pointsRuleSync');
+  const statusEl=document.getElementById('pointsFeatureStatus');
+
+  try{
+    const {data,error}=await sb.rpc('app_get_point_feature_config');
+    if(error) throw error;
+
+    const earnAmount=Math.max(1,Number(data?.earnAmount||1));
+    const earnPoints=Math.max(0,Number(data?.earnPoints||0));
+    const redeemPoints=Math.max(1,Number(data?.redeemUnitPoints||300));
+    const redeemAmount=Math.max(0,Number(data?.redeemUnitAmount||1));
+
+    if(earnEl) earnEl.textContent=`每 ${earnAmount} 元 +${earnPoints} 點`;
+    if(discountEl) discountEl.textContent=`${redeemPoints} 點 = ${money(redeemAmount)}`;
+
+    const rewardOpen=data?.rewardEnabled===true;
+    const discountOpen=data?.discountEnabled===true;
+
+    if(statusEl){
+      statusEl.textContent=
+        `點數兌換：${rewardOpen?'開放':'未開放'}　｜　點數折抵：${discountOpen?'開放':'未開放'}`;
+    }
+
+    if(syncEl){
+      syncEl.textContent='已同步 TM／SC';
+    }
+  }catch(e){
+    console.error('點數規則讀取失敗',e);
+    if(earnEl) earnEl.textContent='讀取失敗';
+    if(discountEl) discountEl.textContent='讀取失敗';
+    if(syncEl) syncEl.textContent='同步失敗';
+    if(statusEl) statusEl.textContent='請稍後重新整理';
+  }
+}
+
+
 let pointsLiveSyncTimer=null;
 
 function stopPointsLiveSync(){
@@ -1692,6 +1765,7 @@ function startPointsLiveSync(){
     try{
       await loadPoints();
       await loadPointHistory();
+      await loadPointRulesSummary();
     }catch(e){
       console.warn('點數頁自動同步失敗',e);
     }
