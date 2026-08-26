@@ -924,6 +924,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <strong>即將到期點數</strong>
       <span id="pointsExpiryTotal" class="points-expiry-total">0 點</span>
     </div>
+    <div style="font-size:12px;color:#7a828a;margin-top:5px">到期前 30、7、3、1 天與到期當天會出現在通知中心</div>
     <div id="pointsExpiryList" class="points-expiry-list">
       <div class="points-expiry-empty">目前沒有即將到期點數</div>
     </div>
@@ -1217,7 +1218,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.0 Point Discount Notification Link</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.1 Points Expiry Notifications</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -3182,7 +3183,52 @@ async function buildNotificationRows(){
     }
   }catch(e){console.warn('通知：到期退款紀錄讀取失敗',e)}
 
-  // 6. 即將到期：3 天內、仍有剩餘數量
+  // 6. 點數即將到期提醒
+  try{
+    const {data,error}=await sb.rpc('app_get_my_expiring_points');
+    if(!error && data){
+      const rows2=Array.isArray(data.rows)?data.rows:[];
+      const today=new Date();
+      today.setHours(0,0,0,0);
+
+      rows2.forEach(r=>{
+        const raw=String(r.expiryDate||'').replace(/\//g,'-');
+        const exp=new Date(raw+'T00:00:00');
+        if(Number.isNaN(exp.getTime())) return;
+
+        const days=Math.ceil((exp-today)/86400000);
+        if(days<0) return;
+
+        let notify=false;
+        let title='點數即將到期';
+        if(days===0){
+          notify=true;
+          title='點數今天到期';
+        }else if(days===1 || days===3 || days===7 || days===30){
+          notify=true;
+        }
+        if(!notify) return;
+
+        const pts=Number(r.points||0);
+        const when=exp.toISOString();
+
+        pushNotification(rows,{
+          id:notificationId('points-expiry',`${r.expiryDate}-${pts}`,when),
+          icon:'⏳',
+          title,
+          message:
+            days===0
+              ? `${pts.toLocaleString()} 點將於今天到期，請留意使用期限。`
+              : `${pts.toLocaleString()} 點將於 ${r.expiryDate} 到期（剩 ${days} 天）。`,
+          time:new Date().toISOString(),
+          target:'points',
+          priority:days<=1?2:1
+        });
+      });
+    }
+  }catch(e){console.warn('通知：即將到期點數讀取失敗',e)}
+
+  // 7. 即將到期：3 天內、仍有剩餘數量
   try{
     const {data,error}=await sb.rpc('app_get_member_products');
     if(!error && Array.isArray(data)){
