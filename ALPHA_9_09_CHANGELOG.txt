@@ -1,5 +1,0 @@
-TM Alpha 9.09
-1. 修正 app.js ES Module 語法錯誤：?? 與 || 未加括號混用，造成瀏覽器整頁白畫面。
-2. 保留 YD/YS/會員條碼分流。
-3. 保留隨買兌換退貨補回 App 我的商品。
-4. 全部 JavaScript 以 ES Module 模式重新檢查。
