@@ -1,6 +1,0 @@
-億家 TM Alpha 9.06
-1. 修正 Alpha 9.05 iPhone 白畫面。
-2. TM 核心啟動不再等待外部 html5-qrcode / qrcodejs CDN。
-3. html5-qrcode 改由既有 ensureHtml5QrcodeLoaded() 在實際開相機時載入。
-4. qrcodejs 改背景非阻塞載入。
-5. 保留 Alpha 9.04/9.05 的隨買兌換退貨補回 App 功能與 YD/YS/YJ09 掃碼規則。
