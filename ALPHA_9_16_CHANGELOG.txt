@@ -1,6 +1,0 @@
-TM Alpha 9.16
-- 億家Pay付款碼：移除前端舊 YP 固定格式驗證；掃到完整 Code128 / QR token 後直接呼叫 tm_get_yijiapay_pay_code，依 RPC 回傳 not_found / expired / used / cancelled 判斷。
-- 億家Pay token 保留原始大小寫，不再由 TM 自行 upper-case。
-- 億家Pay現金儲值：掃描 App 會員條碼（含直接 09 手機條碼）後，等待掃描視窗完全關閉再回到儲值表單並自動帶入手機，避免 iPad/Safari 畫面跳掉。
-- 蕃薯快速金額鍵：進入蕃薯分類若本機尚未取得設定，會立即從 HQ yj_tm_quick_amount_keys 重新同步並自動刷新，沿用 SC 現有設定。
-- 不新增第二套億家Pay資料。
