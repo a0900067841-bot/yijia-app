@@ -1,17 +1,18 @@
-億家 App v0.10.12.0 Pay Amount Receipt
+億家 App v0.10.12.2 Pay Timer Reset Behavior
 
-新增：
-- 億家Pay付款完成明細新增「付款金額」。
-- 最近交易顯示實際付款金額。
-- 付款完成通知顯示實際付款金額。
-- app_yijiapay_pay_codes 增加：
-  amount
-  balance_before
-  balance_after
-- 新版 TM 建議改用：
-  tm_complete_yijiapay_pay_code(pay_code, store_code, sale_id, amount)
-- 保留舊 3 參數版本相容，不會直接破壞目前 TM。
+這版修正為正確需求：
 
-注意：
-此版只補「實際成交金額」紀錄。
-錢包真正扣款仍應由億家Pay正式扣款交易流程負責。
+- 每次重新進入「億家Pay」畫面：
+  重新產生一組付款碼，倒數重新從 60 秒開始。
+- 從「付款條碼」切換到「QR Code」：
+  重新產生一組付款碼，倒數重新從 60 秒開始。
+- 從「QR Code」切回「付款條碼」：
+  重新產生一組付款碼，倒數重新從 60 秒開始。
+- 按 🔄：
+  重新產生一組付款碼，倒數重新從 60 秒開始。
+- 倒數到 0：
+  自動重新產生付款碼並重新 60 秒。
+- 同一個按鈕重複點擊、沒有真的切換模式時，不額外重建付款碼。
+
+此版沿用 v0.10.11.6 之後的雲端付款碼 RPC。
+不用新增 SQL，直接上傳新的 index.html。

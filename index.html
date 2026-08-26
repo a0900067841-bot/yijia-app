@@ -1284,7 +1284,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="pay-expiry-row">
       <span>支付條碼期限</span>
       <span id="payCodeCountdown" class="pay-expiry-time">60秒</span>
-      <button class="pay-expiry-refresh" type="button" onclick="refreshPayCode()" title="重新產生">🔄</button>
+      <button class="pay-expiry-refresh" type="button" onclick="refreshPayCode()" title="重新產生付款碼並重設 60 秒">🔄</button>
     </div>
     <div id="payCodeHost" class="pay-screen-code-host"></div>
     <div id="payCodeAmountLine" class="pay-screen-amount-line">PAY <span id="payWalletAmountInline">$0</span></div>
@@ -1361,7 +1361,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.0 Pay Amount Receipt</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.2 Pay Timer Reset Behavior</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1749,7 +1749,8 @@ function showView(id){
   if(id!=='storeOrder') stopStoreOrderMonitor();
   if(id!=='products') stopRedemptionSyncMonitor();
   if(id!=='redeemTicket') stopRedeemTicketCountdown();
-  if(id==='checkout'||id==='pay') loadYijiaPaySummary();
+  if(id==='checkout') loadYijiaPaySummary(false);
+  if(id==='pay') loadYijiaPaySummary(true);
   if(id==='orderManagement') loadOrderManagement();
   if(id==='productUsage') loadProductUsage();
   if(id==='giftTransfer') loadGiftTransferData();
@@ -1882,11 +1883,22 @@ async function refreshPayCode(){
   }
 }
 
-function switchPayCodeMode(mode){
-  payCodeMode=mode==='qr'?'qr':'pay';
+async function switchPayCodeMode(mode){
+  const nextMode=mode==='qr'?'qr':'pay';
+
+  // 同一顯示模式再次點擊不重建；真正切換時才重新產生 60 秒付款碼。
+  if(nextMode===payCodeMode){
+    renderPayCode();
+    return;
+  }
+
+  payCodeMode=nextMode;
   document.getElementById('payModePayBtn')?.classList.toggle('active',payCodeMode==='pay');
   document.getElementById('payModeQrBtn')?.classList.toggle('active',payCodeMode==='qr');
-  renderPayCode();
+
+  setPayCodeCloudStatus('正在重新產生安全付款碼…',true);
+  setPayCodeLiveStatus('付款碼更新中…');
+  await refreshPayCode();
 }
 
 function togglePayCode(){
@@ -2036,7 +2048,7 @@ async function checkCurrentPayCodeStatus(){
         lastCompletedPayCode=currentPayCode;
         openPayCompleteSheet(data);
         try{
-          await loadYijiaPaySummary();
+          await loadYijiaPaySummary(false);
           await loadYijiaPayHistory();
         }catch(e){}
       }
@@ -4548,7 +4560,7 @@ async function loadYijiaPayHistory(){
   }
 }
 
-async function loadYijiaPaySummary(){
+async function loadYijiaPaySummary(forceNewPayCode=false){
   if(!currentUser) return;
 
   // 每次讀取錢包前，自動檢查目前會員是否有已到期且尚未處理的隨買商品。
@@ -4594,7 +4606,11 @@ async function loadYijiaPaySummary(){
   if(cardStatus) cardStatus.textContent=yijiaPaySummary.hasCard ? (yijiaPaySummary.cardLabel||'已綁定') : '尚未綁定';
   if(payCardSummary) payCardSummary.textContent=yijiaPaySummary.hasCard ? (yijiaPaySummary.cardLabel||'已綁定') : '尚未綁定';
 
-  await loadCurrentPayCode();
+  if(forceNewPayCode){
+    await refreshPayCode();
+  }else{
+    await loadCurrentPayCode();
+  }
   await loadYijiaPayHistory();
   updateCheckoutPayAvailability();
 }
