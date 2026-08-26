@@ -892,6 +892,23 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 }
 .pay-history-summary strong{font-size:20px;color:var(--green)}
 .pay-history-summary small{display:block;color:#7a828a;margin-top:4px}
+
+/* v0.10.12.7 億家Pay交易搜尋 */
+.pay-history-search{
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:10px 12px;margin-bottom:12px
+}
+.pay-history-search input{
+  width:100%;border:0;outline:0;background:transparent;
+  font-size:15px;color:var(--ink)
+}
+.pay-history-date-title{
+  font-size:13px;font-weight:900;color:#69727a;
+  margin:16px 4px 8px
+}
+.pay-history-clear{
+  border:0!important;background:#f4f6f8!important;color:#59636c!important
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -1407,6 +1424,17 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <button id="payHistoryFilterAll" class="active" onclick="setPayHistoryFilter('all')">全部</button>
     <button id="payHistoryFilterMonth" onclick="setPayHistoryFilter('month')">本月</button>
     <button id="payHistoryFilter30" onclick="setPayHistoryFilter('30d')">近30天</button>
+    <button class="pay-history-clear" onclick="clearPayHistorySearch()">清除搜尋</button>
+  </div>
+
+  <div class="pay-history-search">
+    <input
+      id="payHistorySearchInput"
+      type="search"
+      inputmode="search"
+      placeholder="搜尋門市、交易編號或付款碼"
+      oninput="setPayHistorySearch(this.value)"
+    >
   </div>
 
   <div id="yijiaPayHistoryPageList" class="pay-history-list">
@@ -1425,7 +1453,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.6 Pay History Page</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.7 Pay History Search</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -4679,6 +4707,7 @@ async function loadYijiaPayHistory(){
 
 let payHistoryPageRows=[];
 let payHistoryFilter='all';
+let payHistorySearch='';
 
 function setPayHistoryFilter(filter){
   payHistoryFilter=filter||'all';
@@ -4688,24 +4717,69 @@ function setPayHistoryFilter(filter){
   renderYijiaPayHistoryPage();
 }
 
+function setPayHistorySearch(value){
+  payHistorySearch=String(value||'').trim().toLowerCase();
+  renderYijiaPayHistoryPage();
+}
+
+function clearPayHistorySearch(){
+  payHistorySearch='';
+  const input=document.getElementById('payHistorySearchInput');
+  if(input) input.value='';
+  renderYijiaPayHistoryPage();
+}
+
 function filteredPayHistoryRows(){
-  const rows=Array.isArray(payHistoryPageRows)?payHistoryPageRows:[];
-  if(payHistoryFilter==='all') return rows;
-
+  let rows=Array.isArray(payHistoryPageRows)?payHistoryPageRows.slice():[];
   const now=new Date();
-  return rows.filter(r=>{
-    const d=r.usedAt?new Date(r.usedAt):null;
-    if(!d || Number.isNaN(d.getTime())) return false;
 
-    if(payHistoryFilter==='month'){
-      return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
-    }
+  if(payHistoryFilter!=='all'){
+    rows=rows.filter(r=>{
+      const d=r.usedAt?new Date(r.usedAt):null;
+      if(!d || Number.isNaN(d.getTime())) return false;
 
-    if(payHistoryFilter==='30d'){
-      return (now-d)<=30*24*60*60*1000;
-    }
+      if(payHistoryFilter==='month'){
+        return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
+      }
 
-    return true;
+      if(payHistoryFilter==='30d'){
+        return (now-d)<=30*24*60*60*1000;
+      }
+
+      return true;
+    });
+  }
+
+  if(payHistorySearch){
+    rows=rows.filter(r=>{
+      const haystack=[
+        r.usedStoreCode,
+        r.tmSaleId,
+        r.payCode,
+        r.amount!=null?String(r.amount):''
+      ].map(v=>String(v||'').toLowerCase()).join(' ');
+      return haystack.includes(payHistorySearch);
+    });
+  }
+
+  return rows;
+}
+
+function payHistoryDateLabel(v){
+  const d=v?new Date(v):null;
+  if(!d || Number.isNaN(d.getTime())) return '其他日期';
+
+  const today=new Date();
+  const a=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
+  const b=new Date(today.getFullYear(),today.getMonth(),today.getDate()).getTime();
+  const diff=Math.round((b-a)/86400000);
+
+  if(diff===0) return '今天';
+  if(diff===1) return '昨天';
+  return d.toLocaleDateString('zh-TW',{
+    year:'numeric',
+    month:'2-digit',
+    day:'2-digit'
   });
 }
 
@@ -4718,7 +4792,7 @@ function renderYijiaPayHistoryPage(){
   const total=rows.reduce((sum,r)=>sum+Number(r.amount||0),0);
 
   if(summary){
-    summary.innerHTML=`<strong>${money(total)}</strong><small>目前篩選 ${rows.length} 筆已完成交易</small>`;
+    summary.innerHTML=`<strong>${money(total)}</strong><small>目前顯示 ${rows.length} 筆已完成交易${payHistorySearch?' · 已套用搜尋':''}</small>`;
   }
 
   if(!rows.length){
@@ -4726,21 +4800,29 @@ function renderYijiaPayHistoryPage(){
     return;
   }
 
-  host.innerHTML=rows.map(r=>`
-    <div class="pay-history-row" onclick="openPayCompleteByCode('${safeText(r.payCode||'')}')">
-      <div class="pay-history-top">
-        <strong>${r.amount!=null?money(Number(r.amount||0)):'億家Pay付款'}</strong>
-        <span class="pay-history-status">已完成</span>
-      </div>
-      <div class="pay-history-meta">
-        ${r.usedAt?new Date(r.usedAt).toLocaleString('zh-TW'):'--'}
-        ${r.usedStoreCode?`<br>門市：${safeText(r.usedStoreCode)}`:''}
-        ${r.tmSaleId?`<br>交易編號：${safeText(r.tmSaleId)}`:''}
-        ${r.payCode?`<br>付款碼：${safeText(r.payCode)}`:''}
-        <br><span style="color:var(--green);font-weight:800">查看完成明細</span>
-      </div>
-    </div>
-  `).join('');
+  let lastDate='';
+  host.innerHTML=rows.map(r=>{
+    const dateLabel=payHistoryDateLabel(r.usedAt);
+    const dateHead=dateLabel!==lastDate
+      ? `<div class="pay-history-date-title">${safeText(dateLabel)}</div>`
+      : '';
+    lastDate=dateLabel;
+
+    return `${dateHead}
+      <div class="pay-history-row" onclick="openPayCompleteByCode('${safeText(r.payCode||'')}')">
+        <div class="pay-history-top">
+          <strong>${r.amount!=null?money(Number(r.amount||0)):'億家Pay付款'}</strong>
+          <span class="pay-history-status">已完成</span>
+        </div>
+        <div class="pay-history-meta">
+          ${r.usedAt?new Date(r.usedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'--'}
+          ${r.usedStoreCode?`<br>門市：${safeText(r.usedStoreCode)}`:''}
+          ${r.tmSaleId?`<br>交易編號：${safeText(r.tmSaleId)}`:''}
+          ${r.payCode?`<br>付款碼：${safeText(r.payCode)}`:''}
+          <br><span style="color:var(--green);font-weight:800">查看完成明細</span>
+        </div>
+      </div>`;
+  }).join('');
 }
 
 async function loadYijiaPayHistoryPage(){
