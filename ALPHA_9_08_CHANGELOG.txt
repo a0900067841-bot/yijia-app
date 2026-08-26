@@ -1,6 +1,0 @@
-TM Alpha 9.08
-- 白畫面修正：開機載入殼完整回退到已驗證可啟動的 Alpha 9.01 index 架構。
-- 保留 Alpha 9.03 YD 直接兌換。
-- 保留 Alpha 9.04 隨買兌換退貨補回 App 我的商品。
-- 保留後續點數與其他既有功能。
-- Service Worker cache 升為 9.08。
