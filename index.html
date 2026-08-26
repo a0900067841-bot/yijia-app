@@ -1361,7 +1361,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.8 Pay History Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.9 Pay Notification Link</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1965,6 +1965,31 @@ function stopPayCodeStatusMonitor(){
   if(payCodeStatusTimer){
     clearInterval(payCodeStatusTimer);
     payCodeStatusTimer=null;
+  }
+}
+
+
+async function openPayCompleteByCode(payCode){
+  try{
+    const {data,error}=await sb.rpc('app_get_yijiapay_pay_code_status',{
+      p_pay_code:String(payCode||'')
+    });
+    if(error) throw error;
+
+    if(!data?.found){
+      alert('找不到這筆億家Pay付款紀錄。');
+      return;
+    }
+
+    if(String(data.status||'')!=='used'){
+      alert('這筆付款尚未完成。');
+      return;
+    }
+
+    openPayCompleteSheet(data);
+  }catch(e){
+    console.error(e);
+    alert('付款完成明細讀取失敗。');
   }
 }
 
@@ -3630,7 +3655,31 @@ async function buildNotificationRows(){
     }
   }catch(e){console.warn('通知：點數紀錄讀取失敗',e)}
 
-  // 4. 點數兌換券通知：直接連到 PR 兌換券
+  // 4. 億家Pay付款完成通知
+  try{
+    const {data,error}=await sb.rpc('app_get_my_yijiapay_pay_history');
+    if(!error && Array.isArray(data)){
+      data.forEach(t=>{
+        const code=String(t.payCode||'');
+        if(!code) return;
+
+        pushNotification(rows,{
+          id:notificationId('yijiapay-used',code,t.usedAt||t.createdAt),
+          icon:'💳',
+          title:'億家Pay付款完成',
+          message:
+            `${t.usedStoreCode?`門市 ${t.usedStoreCode}`:'億家門市'}`
+            +`${t.tmSaleId?` · 交易 ${t.tmSaleId}`:''}`,
+          time:t.usedAt||t.createdAt,
+          target:'yijiaPayReceipt',
+          payCode:code,
+          priority:1
+        });
+      });
+    }
+  }catch(e){console.warn('通知：億家Pay交易紀錄讀取失敗',e)}
+
+  // 5. 點數兌換券通知：直接連到 PR 兌換券
   try{
     const {data,error}=await sb
       .from('app_point_reward_redemptions')
@@ -3666,7 +3715,7 @@ async function buildNotificationRows(){
     }
   }catch(e){console.warn('通知：點數兌換券讀取失敗',e)}
 
-  // 5. 點數折抵券完成通知：直接連到 YPD 折抵完成明細
+  // 6. 點數折抵券完成通知：直接連到 YPD 折抵完成明細
   try{
     const {data,error}=await sb.rpc('app_get_my_point_discount_tickets');
     if(!error && Array.isArray(data)){
@@ -3687,7 +3736,7 @@ async function buildNotificationRows(){
     }
   }catch(e){console.warn('通知：點數折抵券讀取失敗',e)}
 
-  // 6. 到期退款完成
+  // 7. 到期退款完成
   try{
     const {data,error}=await sb.rpc('app_get_expiry_refund_history');
     if(!error && Array.isArray(data)){
@@ -3705,7 +3754,7 @@ async function buildNotificationRows(){
     }
   }catch(e){console.warn('通知：到期退款紀錄讀取失敗',e)}
 
-  // 7. 點數即將到期提醒
+  // 8. 點數即將到期提醒
   try{
     const {data,error}=await sb.rpc('app_get_my_expiring_points');
     if(!error && data){
@@ -3750,7 +3799,7 @@ async function buildNotificationRows(){
     }
   }catch(e){console.warn('通知：即將到期點數讀取失敗',e)}
 
-  // 8. 即將到期：3 天內、仍有剩餘數量
+  // 9. 即將到期：3 天內、仍有剩餘數量
   try{
     const {data,error}=await sb.rpc('app_get_member_products');
     if(!error && Array.isArray(data)){
@@ -3841,6 +3890,12 @@ function openNotification(id){
       setTimeout(()=>{
         showView('pointDiscount');
         openPointDiscountReceiptByCode(n.discountCode);
+      },120);
+    }
+    if(n.target==='yijiaPayReceipt' && n.payCode){
+      setTimeout(()=>{
+        showView('pay');
+        openPayCompleteByCode(n.payCode);
       },120);
     }
     if(n.target==='pointRewardTicket' && n.fulfillmentCode){
@@ -4469,7 +4524,7 @@ async function loadYijiaPayHistory(){
     }
 
     host.innerHTML=rows.map(r=>`
-      <div class="pay-history-row">
+      <div class="pay-history-row" onclick="openPayCompleteByCode('${safeText(r.payCode||'')}')">
         <div class="pay-history-top">
           <strong>億家Pay付款</strong>
           <span class="pay-history-status">已完成</span>
@@ -4479,6 +4534,7 @@ async function loadYijiaPayHistory(){
           ${r.usedStoreCode?`<br>門市：${safeText(r.usedStoreCode)}`:''}
           ${r.tmSaleId?`<br>交易編號：${safeText(r.tmSaleId)}`:''}
           ${r.payCode?`<br>付款碼：${safeText(r.payCode)}`:''}
+          <br><span style="color:var(--green);font-weight:800">點一下查看完成明細</span>
         </div>
       </div>
     `).join('');
