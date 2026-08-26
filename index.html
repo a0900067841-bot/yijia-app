@@ -1516,7 +1516,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.9 Pay Monthly Summary</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.0 Wallet Debit Core</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2191,7 +2191,11 @@ async function openPayCompleteByCode(payCode){
 
 function openPayCompleteSheet(data){
   const amountEl=document.getElementById('payCompleteAmount');
+  const beforeEl=document.getElementById('payCompleteBefore');
+  const afterEl=document.getElementById('payCompleteAfter');
   if(amountEl) amountEl.textContent=data?.amount!=null ? money(Number(data.amount||0)) : '--';
+  if(beforeEl) beforeEl.textContent=data?.balanceBefore!=null ? money(Number(data.balanceBefore||0)) : '--';
+  if(afterEl) afterEl.textContent=data?.balanceAfter!=null ? money(Number(data.balanceAfter||0)) : '--';
   document.getElementById('payCompleteCode').textContent=data?.payCode||currentPayCode||'--';
   document.getElementById('payCompleteTime').textContent=data?.usedAt
     ? new Date(data.usedAt).toLocaleString('zh-TW')
@@ -4756,6 +4760,7 @@ async function loadYijiaPayHistory(){
           ${r.usedAt?new Date(r.usedAt).toLocaleString('zh-TW'):'--'}
           ${r.usedStoreCode?`<br>門市：${safeText(r.usedStoreCode)}`:''}
           ${r.tmSaleId?`<br>交易編號：${safeText(r.tmSaleId)}`:''}
+          ${(r.balanceBefore!=null && r.balanceAfter!=null)?`<br>錢包：${money(Number(r.balanceBefore||0))} → ${money(Number(r.balanceAfter||0))}`:''}
           ${r.payCode?`<br>付款碼：${safeText(r.payCode)}`:''}
           <br><span style="color:var(--green);font-weight:800">點一下查看完成明細</span>
         </div>
@@ -4950,6 +4955,7 @@ function renderYijiaPayHistoryPage(){
           ${r.usedAt?new Date(r.usedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'--'}
           ${r.usedStoreCode?`<br>門市：${safeText(r.usedStoreCode)}`:''}
           ${r.tmSaleId?`<br>交易編號：${safeText(r.tmSaleId)}`:''}
+          ${(r.balanceBefore!=null && r.balanceAfter!=null)?`<br>錢包：${money(Number(r.balanceBefore||0))} → ${money(Number(r.balanceAfter||0))}`:''}
           ${r.payCode?`<br>付款碼：${safeText(r.payCode)}`:''}
           <br><span style="color:var(--green);font-weight:800">查看完成明細</span>
         </div>
@@ -7250,6 +7256,8 @@ function toggleAnybuySubmenu(id){document.getElementById(id)?.classList.toggle('
     </div>
     <div class="pay-complete-rows">
       <div class="pay-complete-row"><span>付款金額</span><b id="payCompleteAmount">--</b></div>
+      <div class="pay-complete-row"><span>付款前餘額</span><b id="payCompleteBefore">--</b></div>
+      <div class="pay-complete-row"><span>付款後餘額</span><b id="payCompleteAfter">--</b></div>
       <div class="pay-complete-row"><span>付款碼</span><b id="payCompleteCode">--</b></div>
       <div class="pay-complete-row"><span>完成時間</span><b id="payCompleteTime">--</b></div>
       <div class="pay-complete-row"><span>門市</span><b id="payCompleteStore">--</b></div>
