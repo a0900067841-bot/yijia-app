@@ -1,0 +1,6 @@
+TM v5.5.0 Alpha 9.12
+
+- 修正 Alpha 9.11 億家Pay結帳 UI 注入造成的 JavaScript 語法錯誤。
+- 修正 Safari / iPad 開啟 TM 時白畫面。
+- 保留 Alpha 9.11 億家Pay正式串接功能。
+- 一般 TM 與自助 XMode 既有功能不重做。

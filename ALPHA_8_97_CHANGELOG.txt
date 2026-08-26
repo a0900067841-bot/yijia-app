@@ -1,0 +1,8 @@
+TM Alpha 8.97 — 隨買跨店取組數＋數量
+
+1. TM 現場隨買活動讀取 groupCount（組數）與 quantity（數量）。
+2. 現場寄杯活動顯示例如「方案 1組3杯」「方案 1組10杯」。
+3. 寄入 App 我的商品時保留 groupCount；實際可兌換數量仍依 quantity × 購買份數建立。
+4. 舊活動未設定 groupCount 時自動視為 1 組。
+5. 保留 Alpha 8.96 現場寄杯、App/TM 活動分流、隨買兌換與既有功能。
+6. 合併 Alpha 8.96 物流簽到 RLS fallback 修正。

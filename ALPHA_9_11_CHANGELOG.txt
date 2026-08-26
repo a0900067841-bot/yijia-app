@@ -1,0 +1,8 @@
+TM Alpha 9.11 — 億家Pay正式串接
+
+- 掃描 App YP 60秒付款碼，呼叫 tm_get_yijiapay_pay_code。
+- 正式付款一律呼叫四參數 tm_complete_yijiapay_pay_code(pay_code,store_code,sale_id,amount)。
+- 餘額不足顯示目前餘額／應付／尚差，不完成交易。
+- 退貨完成後呼叫 tm_refund_yijiapay_payment，支援部分／整筆退款。
+- 加值選單新增億家Pay現金儲值，僅透過 tm_reload_yijiapay_wallet 入帳。
+- 不建立 TM 自有錢包。

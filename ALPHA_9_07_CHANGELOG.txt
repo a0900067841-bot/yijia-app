@@ -1,0 +1,5 @@
+億家 TM Alpha 9.07
+1. 修正 iOS / 行動網路啟動時 cloudBootstrap 卡住造成白畫面。
+2. TM 本機登入介面先顯示，Supabase bootstrap 改背景執行，不再阻塞開機。
+3. 雲端初始化加入 12 秒 timeout；失敗不影響 TM 本機操作。
+4. 保留 Alpha 9.04 隨買兌換退貨補回 App 功能與 Alpha 9.06 掃描套件延遲載入。
