@@ -523,6 +523,18 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .my-reward-actions button{border:0;border-radius:10px;padding:8px 12px;font-weight:800}
 .my-reward-actions .primary{background:var(--green);color:#fff}
 .my-reward-actions .muted{background:#eef0f2;color:#777}
+
+.point-history-tabs{display:flex;gap:8px;margin:14px 0}
+.point-history-tabs button{flex:1;border:1px solid #dfe4e8;background:#fff;border-radius:12px;padding:10px;font-weight:800}
+.point-history-tabs button.active{background:var(--green);color:#fff;border-color:var(--green)}
+.point-history-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
+.point-history-card .head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.point-history-card .title{font-weight:900}
+.point-history-card .amt{font-weight:900}
+.point-history-card .meta{font-size:12px;color:#7a828a;line-height:1.55;margin-top:6px}
+.point-history-card .status{display:inline-block;margin-top:8px;padding:4px 8px;border-radius:999px;background:#eef6ff;color:#315b8c;font-size:12px;font-weight:800}
+.point-history-card .status.ok{background:#eaf8ef;color:#17663b}
+.point-history-card .status.bad{background:#fff1f0;color:#b42318}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -733,10 +745,18 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     </div>
   </div>
 
-  <div class="section-title"><h3>點數紀錄</h3><button onclick="loadPointHistory()">重新整理</button></div>
+  <div class="section-title"><h3>點數紀錄</h3><button onclick="loadPointHistory();loadPointBusinessHistory()">重新整理</button></div>
   <div id="pointsHistory" class="list history">
     <div class="row"><div><strong>點數紀錄載入中</strong><small>累點、兌換、折抵與退貨扣點都會顯示在這裡。</small></div></div>
   </div>
+
+  <div class="section-title" style="margin-top:20px"><h3>點數使用明細</h3></div>
+  <div class="point-history-tabs">
+    <button id="pointHistoryTabAll" class="active" onclick="setPointHistoryFilter('all')">全部</button>
+    <button id="pointHistoryTabReward" onclick="setPointHistoryFilter('reward')">點數兌換</button>
+    <button id="pointHistoryTabDiscount" onclick="setPointHistoryFilter('discount')">點數折抵</button>
+  </div>
+  <div id="pointBusinessHistory"></div>
 </section>
 
 
@@ -936,7 +956,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.4 Points Live Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.5 Points History</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1333,6 +1353,7 @@ function showView(id){
   if(id==='points'){
     loadPoints();
     loadPointHistory();
+    loadPointBusinessHistory();
     startPointsLiveSync();
   }else{
     stopPointsLiveSync();
@@ -1531,6 +1552,80 @@ function renderPoints(p){
       : '目前無即將到期點數';
 }
 
+
+
+let pointBusinessHistoryRows=[];
+let pointBusinessHistoryFilter='all';
+
+function setPointHistoryFilter(filter){
+  pointBusinessHistoryFilter=filter;
+  const map={all:'All',reward:'Reward',discount:'Discount'};
+  Object.entries(map).forEach(([key,suffix])=>{
+    const el=document.getElementById('pointHistoryTab'+suffix);
+    if(el) el.classList.toggle('active',key===filter);
+  });
+  renderPointBusinessHistory();
+}
+
+async function loadPointBusinessHistory(){
+  try{
+    const {data,error}=await sb.rpc('app_get_point_business_history');
+    if(error) throw error;
+    pointBusinessHistoryRows=Array.isArray(data)?data:[];
+    renderPointBusinessHistory();
+  }catch(e){
+    console.error(e);
+    const host=document.getElementById('pointBusinessHistory');
+    if(host) host.innerHTML='<div class="empty-box">點數使用明細讀取失敗</div>';
+  }
+}
+
+function pointBusinessStatusLabel(row){
+  const status=String(row.status||'');
+  if(row.type==='reward'){
+    if(status==='used') return ['已兌換','ok'];
+    if(status==='available') return ['可使用',''];
+    return [status||'已完成',''];
+  }
+  if(status==='used'||status==='applied') return ['已折抵','ok'];
+  if(status==='pending') return ['待使用',''];
+  if(status==='expired') return ['已失效','bad'];
+  if(status==='cancelled') return ['已取消','bad'];
+  return [status||'—',''];
+}
+
+function renderPointBusinessHistory(){
+  const host=document.getElementById('pointBusinessHistory');
+  if(!host) return;
+  let rows=pointBusinessHistoryRows;
+  if(pointBusinessHistoryFilter!=='all') rows=rows.filter(x=>String(x.type||'')===pointBusinessHistoryFilter);
+  if(!rows.length){
+    host.innerHTML='<div class="empty-box"><div class="big">🧾</div>目前沒有點數使用明細</div>';
+    return;
+  }
+  host.innerHTML=rows.map(r=>{
+    const [statusLabel,statusClass]=pointBusinessStatusLabel(r);
+    const isReward=r.type==='reward';
+    const title=isReward?(r.name||'點數兌換'):'點數折抵';
+    const amount=isReward
+      ? `-${Number(r.pointsUsed||0).toLocaleString()} 點`
+      : `-${Number(r.pointsUsed||0).toLocaleString()} 點 / ${money(Number(r.discountAmount||0))}`;
+    return `<div class="point-history-card">
+      <div class="head">
+        <div>
+          <div class="title">${safeText(title)}</div>
+          <div class="meta">
+            ${r.createdAt?new Date(r.createdAt).toLocaleString('zh-TW'):''}
+            ${r.storeCode?`<br>門市：${safeText(r.storeCode)}`:''}
+            ${r.saleId?`<br>交易：${safeText(r.saleId)}`:''}
+          </div>
+        </div>
+        <div class="amt">${amount}</div>
+      </div>
+      <span class="status ${statusClass}">${safeText(statusLabel)}</span>
+    </div>`;
+  }).join('');
+}
 
 let pointsLiveSyncTimer=null;
 
