@@ -1384,7 +1384,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.3 Pay Code Switch Guard</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.4 Pay Complete Refresh</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1768,7 +1768,14 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
-  if(id!=='pay') stopPayCodeStatusMonitor();
+  if(id!=='pay'){
+    stopPayCodeStatusMonitor();
+    if(payCodeNeedsRefreshAfterComplete){
+      payCodeNeedsRefreshAfterComplete=false;
+      currentPayCode='';
+      payCodeExpiresAt=0;
+    }
+  }
   if(id!=='storeOrder') stopStoreOrderMonitor();
   if(id!=='products') stopRedemptionSyncMonitor();
   if(id!=='redeemTicket') stopRedeemTicketCountdown();
@@ -2008,6 +2015,7 @@ function renderPayCode(){
 
 let payCodeStatusTimer=null;
 let lastCompletedPayCode='';
+let payCodeNeedsRefreshAfterComplete=false;
 
 function setPayCodeLiveStatus(text,kind=''){
   const el=document.getElementById('payCodeLiveStatus');
@@ -2061,9 +2069,17 @@ function openPayCompleteSheet(data){
   if(mask) mask.style.display='flex';
 }
 
-function closePayCompleteSheet(){
+async function closePayCompleteSheet(){
   const mask=document.getElementById('payCompleteMask');
   if(mask) mask.style.display='none';
+
+  if(payCodeNeedsRefreshAfterComplete){
+    payCodeNeedsRefreshAfterComplete=false;
+    currentPayCode='';
+    payCodeExpiresAt=0;
+    setPayCodeLiveStatus('正在建立下一組付款碼…');
+    await refreshPayCode();
+  }
 }
 
 async function checkCurrentPayCodeStatus(){
@@ -2089,11 +2105,26 @@ async function checkCurrentPayCodeStatus(){
 
       if(lastCompletedPayCode!==currentPayCode){
         lastCompletedPayCode=currentPayCode;
+        payCodeNeedsRefreshAfterComplete=true;
         openPayCompleteSheet(data);
+
+        // 只更新餘額 / 歷史，不重新載入已使用的付款碼。
         try{
-          await loadYijiaPaySummary(false);
-          await loadYijiaPayHistory();
+          const {data:walletData,error:walletError}=await sb.rpc('app_get_yijiapay_wallet_balance');
+          if(!walletError && walletData!=null){
+            const b=typeof walletData==='object'
+              ? Number(walletData.walletBalance??walletData.balance??0)
+              : Number(walletData||0);
+            if(Number.isFinite(b)){
+              yijiaPaySummary.walletBalance=b;
+              const payAmount=document.getElementById('payWalletAmount');
+              const payAmountInline=document.getElementById('payWalletAmountInline');
+              if(payAmount) payAmount.textContent=money(b);
+              if(payAmountInline) payAmountInline.textContent=money(b);
+            }
+          }
         }catch(e){}
+        try{ await loadYijiaPayHistory(); }catch(e){}
       }
       return;
     }
@@ -6873,6 +6904,9 @@ function toggleAnybuySubmenu(id){document.getElementById(id)?.classList.toggle('
     <div class="icon">✅</div>
     <h3>付款完成</h3>
     <p>億家Pay 付款碼已由門市完成交易</p>
+    <div style="text-align:center;color:#7a828a;font-size:12px;margin:-8px 0 14px">
+      關閉後會自動建立下一組 60 秒付款碼
+    </div>
     <div class="pay-complete-rows">
       <div class="pay-complete-row"><span>付款金額</span><b id="payCompleteAmount">--</b></div>
       <div class="pay-complete-row"><span>付款碼</span><b id="payCompleteCode">--</b></div>
