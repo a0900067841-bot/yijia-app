@@ -851,6 +851,29 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 }
 .pay-history-meta{font-size:12px;color:#7a828a;line-height:1.55;margin-top:6px}
 .pay-history-empty{color:#7a828a;font-size:13px;padding:8px 0}
+
+/* v0.10.12.3 付款碼切換防連點 */
+.pay-expiry-refresh:disabled,
+.pay-screen-switch button:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+.pay-code-loading{
+  min-height:115px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  color:#7a828a;
+  font-size:14px;
+}
+.pay-code-loading .spin{
+  display:inline-block;
+  animation:yijiaPaySpin .8s linear infinite;
+}
+@keyframes yijiaPaySpin{
+  to{transform:rotate(360deg)}
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -1284,7 +1307,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="pay-expiry-row">
       <span>支付條碼期限</span>
       <span id="payCodeCountdown" class="pay-expiry-time">60秒</span>
-      <button class="pay-expiry-refresh" type="button" onclick="refreshPayCode()" title="重新產生付款碼並重設 60 秒">🔄</button>
+      <button id="payCodeRefreshBtn" class="pay-expiry-refresh" type="button" onclick="refreshPayCode()" title="重新產生付款碼並重設 60 秒">🔄</button>
     </div>
     <div id="payCodeHost" class="pay-screen-code-host"></div>
     <div id="payCodeAmountLine" class="pay-screen-amount-line">PAY <span id="payWalletAmountInline">$0</span></div>
@@ -1361,7 +1384,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.2 Pay Timer Reset Behavior</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.3 Pay Code Switch Guard</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1800,6 +1823,20 @@ function setPayCodeCloudStatus(text,ok=true){
   el.style.color=ok?'#7a828a':'#b42318';
 }
 
+function setPayCodeUiBusy(busy){
+  const payBtn=document.getElementById('payModePayBtn');
+  const qrBtn=document.getElementById('payModeQrBtn');
+  const refreshBtn=document.getElementById('payCodeRefreshBtn');
+  if(payBtn) payBtn.disabled=!!busy;
+  if(qrBtn) qrBtn.disabled=!!busy;
+  if(refreshBtn) refreshBtn.disabled=!!busy;
+
+  const host=document.getElementById('payCodeHost');
+  if(busy && host){
+    host.innerHTML='<div class="pay-code-loading"><span class="spin">🔄</span><span>正在產生付款碼…</span></div>';
+  }
+}
+
 async function ensurePayCodeState(forceNew=false){
   if(!currentUser) return false;
 
@@ -1812,6 +1849,7 @@ async function ensurePayCodeState(forceNew=false){
 
   if(payCodeCreating) return false;
   payCodeCreating=true;
+  setPayCodeUiBusy(true);
   setPayCodeCloudStatus('正在取得安全付款碼…',true);
 
   try{
@@ -1837,6 +1875,7 @@ async function ensurePayCodeState(forceNew=false){
     return false;
   }finally{
     payCodeCreating=false;
+    setPayCodeUiBusy(false);
   }
 }
 
@@ -1875,6 +1914,8 @@ function startPayCodeCountdown(){
 }
 
 async function refreshPayCode(){
+  if(payCodeCreating) return;
+
   stopPayCodeStatusMonitor();
   const ok=await ensurePayCodeState(true);
   if(ok){
@@ -1884,6 +1925,8 @@ async function refreshPayCode(){
 }
 
 async function switchPayCodeMode(mode){
+  if(payCodeCreating) return;
+
   const nextMode=mode==='qr'?'qr':'pay';
 
   // 同一顯示模式再次點擊不重建；真正切換時才重新產生 60 秒付款碼。
