@@ -909,6 +909,30 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .pay-history-clear{
   border:0!important;background:#f4f6f8!important;color:#59636c!important
 }
+
+/* v0.10.12.8 億家Pay自訂日期範圍 */
+.pay-history-date-range{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  margin-bottom:12px
+}
+.pay-history-date-range label{
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:9px 11px;font-size:12px;color:#7a828a
+}
+.pay-history-date-range input{
+  width:100%;border:0;outline:0;background:transparent;
+  color:var(--ink);font-size:14px;margin-top:4px
+}
+.pay-history-date-actions{
+  display:flex;gap:8px;margin-bottom:12px
+}
+.pay-history-date-actions button{
+  flex:1;border:0;border-radius:12px;padding:10px 12px;font-weight:900;
+  background:#eef8f1;color:var(--green)
+}
+.pay-history-date-actions button.secondary{
+  background:#f4f6f8;color:#59636c
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -1437,6 +1461,21 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     >
   </div>
 
+  <div class="pay-history-date-range">
+    <label>
+      開始日期
+      <input id="payHistoryStartDate" type="date">
+    </label>
+    <label>
+      結束日期
+      <input id="payHistoryEndDate" type="date">
+    </label>
+  </div>
+  <div class="pay-history-date-actions">
+    <button onclick="applyPayHistoryDateRange()">套用日期</button>
+    <button class="secondary" onclick="clearPayHistoryDateRange()">清除日期</button>
+  </div>
+
   <div id="yijiaPayHistoryPageList" class="pay-history-list">
     <div class="pay-history-empty">讀取中…</div>
   </div>
@@ -1453,7 +1492,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.7 Pay History Search</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.8 Pay History Date Range</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -4708,6 +4747,8 @@ async function loadYijiaPayHistory(){
 let payHistoryPageRows=[];
 let payHistoryFilter='all';
 let payHistorySearch='';
+let payHistoryStartDate='';
+let payHistoryEndDate='';
 
 function setPayHistoryFilter(filter){
   payHistoryFilter=filter||'all';
@@ -4729,6 +4770,28 @@ function clearPayHistorySearch(){
   renderYijiaPayHistoryPage();
 }
 
+function applyPayHistoryDateRange(){
+  payHistoryStartDate=document.getElementById('payHistoryStartDate')?.value||'';
+  payHistoryEndDate=document.getElementById('payHistoryEndDate')?.value||'';
+
+  if(payHistoryStartDate && payHistoryEndDate && payHistoryStartDate>payHistoryEndDate){
+    alert('開始日期不能晚於結束日期。');
+    return;
+  }
+
+  renderYijiaPayHistoryPage();
+}
+
+function clearPayHistoryDateRange(){
+  payHistoryStartDate='';
+  payHistoryEndDate='';
+  const start=document.getElementById('payHistoryStartDate');
+  const end=document.getElementById('payHistoryEndDate');
+  if(start) start.value='';
+  if(end) end.value='';
+  renderYijiaPayHistoryPage();
+}
+
 function filteredPayHistoryRows(){
   let rows=Array.isArray(payHistoryPageRows)?payHistoryPageRows.slice():[];
   const now=new Date();
@@ -4746,6 +4809,18 @@ function filteredPayHistoryRows(){
         return (now-d)<=30*24*60*60*1000;
       }
 
+      return true;
+    });
+  }
+
+  if(payHistoryStartDate || payHistoryEndDate){
+    rows=rows.filter(r=>{
+      const d=r.usedAt?new Date(r.usedAt):null;
+      if(!d || Number.isNaN(d.getTime())) return false;
+
+      const day=d.toISOString().slice(0,10);
+      if(payHistoryStartDate && day<payHistoryStartDate) return false;
+      if(payHistoryEndDate && day>payHistoryEndDate) return false;
       return true;
     });
   }
@@ -4792,7 +4867,7 @@ function renderYijiaPayHistoryPage(){
   const total=rows.reduce((sum,r)=>sum+Number(r.amount||0),0);
 
   if(summary){
-    summary.innerHTML=`<strong>${money(total)}</strong><small>目前顯示 ${rows.length} 筆已完成交易${payHistorySearch?' · 已套用搜尋':''}</small>`;
+    summary.innerHTML=`<strong>${money(total)}</strong><small>目前顯示 ${rows.length} 筆已完成交易${payHistorySearch?' · 已套用搜尋':''}${(payHistoryStartDate||payHistoryEndDate)?' · 已套用日期':''}</small>`;
   }
 
   if(!rows.length){
