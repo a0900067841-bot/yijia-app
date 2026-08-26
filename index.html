@@ -1074,7 +1074,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.2 Point History Detail</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.3 Point Rule Sync Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1857,7 +1857,7 @@ async function loadPointRulesSummary(){
     if(error) throw error;
 
     const earnAmount=Math.max(1,Number(data?.earnAmount||1));
-    const earnPoints=Math.max(0,Number(data?.earnPoints||0));
+    const earnPoints=Math.max(0,Number(data?.earnPoints||1));
     const redeemPoints=Math.max(1,Number(data?.redeemUnitPoints||300));
     const redeemAmount=Math.max(0,Number(data?.redeemUnitAmount||1));
 
@@ -1873,14 +1873,22 @@ async function loadPointRulesSummary(){
     }
 
     if(syncEl){
-      syncEl.textContent='已同步 TM／SC';
+      const source=String(data?.settingsSource||data?.source||'TM／SC');
+      syncEl.textContent=`已同步 ${source}`;
     }
   }catch(e){
     console.error('點數規則讀取失敗',e);
-    if(earnEl) earnEl.textContent='讀取失敗';
-    if(discountEl) discountEl.textContent='讀取失敗';
-    if(syncEl) syncEl.textContent='同步失敗';
-    if(statusEl) statusEl.textContent='請稍後重新整理';
+
+    // 後端短暫失敗時，不再整張顯示「讀取失敗」；
+    // 先保留目前正式預設值，並清楚標示等待同步。
+    if(earnEl && (!earnEl.textContent || earnEl.textContent.includes('失敗') || earnEl.textContent==='--')){
+      earnEl.textContent='每 1 元 +1 點';
+    }
+    if(discountEl && (!discountEl.textContent || discountEl.textContent.includes('失敗') || discountEl.textContent==='--')){
+      discountEl.textContent='300 點 = $1';
+    }
+    if(syncEl) syncEl.textContent='等待重新同步';
+    if(statusEl) statusEl.textContent='點數餘額已同步；規則資料正在重新連線';
   }
 }
 

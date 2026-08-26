@@ -1,16 +1,13 @@
-億家 App v0.10.10.2 Point History Detail
+億家 App v0.10.10.3 Point Rule Sync Fix
 
-新增：
-- 點數紀錄每筆都可點擊。
-- 點擊後由底部開啟「點數異動詳情」。
-- 顯示：
-  - 異動類型
-  - 加／扣點數
-  - 異動時間
-  - 異動後餘額
-  - 說明
-  - 來源編號
-- 直接使用 v0.10.9.8 的 app_get_my_point_history() 資料。
+修正：
+- 點數餘額已成功同步，但「點數規則」顯示同步失敗。
+- app_get_point_feature_config() 改為直接讀既有 TM / SC 的 yj_point_settings。
+- 相容 HQ / 001 與直接 JSON / settings / pointSettings 包裝。
+- 非數字或空值不再讓整個 RPC 失敗。
+- 比例會同步回 app_point_feature_settings，讓點數折抵與其他既有 RPC 共用同一規則。
+- 前端若後端短暫失敗，不再整張顯示「讀取失敗」，會保留最後可用規則並標示等待同步。
 
-此版純前端，不需 SQL。
-只需上傳 index.html。
+更新：
+1. 執行 point_rule_sync_fix_backend.sql。
+2. 上傳 index.html。
