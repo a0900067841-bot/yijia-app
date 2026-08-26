@@ -747,6 +747,45 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   width:100%;margin-top:18px;border:0;border-radius:14px;background:var(--green);
   color:#fff;padding:13px;font-size:17px;font-weight:900
 }
+
+/* v0.10.11.4 億家Pay 畫面改版 */
+.pay-screen-balance{
+  background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px 18px;
+  margin-bottom:14px;text-align:center;font-size:18px;font-weight:900
+}
+.pay-screen-balance span{color:var(--green)}
+.pay-screen-code-card{
+  background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px 16px;
+  text-align:center;margin-bottom:14px
+}
+.pay-screen-note{color:#7a828a;font-size:13px;margin-bottom:10px}
+.pay-screen-code-host{
+  min-height:115px;display:flex;align-items:center;justify-content:center
+}
+.pay-screen-code-host svg,.pay-screen-code-host img,.pay-screen-code-host canvas{max-width:95%!important;height:auto!important}
+.pay-screen-code-text{margin-top:10px;font-size:13px;color:#606971;word-break:break-all}
+.pay-screen-amount-line{margin:16px auto 8px;font-size:18px;color:var(--green);font-weight:900}
+.pay-screen-switch{
+  display:flex;justify-content:center;gap:8px;margin:8px auto 12px;flex-wrap:wrap
+}
+.pay-screen-switch button{
+  border:1px solid #dfe4e8;background:#fff;color:#67707a;border-radius:999px;
+  padding:8px 14px;font-weight:900
+}
+.pay-screen-switch button.active{
+  border-color:var(--green);color:var(--green);background:#eef8f1
+}
+.pay-screen-bottom-note{margin-top:12px;color:#7a828a;font-size:12px}
+.pay-quick-actions{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px
+}
+.pay-quick-actions button{
+  border:0;border-radius:14px;padding:13px 10px;font-size:15px;font-weight:900;
+  background:#eef8f1;color:#137743
+}
+.pay-quick-actions button.secondary{
+  background:#f4f6f8;color:#3f4850
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -1168,20 +1207,30 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 <section id="pay" class="view">
   <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>億家Pay</h2></div>
 
-  <div class="pay-card">
-    <div class="pay-card-top">
-      <div class="pay-brand">億家 Pay</div>
-      <div class="pay-status">安全付款</div>
-    </div>
-    <div class="pay-balance">億家Pay 錢包餘額</div>
-    <div id="payWalletAmount" class="pay-amount">$0</div>
-    <div class="pay-actions">
-      <button class="pay-action" onclick="togglePayCode()">付款碼</button>
-      <button class="pay-action" onclick="alert('儲值功能後續接入')">儲值</button>
-    </div>
+  <div class="payhub-tabs">
+    <button class="payhub-tab active">億家錢包</button>
+    <button class="payhub-tab" onclick="showView('pointDiscount');openPointDiscount()">點數折抵</button>
   </div>
 
-  
+  <div class="pay-screen-balance">目前可用餘額 <span id="payWalletAmount">$0</span></div>
+
+  <div class="pay-screen-code-card">
+    <div id="payCodeNote" class="pay-screen-note">僅限億家通路使用</div>
+    <div id="payCodeHost" class="pay-screen-code-host"></div>
+    <div id="payCodeAmountLine" class="pay-screen-amount-line">PAY <span id="payWalletAmountInline">$0</span></div>
+    <div class="pay-screen-switch">
+      <button id="payModePayBtn" class="active" type="button" onclick="switchPayCodeMode('pay')">付款條碼</button>
+      <button id="payModeMemberBtn" type="button" onclick="switchPayCodeMode('member')">會員條碼</button>
+    </div>
+    <div id="payCodeText" class="pay-screen-code-text">--</div>
+    <div id="payCodeBottomNote" class="pay-screen-bottom-note">結帳時請出示付款條碼。</div>
+  </div>
+
+  <div class="pay-quick-actions">
+    <button type="button" onclick="switchPayCodeMode('pay')">出示付款碼</button>
+    <button class="secondary" type="button" onclick="alert('儲值功能後續接入')">儲值</button>
+  </div>
+
   <div class="reload-quota">
     <div class="reload-quota-head">
       <strong>本月現金儲值額度</strong>
@@ -1191,14 +1240,6 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div id="reloadRemainText" class="reload-quota-sub">本月剩餘可儲值 $5,000</div>
     <div class="reload-progress"><div id="reloadProgressBar"></div></div>
     <div class="reload-rule">現金儲值以曆月累計；每月上限由總部 SC 設定，次月自動重新計算額度。</div>
-  </div>
-
-<div id="payCodeBox" class="pay-code">
-    <div class="eyebrow">結帳時出示</div>
-    <h3 style="margin:3px 0 8px">億家Pay 付款碼</h3>
-    <div class="qr"></div>
-    <strong>付款碼每 60 秒更新</strong>
-    <p class="note" style="margin-bottom:0">正式版會由登入會員產生動態付款碼，並與會員身分綁定。</p>
   </div>
 
   <div class="section-title"><h3>付款方式</h3><button>管理</button></div>
@@ -1245,7 +1286,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.3 Point Reward Receipt</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.4 Pay Screen Redesign</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1669,7 +1710,56 @@ function showView(id){
 }
 function openBarcode(){if(!currentUser)return;renderBarcodes();document.getElementById('modal').classList.add('open')}
 function closeBarcode(){document.getElementById('modal').classList.remove('open')}
-function togglePayCode(){const el=document.getElementById('payCodeBox');el.style.display=(el.style.display==='none')?'block':'none'}
+let payCodeMode='pay';
+
+function payCodeFromPhone(phone){
+  const digits=String(phone||'').replace(/\D/g,'');
+  return digits ? `YP${digits}` : 'YJPAY';
+}
+
+function switchPayCodeMode(mode){
+  payCodeMode = mode==='member' ? 'member' : 'pay';
+  document.getElementById('payModePayBtn')?.classList.toggle('active',payCodeMode==='pay');
+  document.getElementById('payModeMemberBtn')?.classList.toggle('active',payCodeMode==='member');
+  renderPayCode();
+}
+
+function togglePayCode(){
+  switchPayCodeMode(payCodeMode==='pay'?'member':'pay');
+}
+
+function renderPayCode(){
+  const host=document.getElementById('payCodeHost');
+  const note=document.getElementById('payCodeNote');
+  const text=document.getElementById('payCodeText');
+  const bottom=document.getElementById('payCodeBottomNote');
+  if(!host) return;
+
+  const memberPhone=currentMember?.phone || '';
+  const payCode=payCodeFromPhone(memberPhone);
+  const memberCode=memberCodeFromPhone(memberPhone);
+  const code=payCodeMode==='member' ? memberCode : payCode;
+
+  host.innerHTML='';
+  try{
+    if(window.JsBarcode){
+      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      host.appendChild(svg);
+      JsBarcode(svg, code, {format:'CODE128', displayValue:false, height:72, width:1.5, margin:8});
+    }else{
+      host.textContent=code;
+    }
+  }catch(e){
+    console.warn(e);
+    host.textContent=code;
+  }
+
+  if(note) note.textContent = payCodeMode==='member' ? '一般消費集點請使用會員條碼' : '僅限億家通路使用';
+  if(text) text.textContent = code;
+  if(bottom) bottom.textContent = payCodeMode==='member'
+    ? '一般結帳集點時請出示會員條碼。'
+    : '結帳時請出示付款條碼。';
+}
 
 function setAuthMode(mode){
   authMode=mode;
@@ -3011,6 +3101,7 @@ function renderBarcodes(){
     JsBarcode('#modalBarcode',code,{...opts,height:92,width:1.25,margin:8});
     document.getElementById('memberCodeText').textContent='會員編號：'+code;
   }catch(e){console.warn(e)}
+  try{ renderPayCode(); }catch(e){}
 }
 
 
@@ -4112,9 +4203,12 @@ async function loadYijiaPaySummary(){
 
   if(walletLabel) walletLabel.textContent='餘額 '+money(balance);
   if(payAmount) payAmount.textContent=money(balance);
+  const payAmountInline=document.getElementById('payWalletAmountInline');
+  if(payAmountInline) payAmountInline.textContent=money(balance);
   if(cardStatus) cardStatus.textContent=yijiaPaySummary.hasCard ? (yijiaPaySummary.cardLabel||'已綁定') : '尚未綁定';
   if(payCardSummary) payCardSummary.textContent=yijiaPaySummary.hasCard ? (yijiaPaySummary.cardLabel||'已綁定') : '尚未綁定';
 
+  renderPayCode();
   updateCheckoutPayAvailability();
 }
 
