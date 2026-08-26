@@ -1164,7 +1164,10 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
 
 <section id="points" class="view">
-  <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>億家點數</h2></div>
+  <div id="pointsCoreSyncStatus" style="font-size:12px;color:#7a828a;margin:8px 4px 12px">
+    點數資料同步中…
+  </div>
+  <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>億家點數</h2><button type="button" onclick="syncPointsCoreFromHq()" style="border:0;background:transparent;font-size:18px">🔄</button></div>
   <div class="bigpoints">
     <small>目前可用點數</small>
     <div id="pointsBalance" class="num">-- 點</div>
@@ -1624,7 +1627,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.4 Wallet Ledger Notifications</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.5 Points Core Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2008,6 +2011,10 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(['points','pointCenter','pointsCenter','pointHistory','pointRewards','pointDiscount'].includes(id)){
+    setTimeout(()=>syncPointsCoreFromHq(),0);
+  }
+
   if(id!=='pay'){
     stopPayCodeStatusMonitor();
     if(payCodeNeedsRefreshAfterComplete){
@@ -7337,6 +7344,71 @@ async function loadYijiaPayReloadPage(){
   }catch(e){
     console.error('億家Pay儲值資料讀取失敗',e);
     if(host) host.innerHTML='<div class="pay-history-empty">儲值資料讀取失敗</div>';
+  }
+}
+
+
+let pointsCoreSyncBusy=false;
+
+function setPointsCoreSyncStatus(text,ok=true){
+  const el=document.getElementById('pointsCoreSyncStatus');
+  if(!el) return;
+  el.textContent=text||'';
+  el.style.color=ok?'#6b7280':'#b42318';
+}
+
+async function syncPointsCoreFromHq(){
+  if(!currentUser || pointsCoreSyncBusy) return null;
+
+  pointsCoreSyncBusy=true;
+  setPointsCoreSyncStatus('正在同步總部點數…');
+
+  try{
+    // HQ yj4_members 為正式點數權威來源。
+    const {data:syncData,error:syncError}=await sb.rpc('app_sync_my_points_from_hq');
+    if(syncError) throw syncError;
+
+    let history=[];
+    let config=null;
+
+    const [
+      {data:historyData,error:historyError},
+      {data:configData,error:configError}
+    ]=await Promise.all([
+      sb.rpc('app_get_my_point_history'),
+      sb.rpc('app_get_point_feature_config')
+    ]);
+
+    if(!historyError && Array.isArray(historyData)) history=historyData;
+    if(!configError) config=configData;
+
+    setPointsCoreSyncStatus('點數已與總部同步');
+
+    // 重新呼叫既有畫面更新函式；存在才執行，不改舊功能。
+    if(typeof loadPoints==='function'){
+      try{ await loadPoints(); }catch(_){}
+    }
+    if(typeof loadPointHistory==='function'){
+      try{ await loadPointHistory(); }catch(_){}
+    }
+    if(typeof loadPointFeatureConfig==='function'){
+      try{ await loadPointFeatureConfig(); }catch(_){}
+    }
+    if(typeof renderPointHistory==='function'){
+      try{ renderPointHistory(history); }catch(_){}
+    }
+
+    return {
+      sync:syncData,
+      history,
+      config
+    };
+  }catch(e){
+    console.warn('正式點數同步失敗',e);
+    setPointsCoreSyncStatus('點數同步失敗，請稍後再試',false);
+    return null;
+  }finally{
+    pointsCoreSyncBusy=false;
   }
 }
 
