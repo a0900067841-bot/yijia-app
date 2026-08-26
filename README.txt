@@ -1,12 +1,11 @@
-億家 App v0.10.9.9 Points Rules Summary
+億家 App v0.10.10.0 Points Monthly Summary
 
 新增：
-- 點數頁顯示目前 TM / SC 共用點數規則。
-- 消費累點：直接讀 earnAmount / earnPoints。
-- 點數折抵：直接讀 redeemUnitPoints / redeemUnitAmount。
-- 顯示「點數兌換 / 點數折抵」目前是否開放。
-- 顯示「已同步 TM／SC」。
-- 點數頁自動同步時，規則也會一起重新讀取。
+- 點數頁新增「本月獲得」與「本月使用／扣回」摘要。
+- 直接使用 v0.10.9.8 已同步的正式點數明細計算。
+- 本月獲得包含一般累點、活動贈點等正數異動。
+- 本月使用／扣回包含點數折抵、點數兌換、退貨扣點等負數異動。
+- 顯示本月共有幾筆點數異動。
 
 此版純前端，不需 SQL。
-只要上傳新的 index.html。
+只需上傳新的 index.html。

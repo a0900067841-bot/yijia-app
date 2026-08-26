@@ -577,6 +577,22 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .points-rule-item small{display:block;color:#7a828a;margin-bottom:5px}
 .points-rule-item b{font-size:16px}
 .points-rule-status{margin-top:10px;font-size:12px;color:#6f767d;line-height:1.6}
+
+/* v0.10.10.0 點數本月摘要 */
+.points-month-summary{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 18px
+}
+.points-month-box{
+  background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px
+}
+.points-month-box small{display:block;color:#7a828a;margin-bottom:5px}
+.points-month-box b{font-size:22px}
+.points-month-box.plus b{color:#16874d}
+.points-month-box.minus b{color:#c94d4d}
+.points-month-note{
+  grid-column:1/-1;background:#f7f9fa;border-radius:13px;padding:10px 12px;
+  color:#6f767d;font-size:12px;line-height:1.55
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -772,6 +788,19 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <small>目前可用點數</small>
     <div id="pointsBalance" class="num">-- 點</div>
     <div id="pointsExpiry">讀取中…</div>
+  </div>
+
+
+  <div class="points-month-summary">
+    <div class="points-month-box plus">
+      <small>本月獲得</small>
+      <b id="pointsMonthEarned">+0 點</b>
+    </div>
+    <div class="points-month-box minus">
+      <small>本月使用／扣回</small>
+      <b id="pointsMonthUsed">0 點</b>
+    </div>
+    <div id="pointsMonthNote" class="points-month-note">正在整理本月點數異動…</div>
   </div>
 
   <div class="points-rule-card">
@@ -1016,7 +1045,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.9 Points Rules Summary</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.0 Points Monthly Summary</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1574,6 +1603,42 @@ async function loadPoints(){
   renderPoints(data);
 }
 
+
+function renderPointsMonthlySummary(rows){
+  const now=new Date();
+  const year=now.getFullYear();
+  const month=now.getMonth();
+
+  let earned=0;
+  let used=0;
+  let count=0;
+
+  (Array.isArray(rows)?rows:[]).forEach(r=>{
+    const d=r?.createdAt?new Date(r.createdAt):null;
+    if(!d || Number.isNaN(d.getTime())) return;
+    if(d.getFullYear()!==year || d.getMonth()!==month) return;
+
+    const pts=Number(r.points||0);
+    if(pts>0) earned+=pts;
+    if(pts<0) used+=Math.abs(pts);
+    count++;
+  });
+
+  const earnedEl=document.getElementById('pointsMonthEarned');
+  const usedEl=document.getElementById('pointsMonthUsed');
+  const noteEl=document.getElementById('pointsMonthNote');
+
+  if(earnedEl) earnedEl.textContent=`+${earned.toLocaleString()} 點`;
+  if(usedEl) usedEl.textContent=`-${used.toLocaleString()} 點`;
+  if(noteEl){
+    const ym=`${year}/${String(month+1).padStart(2,'0')}`;
+    noteEl.textContent=
+      count>0
+        ? `${ym} 共有 ${count} 筆點數異動；資料與 TM／SC 正式點數紀錄同步。`
+        : `${ym} 目前沒有點數異動。`;
+  }
+}
+
 async function loadPointHistory(){
   const box=document.getElementById('pointsHistory');
   if(!box) return;
@@ -1583,6 +1648,7 @@ async function loadPointHistory(){
     if(error) throw error;
 
     const rows=Array.isArray(data)?data:[];
+    renderPointsMonthlySummary(rows);
     if(!rows.length){
       box.innerHTML='<div class="row"><div><strong>尚無點數紀錄</strong><small>完成累點、折抵或活動贈點後會顯示在這裡</small></div></div>';
       return;
