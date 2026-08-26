@@ -720,6 +720,33 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   width:100%;margin-top:10px;border:0;border-radius:11px;padding:9px;
   background:#eef8f1;color:#137743;font-weight:900
 }
+
+/* v0.10.11.3 點數兌換完成明細 */
+.point-reward-receipt-mask{
+  position:fixed;inset:0;background:rgba(0,0,0,.46);z-index:10030;
+  display:none;align-items:flex-end;justify-content:center
+}
+.point-reward-receipt{
+  width:min(520px,100%);background:#fff;border-radius:24px 24px 0 0;
+  padding:20px 18px calc(24px + env(safe-area-inset-bottom));
+  max-height:84vh;overflow:auto
+}
+.point-reward-receipt-handle{
+  width:42px;height:5px;background:#d7dce0;border-radius:99px;margin:0 auto 16px
+}
+.point-reward-receipt-icon{font-size:48px;text-align:center}
+.point-reward-receipt h3{text-align:center;font-size:22px;margin:8px 0 4px}
+.point-reward-receipt-title{text-align:center;color:var(--green);font-size:22px;font-weight:900;margin:8px 0 18px}
+.point-reward-receipt-list{border-top:1px solid #edf0f2}
+.point-reward-receipt-row{
+  display:flex;justify-content:space-between;gap:18px;padding:13px 2px;border-bottom:1px solid #edf0f2
+}
+.point-reward-receipt-row span{color:#7a828a}
+.point-reward-receipt-row b{text-align:right;word-break:break-all}
+.point-reward-receipt-close{
+  width:100%;margin-top:18px;border:0;border-radius:14px;background:var(--green);
+  color:#fff;padding:13px;font-size:17px;font-weight:900
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -1218,7 +1245,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.2 Point Reward Notification Link</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.3 Point Reward Receipt</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2357,6 +2384,48 @@ function openPointRewardTicketFromEncoded(encoded){
 }
 
 
+
+async function openPointRewardReceiptByCode(fulfillmentCode){
+  try{
+    const {data,error}=await sb
+      .from('app_point_reward_redemptions')
+      .select('reward_name,quantity,points_used,fulfillment_code,fulfillment_status,fulfilled_at,fulfilled_store_code,tm_sale_id,created_at')
+      .eq('auth_user_id',currentUser.id)
+      .eq('fulfillment_code',String(fulfillmentCode||''))
+      .maybeSingle();
+
+    if(error) throw error;
+    if(!data){
+      alert('找不到這筆點數兌換明細。');
+      return;
+    }
+
+    if(String(data.fulfillment_status||'available')!=='used'){
+      openPointRewardTicketByCode(fulfillmentCode);
+      return;
+    }
+
+    document.getElementById('pointRewardReceiptTitle').textContent=data.reward_name||'點數兌換';
+    document.getElementById('pointRewardReceiptQty').textContent=`${Number(data.quantity||1)} 份`;
+    document.getElementById('pointRewardReceiptPoints').textContent=`${Number(data.points_used||0).toLocaleString()} 點`;
+    document.getElementById('pointRewardReceiptTime').textContent=data.fulfilled_at?new Date(data.fulfilled_at).toLocaleString('zh-TW'):'--';
+    document.getElementById('pointRewardReceiptStore').textContent=data.fulfilled_store_code||'--';
+    document.getElementById('pointRewardReceiptSale').textContent=data.tm_sale_id||'--';
+    document.getElementById('pointRewardReceiptCode').textContent=data.fulfillment_code||'--';
+
+    const mask=document.getElementById('pointRewardReceiptMask');
+    if(mask) mask.style.display='flex';
+  }catch(e){
+    console.error(e);
+    alert('點數兌換完成明細讀取失敗。');
+  }
+}
+
+function closePointRewardReceipt(){
+  const mask=document.getElementById('pointRewardReceiptMask');
+  if(mask) mask.style.display='none';
+}
+
 async function openPointRewardTicketByCode(fulfillmentCode){
   try{
     const {data,error}=await sb
@@ -2416,7 +2485,8 @@ function openPointRewardTicket(ticket){
     status.innerHTML=
       '<b>此兌換券已使用</b>'+
       (ticket.fulfilledAt?`<br>${new Date(ticket.fulfilledAt).toLocaleString('zh-TW')}`:'')+
-      (ticket.fulfilledStoreCode?`<br>門市：${safeText(ticket.fulfilledStoreCode)}`:'');
+      (ticket.fulfilledStoreCode?`<br>門市：${safeText(ticket.fulfilledStoreCode)}`:'')+
+      `<br><button type="button" style="margin-top:10px;border:0;border-radius:10px;padding:8px 12px;font-weight:900" onclick="openPointRewardReceiptByCode('${safeText(ticket.fulfillmentCode||'')}')">查看完成明細</button>`;
   }else{
     status.className='point-reward-ticket-status';
     status.innerHTML='請到門市出示此 QR Code 給 TM 掃描。完成後本頁會自動更新。';
@@ -3206,7 +3276,7 @@ async function buildNotificationRows(){
             ? `${t.reward_name||'點數兌換'} · ${Number(t.quantity||1)} 份，已使用 ${Number(t.points_used||0).toLocaleString()} 點。`
             : `${t.reward_name||'點數兌換'} 已完成兌換。`,
           time:t.fulfilled_at||t.created_at,
-          target:'pointRewardTicket',
+          target:available?'pointRewardTicket':'pointRewardReceipt',
           fulfillmentCode:code,
           priority:available?1:0
         });
@@ -3394,6 +3464,11 @@ function openNotification(id){
     if(n.target==='pointRewardTicket' && n.fulfillmentCode){
       setTimeout(()=>{
         openPointRewardTicketByCode(n.fulfillmentCode);
+      },120);
+    }
+    if(n.target==='pointRewardReceipt' && n.fulfillmentCode){
+      setTimeout(()=>{
+        openPointRewardReceiptByCode(n.fulfillmentCode);
       },120);
     }
   }else{
@@ -6228,6 +6303,26 @@ function toggleAnybuySubmenu(id){document.getElementById(id)?.classList.toggle('
       <div class="point-discount-receipt-row"><span>折抵條碼</span><b id="pointDiscountReceiptCode">--</b></div>
     </div>
     <button class="point-discount-receipt-close" onclick="closePointDiscountReceipt()">關閉</button>
+  </div>
+</div>
+
+
+<div id="pointRewardReceiptMask" class="point-reward-receipt-mask"
+     onclick="if(event.target===this)closePointRewardReceipt()">
+  <div class="point-reward-receipt">
+    <div class="point-reward-receipt-handle"></div>
+    <div class="point-reward-receipt-icon">✅</div>
+    <h3>點數兌換完成</h3>
+    <div id="pointRewardReceiptTitle" class="point-reward-receipt-title">--</div>
+    <div class="point-reward-receipt-list">
+      <div class="point-reward-receipt-row"><span>兌換數量</span><b id="pointRewardReceiptQty">--</b></div>
+      <div class="point-reward-receipt-row"><span>使用點數</span><b id="pointRewardReceiptPoints">--</b></div>
+      <div class="point-reward-receipt-row"><span>完成時間</span><b id="pointRewardReceiptTime">--</b></div>
+      <div class="point-reward-receipt-row"><span>門市</span><b id="pointRewardReceiptStore">--</b></div>
+      <div class="point-reward-receipt-row"><span>TM 交易編號</span><b id="pointRewardReceiptSale">--</b></div>
+      <div class="point-reward-receipt-row"><span>兌換券代碼</span><b id="pointRewardReceiptCode">--</b></div>
+    </div>
+    <button class="point-reward-receipt-close" onclick="closePointRewardReceipt()">關閉</button>
   </div>
 </div>
 
