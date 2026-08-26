@@ -1218,7 +1218,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.1 Points Expiry Notifications</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.2 Point Reward Notification Link</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2356,6 +2356,37 @@ function openPointRewardTicketFromEncoded(encoded){
   }
 }
 
+
+async function openPointRewardTicketByCode(fulfillmentCode){
+  try{
+    const {data,error}=await sb
+      .from('app_point_reward_redemptions')
+      .select('reward_name,quantity,points_used,fulfillment_code,fulfillment_status,fulfilled_at,fulfilled_store_code,created_at')
+      .eq('auth_user_id',currentUser.id)
+      .eq('fulfillment_code',String(fulfillmentCode||''))
+      .maybeSingle();
+
+    if(error) throw error;
+    if(!data){
+      alert('找不到這張點數兌換券。');
+      return;
+    }
+
+    openPointRewardTicket({
+      rewardName:data.reward_name||'點數兌換',
+      quantity:Number(data.quantity||1),
+      pointsUsed:Number(data.points_used||0),
+      fulfillmentCode:String(data.fulfillment_code||''),
+      fulfillmentStatus:data.fulfillment_status||'available',
+      fulfilledAt:data.fulfilled_at||null,
+      fulfilledStoreCode:data.fulfilled_store_code||''
+    });
+  }catch(e){
+    console.error(e);
+    alert('點數兌換券讀取失敗。');
+  }
+}
+
 function openPointRewardTicket(ticket){
   if(!ticket?.fulfillmentCode) return;
   activePointRewardTicket=ticket;
@@ -2382,7 +2413,10 @@ function openPointRewardTicket(ticket){
   const status=document.getElementById('pointRewardTicketStatus');
   if(String(ticket.fulfillmentStatus||'available')==='used'){
     status.className='point-reward-ticket-status done';
-    status.innerHTML='<b>此兌換券已使用</b>';
+    status.innerHTML=
+      '<b>此兌換券已使用</b>'+
+      (ticket.fulfilledAt?`<br>${new Date(ticket.fulfilledAt).toLocaleString('zh-TW')}`:'')+
+      (ticket.fulfilledStoreCode?`<br>門市：${safeText(ticket.fulfilledStoreCode)}`:'');
   }else{
     status.className='point-reward-ticket-status';
     status.innerHTML='請到門市出示此 QR Code 給 TM 掃描。完成後本頁會自動更新。';
@@ -3144,7 +3178,43 @@ async function buildNotificationRows(){
     }
   }catch(e){console.warn('通知：點數紀錄讀取失敗',e)}
 
-  // 4. 點數折抵券完成通知：直接連到 YPD 折抵完成明細
+  // 4. 點數兌換券通知：直接連到 PR 兌換券
+  try{
+    const {data,error}=await sb
+      .from('app_point_reward_redemptions')
+      .select('reward_name,quantity,points_used,fulfillment_code,fulfillment_status,fulfilled_at,created_at')
+      .eq('auth_user_id',currentUser.id)
+      .order('created_at',{ascending:false})
+      .limit(30);
+
+    if(!error && Array.isArray(data)){
+      data.forEach(t=>{
+        const status=String(t.fulfillment_status||'available');
+        const code=String(t.fulfillment_code||'');
+        if(!code) return;
+
+        const available=status!=='used';
+        pushNotification(rows,{
+          id:notificationId(
+            available?'point-reward-ticket':'point-reward-used',
+            code,
+            t.fulfilled_at||t.created_at
+          ),
+          icon:available?'🎁':'✅',
+          title:available?'點數兌換券已建立':'點數兌換完成',
+          message:available
+            ? `${t.reward_name||'點數兌換'} · ${Number(t.quantity||1)} 份，已使用 ${Number(t.points_used||0).toLocaleString()} 點。`
+            : `${t.reward_name||'點數兌換'} 已完成兌換。`,
+          time:t.fulfilled_at||t.created_at,
+          target:'pointRewardTicket',
+          fulfillmentCode:code,
+          priority:available?1:0
+        });
+      });
+    }
+  }catch(e){console.warn('通知：點數兌換券讀取失敗',e)}
+
+  // 5. 點數折抵券完成通知：直接連到 YPD 折抵完成明細
   try{
     const {data,error}=await sb.rpc('app_get_my_point_discount_tickets');
     if(!error && Array.isArray(data)){
@@ -3165,7 +3235,7 @@ async function buildNotificationRows(){
     }
   }catch(e){console.warn('通知：點數折抵券讀取失敗',e)}
 
-  // 5. 到期退款完成
+  // 6. 到期退款完成
   try{
     const {data,error}=await sb.rpc('app_get_expiry_refund_history');
     if(!error && Array.isArray(data)){
@@ -3183,7 +3253,7 @@ async function buildNotificationRows(){
     }
   }catch(e){console.warn('通知：到期退款紀錄讀取失敗',e)}
 
-  // 6. 點數即將到期提醒
+  // 7. 點數即將到期提醒
   try{
     const {data,error}=await sb.rpc('app_get_my_expiring_points');
     if(!error && data){
@@ -3228,7 +3298,7 @@ async function buildNotificationRows(){
     }
   }catch(e){console.warn('通知：即將到期點數讀取失敗',e)}
 
-  // 7. 即將到期：3 天內、仍有剩餘數量
+  // 8. 即將到期：3 天內、仍有剩餘數量
   try{
     const {data,error}=await sb.rpc('app_get_member_products');
     if(!error && Array.isArray(data)){
@@ -3319,6 +3389,11 @@ function openNotification(id){
       setTimeout(()=>{
         showView('pointDiscount');
         openPointDiscountReceiptByCode(n.discountCode);
+      },120);
+    }
+    if(n.target==='pointRewardTicket' && n.fulfillmentCode){
+      setTimeout(()=>{
+        openPointRewardTicketByCode(n.fulfillmentCode);
       },120);
     }
   }else{
