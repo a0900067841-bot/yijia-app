@@ -650,6 +650,24 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   margin-top:10px;padding:10px 12px;border-radius:12px;
   background:#f7f9fa;color:#69727a;font-size:12px;line-height:1.6
 }
+
+.payhub-tabs{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e8ecef;margin-bottom:14px}
+.payhub-tab{border:0;background:transparent;padding:13px 8px 11px;color:#8a9096;font-size:15px;font-weight:800;position:relative}
+.payhub-tab.active{color:var(--green)}
+.payhub-tab.active::after{content:'';position:absolute;left:22%;right:22%;bottom:-1px;height:3px;background:var(--green);border-radius:999px}
+.payhub-balance{background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px 18px;margin-bottom:14px;text-align:center;font-size:18px;font-weight:900}
+.payhub-balance span{color:var(--green)}
+.payhub-code-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px 16px;text-align:center;margin-bottom:14px}
+.payhub-use-note{color:#7a828a;font-size:13px;margin-bottom:10px}
+.payhub-member-code{min-height:115px;display:flex;align-items:center;justify-content:center}
+.payhub-member-code svg{max-width:95%}
+.payhub-points-line{margin:16px auto 8px;font-size:18px;color:var(--green);font-weight:900}
+.payhub-discount-line{display:flex;justify-content:center;align-items:center;gap:10px;margin:8px auto 12px}
+.payhub-check{width:23px;height:23px;border:2px solid #adb4ba;border-radius:50%;display:grid;place-items:center;background:#fff;color:#fff;font-size:15px;font-weight:900;padding:0}
+.payhub-check.on{background:var(--green);border-color:var(--green)}
+.payhub-discount-box{min-width:160px;border:1px solid #dfe4e8;border-radius:999px;padding:8px 14px;display:flex;justify-content:space-between;gap:15px;color:#7a828a;background:#fff}
+.payhub-discount-box b{color:var(--green);font-size:20px}
+.payhub-bottom-note{margin-top:12px;color:#7a828a;font-size:12px}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -941,9 +959,25 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 </section>
 
 <section id="pointDiscount" class="view">
-  <div class="header2"><button class="back" onclick="closePointDiscount()">‹</button><h2>點數折抵</h2></div>
+  <div class="header2"><button class="back" onclick="closePointDiscount()">‹</button><h2>億家Pay</h2></div>
+  <div class="payhub-tabs">
+    <button class="payhub-tab" onclick="showView('pay')">億家錢包</button>
+    <button class="payhub-tab active">點數折抵</button>
+  </div>
 
   <div id="pointDiscountSetup">
+    <div class="payhub-balance">目前可用點數 <span id="pointDiscountHubBalance">-- 點</span></div>
+    <div class="payhub-code-card">
+      <div class="payhub-use-note">僅限億家通路使用</div>
+      <div id="pointDiscountMemberBarcode" class="payhub-member-code"></div>
+      <div class="payhub-points-line">P <span id="pointDiscountHubPoints">-- 點</span></div>
+      <div class="payhub-discount-line">
+        <button id="pointDiscountCheckBtn" class="payhub-check" type="button" onclick="togglePointDiscountEnabled()">✓</button>
+        <span>折抵</span>
+        <div class="payhub-discount-box"><span>$</span><b id="pointDiscountHubAmount">0</b><span>元</span></div>
+      </div>
+      <div id="pointDiscountHubExpiry" class="payhub-bottom-note">目前無即將到期點數</div>
+    </div>
     <div class="point-discount-card">
       <div class="point-discount-row">
         <div><strong>目前可用點數</strong><small style="display:block;color:#7a828a;margin-top:4px">由 App 直接使用，不在 TM 上選擇點數。</small></div>
@@ -1120,7 +1154,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.6 Login Hotfix</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.7 Pay + Points Combined UI</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1811,6 +1845,7 @@ function renderPoints(p){
   const discountBal=document.getElementById('discountAvailablePoints');
   if(discountBal) discountBal.textContent=available.toLocaleString()+' 點';
   if(document.getElementById('pointQuick1')) renderPointDiscountQuickButtons();
+  if(document.getElementById('pointDiscountHubBalance')) renderPointDiscountHub();
   document.getElementById('pointsExpiry').textContent=
     expiring>0
       ? expiring.toLocaleString()+' 點將於 '+(p.expiry_date||'指定日期')+' 到期'
@@ -1967,6 +2002,7 @@ let pointRewardRows=[];
 let pointRewardQtyMap={};
 let activePointRewardTicket=null;
 let pointRewardTicketTimer=null;
+let pointDiscountEnabledByUser=false;
 let activePointDiscountCode='';
 let pointDiscountStatusTimer=null;
 let pointDiscountSettings={
@@ -2322,7 +2358,62 @@ async function loadPointDiscountSettings(){
   }
 }
 
+
+function togglePointDiscountEnabled(){
+  pointDiscountEnabledByUser=!pointDiscountEnabledByUser;
+  const btn=document.getElementById('pointDiscountCheckBtn');
+  if(btn) btn.classList.toggle('on',pointDiscountEnabledByUser);
+
+  const input=document.getElementById('discountPointsInput');
+  if(pointDiscountEnabledByUser && input && Number(input.value||0)<=0){
+    input.value=String(Math.max(1,Number(pointDiscountSettings.minPoints||pointDiscountSettings.unitPoints||300)));
+  }
+  refreshPointDiscountPreview();
+}
+
+function renderPointDiscountMemberCode(){
+  const host=document.getElementById('pointDiscountMemberBarcode');
+  if(!host) return;
+  host.innerHTML='';
+  if(!currentMember) return;
+
+  const code=memberCodeFromPhone(currentMember.phone);
+  try{
+    if(window.JsBarcode){
+      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      host.appendChild(svg);
+      JsBarcode(svg,code,{format:'CODE128',displayValue:false,height:72,width:1.5,margin:8});
+    }else{
+      host.textContent=code;
+    }
+  }catch(e){
+    host.textContent=code;
+  }
+}
+
+function renderPointDiscountHub(){
+  const bal=document.getElementById('pointDiscountHubBalance');
+  const pts=document.getElementById('pointDiscountHubPoints');
+  const amt=document.getElementById('pointDiscountHubAmount');
+  const exp=document.getElementById('pointDiscountHubExpiry');
+  const btn=document.getElementById('pointDiscountCheckBtn');
+  const input=document.getElementById('discountPointsInput');
+
+  if(bal) bal.textContent=`${Number(currentPointBalance||0).toLocaleString()} 點`;
+  if(pts) pts.textContent=`${Number(currentPointBalance||0).toLocaleString()} 點`;
+
+  const selected=pointDiscountEnabledByUser?Math.max(0,Number(input?.value||0)):0;
+  if(amt) amt.textContent=Number(getPointDiscountAmount(selected)||0).toLocaleString('zh-TW',{maximumFractionDigits:2});
+  if(btn) btn.classList.toggle('on',pointDiscountEnabledByUser);
+
+  const expiryText=document.getElementById('pointsExpiry')?.textContent||'目前無即將到期點數';
+  if(exp) exp.textContent=expiryText;
+
+  renderPointDiscountMemberCode();
+}
+
 async function openPointDiscount(){
+  pointDiscountEnabledByUser=false;
   stopPointDiscountCountdown();
   document.getElementById('pointDiscountSetup').style.display='block';
   document.getElementById('pointDiscountQrWrap').style.display='none';
@@ -2355,6 +2446,7 @@ async function openPointDiscount(){
     if(nowVal<unit || nowVal%unit!==0) input.value=String(unit);
   }
   renderPointDiscountQuickButtons();
+  renderPointDiscountHub();
 
   const createBtn=document.getElementById('createPointDiscountBtn');
   if(createBtn){
@@ -2372,6 +2464,7 @@ function largestUsablePointDiscount(){
 }
 
 function setPointDiscountQuick(multiplier){
+  pointDiscountEnabledByUser=true;
   const unit=Math.max(1,Number(pointDiscountSettings.unitPoints||300));
   const max=largestUsablePointDiscount();
   const target=unit*Math.max(1,Number(multiplier||1));
@@ -2386,6 +2479,7 @@ function setPointDiscountQuick(multiplier){
 }
 
 function setPointDiscountMax(){
+  pointDiscountEnabledByUser=true;
   const input=document.getElementById('discountPointsInput');
   if(!input) return;
   const max=largestUsablePointDiscount();
@@ -2440,6 +2534,7 @@ function refreshPointDiscountPreview(){
   const amount=getPointDiscountAmount(points);
   document.getElementById('discountAmountPreview').textContent=money(amount);
   document.getElementById('discountRemainPreview').textContent=`折抵完成後剩餘 ${(currentPointBalance-points).toLocaleString()} 點`;
+  renderPointDiscountHub();
 }
 
 
