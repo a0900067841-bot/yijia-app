@@ -1120,7 +1120,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.5 Point Discount Quick Select</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.6 Login Hotfix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2349,7 +2349,6 @@ async function openPointDiscount(){
   if(rule){
     rule.textContent=`${pointDiscountSettings.unitPoints} 點折抵 ${money(pointDiscountSettings.unitAmount)}，每次以 ${pointDiscountSettings.step} 點為單位`;
   }
-  const input=document.getElementById('discountPointsInput');
   if(input){
     const unit=Math.max(1,Number(pointDiscountSettings.unitPoints||300));
     const nowVal=Math.max(0,Number(input.value||0));
