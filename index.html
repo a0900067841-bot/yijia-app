@@ -933,6 +933,17 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .pay-history-date-actions button.secondary{
   background:#f4f6f8;color:#59636c
 }
+
+/* v0.10.12.9 億家Pay月統計 */
+.pay-monthly-summary{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px
+}
+.pay-monthly-card{
+  background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px
+}
+.pay-monthly-card span{display:block;color:#7a828a;font-size:12px;margin-bottom:5px}
+.pay-monthly-card strong{font-size:20px;color:var(--green)}
+.pay-monthly-card small{display:block;color:#7a828a;margin-top:4px;font-size:11px}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -1444,6 +1455,19 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <small>目前篩選交易總額</small>
   </div>
 
+  <div class="pay-monthly-summary">
+    <div class="pay-monthly-card">
+      <span>本月付款總額</span>
+      <strong id="payMonthTotal">$0</strong>
+      <small id="payMonthCount">0 筆交易</small>
+    </div>
+    <div class="pay-monthly-card">
+      <span>本月平均單筆</span>
+      <strong id="payMonthAverage">$0</strong>
+      <small id="payMonthLast">尚無交易</small>
+    </div>
+  </div>
+
   <div class="pay-history-toolbar">
     <button id="payHistoryFilterAll" class="active" onclick="setPayHistoryFilter('all')">全部</button>
     <button id="payHistoryFilterMonth" onclick="setPayHistoryFilter('month')">本月</button>
@@ -1492,7 +1516,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.8 Pay History Date Range</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.9 Pay Monthly Summary</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -4858,7 +4882,40 @@ function payHistoryDateLabel(v){
   });
 }
 
+
+function renderPayMonthlySummary(){
+  const rows=Array.isArray(payHistoryPageRows)?payHistoryPageRows:[];
+  const now=new Date();
+
+  const monthRows=rows.filter(r=>{
+    const d=r.usedAt?new Date(r.usedAt):null;
+    return d && !Number.isNaN(d.getTime())
+      && d.getFullYear()===now.getFullYear()
+      && d.getMonth()===now.getMonth();
+  });
+
+  const total=monthRows.reduce((sum,r)=>sum+Number(r.amount||0),0);
+  const avg=monthRows.length ? total/monthRows.length : 0;
+
+  const totalEl=document.getElementById('payMonthTotal');
+  const countEl=document.getElementById('payMonthCount');
+  const avgEl=document.getElementById('payMonthAverage');
+  const lastEl=document.getElementById('payMonthLast');
+
+  if(totalEl) totalEl.textContent=money(total);
+  if(countEl) countEl.textContent=`${monthRows.length} 筆交易`;
+  if(avgEl) avgEl.textContent=money(avg);
+
+  if(lastEl){
+    const latest=monthRows[0];
+    lastEl.textContent=latest?.usedAt
+      ? `最近：${new Date(latest.usedAt).toLocaleDateString('zh-TW')}`
+      : '尚無交易';
+  }
+}
+
 function renderYijiaPayHistoryPage(){
+  renderPayMonthlySummary();
   const host=document.getElementById('yijiaPayHistoryPageList');
   const summary=document.getElementById('payHistorySummary');
   if(!host) return;
