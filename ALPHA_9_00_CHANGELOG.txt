@@ -1,9 +1,0 @@
-TM Alpha 9.00 — 隨買跨店取會員點數正式同步
-
-1. 隨買跨店取購買：正常累點。
-2. 隨買跨店取兌換：不累點。
-3. App 店舖結帳 YS 收款時，自動綁定原 App 會員，不需再掃一次會員才能累點。
-4. TM 現場寄杯購買維持會員綁定並正常累點。
-5. 點數以 HQ yj4_members 為 TM / SC 共用主檔，並同步 App app_points / app_point_transactions。
-6. 同一交易點數事件使用 source_id 去重，避免重送重複累點。
-7. 需先執行 setup_tm_alpha9_00_member_points_sync.sql。
