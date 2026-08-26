@@ -503,6 +503,26 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .my-reward-row strong{display:block}
 .my-reward-row small{display:block;color:#7a828a;margin-top:5px;line-height:1.5}
 
+
+.point-sync-status{margin-top:14px;padding:12px 14px;border-radius:14px;background:#eef6ff;border:1px solid #cfe1ff;color:#315b8c;font-size:13px;line-height:1.6}
+.point-sync-status.done{background:#eaf8ef;border-color:#bfe3ca;color:#17663b}
+.point-sync-status.expired{background:#fff1f0;border-color:#ffc9c2;color:#b42318}
+.reward-qty-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px}
+.reward-qty-ctrl{display:flex;align-items:center;gap:8px}
+.reward-qty-ctrl button{width:30px;height:30px;border:1px solid #d9dee3;background:#fff;color:#222;border-radius:50%;padding:0;margin:0}
+.reward-qty-ctrl b{min-width:18px;text-align:center}
+
+.point-reward-ticket-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px 18px;text-align:center}
+.point-reward-ticket-card h3{margin:4px 0 8px}
+.point-reward-ticket-card .reward-meta{color:#7a828a;font-size:13px;line-height:1.6}
+.point-reward-ticket-qr{width:220px;height:220px;margin:18px auto 12px;display:flex;align-items:center;justify-content:center}
+.point-reward-ticket-qr img,.point-reward-ticket-qr canvas{max-width:100%!important;height:auto!important}
+.point-reward-ticket-status{margin-top:14px;padding:12px;border-radius:14px;background:#eef6ff;border:1px solid #cfe1ff;color:#315b8c;font-size:13px;line-height:1.55}
+.point-reward-ticket-status.done{background:#eaf8ef;border-color:#bfe3ca;color:#17663b}
+.my-reward-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+.my-reward-actions button{border:0;border-radius:10px;padding:8px 12px;font-weight:800}
+.my-reward-actions .primary{background:var(--green);color:#fff}
+.my-reward-actions .muted{background:#eef0f2;color:#777}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -736,6 +756,24 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div id="myPointRewards"></div>
 </section>
 
+<section id="pointRewardTicket" class="view">
+  <div class="header2"><button class="back" onclick="closePointRewardTicket()">‹</button><h2>點數兌換券</h2></div>
+  <div class="point-reward-ticket-card">
+    <div style="font-size:34px">🎁</div>
+    <h3 id="pointRewardTicketName">點數兌換</h3>
+    <div id="pointRewardTicketMeta" class="reward-meta">--</div>
+    <div id="pointRewardTicketQr" class="point-reward-ticket-qr"></div>
+    <div id="pointRewardTicketCode" class="point-ticket-code">--</div>
+    <div id="pointRewardTicketStatus" class="point-reward-ticket-status">
+      請到門市出示此 QR Code 給 TM 掃描。
+    </div>
+  </div>
+  <div class="redeem-ticket-note">
+    此 QR Code 是「點數兌換券」，不是會員條碼，也不是點數折抵碼。TM 完成兌換後，本券會立即標記為已使用。
+  </div>
+  <button class="pay-continue" style="margin-top:14px" onclick="closePointRewardTicket()">返回點數兌換</button>
+</section>
+
 <section id="pointDiscount" class="view">
   <div class="header2"><button class="back" onclick="closePointDiscount()">‹</button><h2>點數折抵</h2></div>
 
@@ -769,6 +807,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="redeem-ticket-note">
       結帳時直接出示此「點數折抵 QR Code」給 TM 掃描。TM 不再提供點數選擇；點數與折抵金額由 App 先決定，交易成功後才正式扣點。
     </div>
+    <div id="pointDiscountSyncStatus" class="point-sync-status">等待 TM 完成交易，本頁會自動同步點數與折抵結果。</div>
     <button class="pay-continue" style="margin-top:14px" onclick="closePointDiscount()">返回點數</button>
   </div>
 </section>
@@ -897,7 +936,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.2 YD Direct Redeem</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.3 Point Reward QR</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1479,6 +1518,11 @@ function renderPoints(p){
 
 let currentPointBalance=0;
 let pointRewardRows=[];
+let pointRewardQtyMap={};
+let activePointRewardTicket=null;
+let pointRewardTicketTimer=null;
+let activePointDiscountCode='';
+let pointDiscountStatusTimer=null;
 let pointDiscountSettings={
   enabled:false,
   unitPoints:300,
@@ -1536,30 +1580,120 @@ function renderPointRewards(){
       <div class="meta">
         ${r.description?safeText(r.description):'使用點數直接兌換'}
         ${stock>=0?`<br>剩餘 ${stock} 份`:''}
+        ${Number(r.per_member_limit||0)>0?`<br>每位會員限 ${Number(r.per_member_limit)} 份`:''}
+      </div>
+      <div class="reward-qty-row">
+        <span style="font-size:12px;color:#7a828a">兌換數量</span>
+        <div class="reward-qty-ctrl">
+          <button type="button" onclick="adjustPointRewardQty('${safeText(id).replace(/'/g,"&#39;")}',-1)">−</button>
+          <b id="rewardQty_${safeText(id).replace(/[^A-Za-z0-9_-]/g,'_')}">1</b>
+          <button type="button" onclick="adjustPointRewardQty('${safeText(id).replace(/'/g,"&#39;")}',1)">＋</button>
+        </div>
       </div>
       <button ${disabled?'disabled':''} onclick="redeemPointReward('${safeText(id).replace(/'/g,"&#39;")}')">${currentPointBalance<cost?'點數不足':'立即兌換'}</button>
     </div>`;
   }).join('');
 }
 
-async function redeemPointReward(rewardId){
+
+function rewardQtyElementId(rewardId){
+  return 'rewardQty_'+String(rewardId).replace(/[^A-Za-z0-9_-]/g,'_');
+}
+function getPointRewardQty(rewardId){
+  return Math.max(1,Number(pointRewardQtyMap[String(rewardId)]||1));
+}
+function adjustPointRewardQty(rewardId,delta){
   const reward=pointRewardRows.find(r=>String(r.rewardId||r.id||r.reward_code||r.code||'')===String(rewardId));
   if(!reward) return;
   const cost=Number(reward.pointsCost??reward.points_cost??reward.points??reward.costPoints??0);
-  if(!confirm(`確定使用 ${cost.toLocaleString()} 點兌換「${reward.name||'此項目'}」嗎？`)) return;
+  const maxByPoints=cost>0?Math.max(1,Math.floor(currentPointBalance/cost)):1;
+  const stockLimit=(reward.stock_limit??reward.stock??reward.remainingStock);
+  const redeemedQty=Number(reward.redeemed_qty||0);
+  const stock=stockLimit==null?999999:Math.max(0,Number(stockLimit)-redeemedQty);
+  const memberLimit=Number(reward.per_member_limit||0);
+  let max=Math.min(maxByPoints,stock);
+  if(memberLimit>0) max=Math.min(max,memberLimit);
+  max=Math.max(1,max);
+  const key=String(rewardId);
+  const next=Math.max(1,Math.min(max,getPointRewardQty(rewardId)+Number(delta||0)));
+  pointRewardQtyMap[key]=next;
+  const el=document.getElementById(rewardQtyElementId(rewardId));
+  if(el) el.textContent=String(next);
+}
+function stopPointDiscountStatusMonitor(){
+  if(pointDiscountStatusTimer){
+    clearInterval(pointDiscountStatusTimer);
+    pointDiscountStatusTimer=null;
+  }
+}
+async function refreshPointDiscountTicketStatus(){
+  if(!activePointDiscountCode) return;
+  try{
+    const {data,error}=await sb.rpc('app_get_point_discount_ticket_status',{p_discount_code:activePointDiscountCode});
+    if(error) return;
+    const status=String(data?.status||'');
+    const box=document.getElementById('pointDiscountSyncStatus');
+    if(status==='used'){
+      stopPointDiscountStatusMonitor();
+      if(box){
+        box.classList.remove('expired');
+        box.classList.add('done');
+        box.innerHTML=`<b>點數折抵完成</b><br>已使用 ${Number(data?.pointsUsed||0).toLocaleString()} 點，折抵 ${money(Number(data?.discountAmount||0))}。`;
+      }
+      await loadPoints();
+      await loadPointHistory();
+      return;
+    }
+    if(status==='expired' || status==='cancelled'){
+      stopPointDiscountStatusMonitor();
+      if(box){
+        box.classList.remove('done');
+        box.classList.add('expired');
+        box.innerHTML=status==='expired'
+          ? '<b>折抵條碼已失效</b><br>請重新產生新的點數折抵 QR Code。'
+          : '<b>折抵條碼已取消</b><br>請重新產生新的點數折抵 QR Code。';
+      }
+    }
+  }catch(e){ console.warn(e); }
+}
+function startPointDiscountStatusMonitor(){
+  stopPointDiscountStatusMonitor();
+  if(!activePointDiscountCode) return;
+  pointDiscountStatusTimer=setInterval(refreshPointDiscountTicketStatus,3000);
+  refreshPointDiscountTicketStatus();
+}
 
+async function redeemPointReward(rewardId){
+  const reward=pointRewardRows.find(r=>String(r.rewardId||r.id||r.reward_code||r.code||'')===String(rewardId));
+  if(!reward) return;
+  const qty=getPointRewardQty(rewardId);
+  const unitCost=Number(reward.pointsCost??reward.points_cost??reward.points??reward.costPoints??0);
+  const totalCost=unitCost*qty;
+  if(!confirm(`確定使用 ${totalCost.toLocaleString()} 點兌換「${reward.name||'此項目'}」${qty} 份嗎？`)) return;
   try{
     const requestId='APP-PR-'+Date.now()+'-'+Math.random().toString(36).slice(2,8).toUpperCase();
     const {data,error}=await sb.rpc('app_redeem_point_reward',{
       p_reward_id:String(reward.id),
-      p_quantity:1,
+      p_quantity:qty,
       p_request_id:requestId
     });
     if(error) throw error;
-    alert(`兌換成功\n已使用 ${Number(data?.pointsUsed||cost).toLocaleString()} 點`);
+    pointRewardQtyMap[String(rewardId)]=1;
     await loadPoints();
     await loadPointHistory();
     await loadPointRewards();
+
+    if(data?.fulfillmentCode){
+      openPointRewardTicket({
+        rewardName:data?.rewardName||reward.name||'點數兌換',
+        quantity:Number(data?.quantity||qty),
+        pointsUsed:Number(data?.pointsUsed||totalCost),
+        fulfillmentCode:String(data.fulfillmentCode),
+        fulfillmentStatus:'available'
+      });
+    }else{
+      alert(`兌換成功\n${Number(data?.quantity||qty)} 份\n已使用 ${Number(data?.pointsUsed||totalCost).toLocaleString()} 點`);
+    }
   }catch(err){
     console.error(err);
     alert('點數兌換失敗：'+(err?.message||err));
@@ -1572,7 +1706,7 @@ async function loadMyPointRewards(){
   try{
     const {data,error}=await sb
       .from('app_point_reward_redemptions')
-      .select('id,reward_code,reward_name,quantity,points_used,status,fulfillment_code,payload,created_at')
+      .select('id,reward_code,reward_name,quantity,points_used,status,fulfillment_code,fulfillment_status,fulfilled_at,fulfilled_store_code,payload,created_at')
       .order('created_at',{ascending:false})
       .limit(50);
     if(error) throw error;
@@ -1581,20 +1715,130 @@ async function loadMyPointRewards(){
       host.innerHTML='<div class="empty-box"><div class="big">🎟️</div>目前沒有點數兌換紀錄</div>';
       return;
     }
-    host.innerHTML=rows.map(r=>`
+    host.innerHTML=rows.map(r=>{
+      const available=String(r.fulfillment_status||'available')!=='used';
+      const payload=encodeURIComponent(JSON.stringify({
+        rewardName:r.reward_name||'點數兌換',
+        quantity:Number(r.quantity||1),
+        pointsUsed:Number(r.points_used||0),
+        fulfillmentCode:r.fulfillment_code||'',
+        fulfillmentStatus:r.fulfillment_status||'available',
+        fulfilledAt:r.fulfilled_at||null,
+        fulfilledStoreCode:r.fulfilled_store_code||''
+      }));
+      return `
       <div class="my-reward-row">
         <strong>${safeText(r.reward_name||'點數兌換')}</strong>
         <small>
           ${Number(r.quantity||1)} 份 · 使用 ${Number(r.points_used||0).toLocaleString()} 點
           ${r.created_at?` · ${new Date(r.created_at).toLocaleString('zh-TW')}`:''}
           ${r.fulfillment_code?`<br>兌換代碼：${safeText(r.fulfillment_code)}`:''}
+          ${!available && r.fulfilled_at?`<br>已於 ${new Date(r.fulfilled_at).toLocaleString('zh-TW')} 兌換`:''}
         </small>
-      </div>`).join('');
+        <div class="my-reward-actions">
+          ${available && r.fulfillment_code
+            ? `<button class="primary" onclick="openPointRewardTicketFromEncoded('${payload}')">出示兌換 QR</button>`
+            : `<button class="muted" disabled>已兌換</button>`}
+        </div>
+      </div>`;
+    }).join('');
   }catch(err){
     console.error(err);
     host.innerHTML='<div class="empty-box">點數兌換紀錄讀取失敗</div>';
   }
 }
+
+
+function stopPointRewardTicketMonitor(){
+  if(pointRewardTicketTimer){
+    clearInterval(pointRewardTicketTimer);
+    pointRewardTicketTimer=null;
+  }
+}
+
+function openPointRewardTicketFromEncoded(encoded){
+  try{
+    openPointRewardTicket(JSON.parse(decodeURIComponent(encoded)));
+  }catch(e){
+    console.error(e);
+    alert('兌換券資料開啟失敗。');
+  }
+}
+
+function openPointRewardTicket(ticket){
+  if(!ticket?.fulfillmentCode) return;
+  activePointRewardTicket=ticket;
+  stopPointRewardTicketMonitor();
+
+  document.getElementById('pointRewardTicketName').textContent=ticket.rewardName||'點數兌換';
+  document.getElementById('pointRewardTicketMeta').innerHTML=
+    `${Number(ticket.quantity||1)} 份 · 已使用 ${Number(ticket.pointsUsed||0).toLocaleString()} 點`;
+  document.getElementById('pointRewardTicketCode').textContent=ticket.fulfillmentCode;
+
+  const qr=document.getElementById('pointRewardTicketQr');
+  qr.innerHTML='';
+  if(window.QRCode){
+    new QRCode(qr,{
+      text:String(ticket.fulfillmentCode),
+      width:220,
+      height:220,
+      correctLevel:QRCode.CorrectLevel.M
+    });
+  }else{
+    qr.textContent=ticket.fulfillmentCode;
+  }
+
+  const status=document.getElementById('pointRewardTicketStatus');
+  if(String(ticket.fulfillmentStatus||'available')==='used'){
+    status.className='point-reward-ticket-status done';
+    status.innerHTML='<b>此兌換券已使用</b>';
+  }else{
+    status.className='point-reward-ticket-status';
+    status.innerHTML='請到門市出示此 QR Code 給 TM 掃描。完成後本頁會自動更新。';
+  }
+
+  showView('pointRewardTicket');
+  startPointRewardTicketMonitor();
+}
+
+async function refreshPointRewardTicketStatus(){
+  if(!activePointRewardTicket?.fulfillmentCode) return;
+  try{
+    const {data,error}=await sb.rpc('app_get_point_reward_ticket_status',{
+      p_fulfillment_code:String(activePointRewardTicket.fulfillmentCode)
+    });
+    if(error) return;
+
+    const status=document.getElementById('pointRewardTicketStatus');
+    if(String(data?.fulfillmentStatus||'available')==='used'){
+      stopPointRewardTicketMonitor();
+      if(status){
+        status.className='point-reward-ticket-status done';
+        status.innerHTML=
+          `<b>點數兌換完成</b><br>`+
+          `${data?.fulfilledAt?new Date(data.fulfilledAt).toLocaleString('zh-TW'):''}`;
+      }
+      await loadMyPointRewards();
+    }
+  }catch(e){
+    console.warn('點數兌換券同步失敗',e);
+  }
+}
+
+function startPointRewardTicketMonitor(){
+  stopPointRewardTicketMonitor();
+  if(!activePointRewardTicket?.fulfillmentCode) return;
+  pointRewardTicketTimer=setInterval(refreshPointRewardTicketStatus,3000);
+  refreshPointRewardTicketStatus();
+}
+
+function closePointRewardTicket(){
+  stopPointRewardTicketMonitor();
+  activePointRewardTicket=null;
+  showView('pointRewards');
+  loadPointRewards();
+}
+
 
 function stopPointDiscountCountdown(){
   if(pointDiscountCountdownTimer){
@@ -1714,6 +1958,12 @@ async function createPointDiscountTicket(){
 
     document.getElementById('pointDiscountSetup').style.display='none';
     document.getElementById('pointDiscountQrWrap').style.display='block';
+    activePointDiscountCode=code;
+    const syncBox=document.getElementById('pointDiscountSyncStatus');
+    if(syncBox){
+      syncBox.className='point-sync-status';
+      syncBox.innerHTML='等待 TM 完成交易，本頁會自動同步點數與折抵結果。';
+    }
     document.getElementById('pointDiscountCode').textContent=code;
     document.getElementById('pointDiscountSummary').innerHTML=
       `使用 <strong>${Number(data?.points||points).toLocaleString()} 點</strong><br>`+
@@ -1727,6 +1977,7 @@ async function createPointDiscountTicket(){
       qr.textContent=code;
     }
     startPointDiscountCountdown();
+    startPointDiscountStatusMonitor();
   }catch(err){
     console.error(err);
     alert('點數折抵條碼建立失敗：'+(err?.message||err));
@@ -1759,6 +2010,8 @@ function startPointDiscountCountdown(){
 
 function closePointDiscount(){
   stopPointDiscountCountdown();
+  stopPointDiscountStatusMonitor();
+  activePointDiscountCode='';
   showView('points');
   loadPoints();
   loadPointHistory();
