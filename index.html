@@ -836,6 +836,21 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   width:100%;margin-top:18px;border:0;border-radius:14px;background:var(--green);
   color:#fff;padding:13px;font-size:17px;font-weight:900
 }
+
+/* v0.10.11.8 億家Pay交易紀錄 */
+.pay-history-list{margin-top:8px}
+.pay-history-row{
+  background:#fff;border:1px solid var(--line);border-radius:16px;
+  padding:13px 14px;margin-bottom:10px
+}
+.pay-history-top{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.pay-history-top strong{font-size:15px}
+.pay-history-status{
+  font-size:12px;font-weight:900;padding:4px 8px;border-radius:999px;
+  background:#eaf8ef;color:#17663b;white-space:nowrap
+}
+.pay-history-meta{font-size:12px;color:#7a828a;line-height:1.55;margin-top:6px}
+.pay-history-empty{color:#7a828a;font-size:13px;padding:8px 0}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -1318,9 +1333,12 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     </div>
   </div>
 
-  <div class="section-title"><h3>最近交易</h3><button>全部</button></div>
-  <div class="list">
-    <div class="row"><div><strong>目前尚無交易</strong><small>完成億家Pay付款後會顯示在這裡</small></div><span>›</span></div>
+  <div class="section-title">
+    <h3>最近交易</h3>
+    <button onclick="loadYijiaPayHistory()">重新整理</button>
+  </div>
+  <div id="yijiaPayHistoryList" class="pay-history-list">
+    <div class="pay-history-empty">讀取中…</div>
   </div>
 
   <div class="section-title"><h3>安全與設定</h3></div>
@@ -1343,7 +1361,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.7 Pay Code Status Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.8 Pay History Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1992,6 +2010,7 @@ async function checkCurrentPayCodeStatus(){
         openPayCompleteSheet(data);
         try{
           await loadYijiaPaySummary();
+          await loadYijiaPayHistory();
         }catch(e){}
       }
       return;
@@ -4434,6 +4453,41 @@ function renderCheckout(){
 
 let yijiaPaySummary={walletBalance:0,hasCard:false,cardLabel:'尚未綁定'};
 
+
+async function loadYijiaPayHistory(){
+  const host=document.getElementById('yijiaPayHistoryList');
+  if(!host || !currentUser) return;
+
+  try{
+    const {data,error}=await sb.rpc('app_get_my_yijiapay_pay_history');
+    if(error) throw error;
+
+    const rows=Array.isArray(data)?data:[];
+    if(!rows.length){
+      host.innerHTML='<div class="pay-history-empty">目前尚無億家Pay交易</div>';
+      return;
+    }
+
+    host.innerHTML=rows.map(r=>`
+      <div class="pay-history-row">
+        <div class="pay-history-top">
+          <strong>億家Pay付款</strong>
+          <span class="pay-history-status">已完成</span>
+        </div>
+        <div class="pay-history-meta">
+          ${r.usedAt?new Date(r.usedAt).toLocaleString('zh-TW'):'--'}
+          ${r.usedStoreCode?`<br>門市：${safeText(r.usedStoreCode)}`:''}
+          ${r.tmSaleId?`<br>交易編號：${safeText(r.tmSaleId)}`:''}
+          ${r.payCode?`<br>付款碼：${safeText(r.payCode)}`:''}
+        </div>
+      </div>
+    `).join('');
+  }catch(e){
+    console.warn('億家Pay交易紀錄讀取失敗',e);
+    host.innerHTML='<div class="pay-history-empty">交易紀錄讀取失敗</div>';
+  }
+}
+
 async function loadYijiaPaySummary(){
   if(!currentUser) return;
 
@@ -4481,6 +4535,7 @@ async function loadYijiaPaySummary(){
   if(payCardSummary) payCardSummary.textContent=yijiaPaySummary.hasCard ? (yijiaPaySummary.cardLabel||'已綁定') : '尚未綁定';
 
   await loadCurrentPayCode();
+  await loadYijiaPayHistory();
   updateCheckoutPayAvailability();
 }
 
