@@ -593,6 +593,35 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   grid-column:1/-1;background:#f7f9fa;border-radius:13px;padding:10px 12px;
   color:#6f767d;font-size:12px;line-height:1.55
 }
+
+/* v0.10.10.2 點數紀錄詳情 */
+.point-history-open{cursor:pointer}
+.point-history-open:active{transform:scale(.995)}
+.point-detail-mask{
+  position:fixed;inset:0;background:rgba(0,0,0,.46);z-index:10000;
+  display:none;align-items:flex-end;justify-content:center
+}
+.point-detail-sheet{
+  width:min(520px,100%);background:#fff;border-radius:24px 24px 0 0;
+  padding:20px 18px calc(24px + env(safe-area-inset-bottom));
+  max-height:82vh;overflow:auto
+}
+.point-detail-handle{width:42px;height:5px;background:#d7dce0;border-radius:99px;margin:0 auto 16px}
+.point-detail-title{text-align:center;font-size:22px;font-weight:900;margin-bottom:4px}
+.point-detail-amount{text-align:center;font-size:34px;font-weight:900;margin:10px 0 18px}
+.point-detail-amount.plus{color:#16874d}
+.point-detail-amount.minus{color:#c94d4d}
+.point-detail-list{border-top:1px solid #edf0f2}
+.point-detail-row{
+  display:flex;justify-content:space-between;gap:18px;padding:13px 2px;
+  border-bottom:1px solid #edf0f2
+}
+.point-detail-row span{color:#7a828a}
+.point-detail-row b{text-align:right;word-break:break-all}
+.point-detail-close{
+  width:100%;margin-top:18px;border:0;border-radius:14px;background:var(--green);
+  color:#fff;padding:13px;font-size:17px;font-weight:900
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -1045,7 +1074,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.1 Points Notifications</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.2 Point History Detail</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1604,6 +1633,56 @@ async function loadPoints(){
 }
 
 
+
+let currentPointHistoryRows=[];
+
+function pointHistoryLabel(type){
+  const labels={
+    earn:'消費累點',
+    bonus:'活動贈點',
+    discount:'點數折抵',
+    redeem:'點數折抵',
+    reward_redeem:'點數兌換',
+    refund_deduct:'退貨扣點',
+    refund_restore:'退貨退回點數',
+    correction:'點數調整'
+  };
+  return labels[String(type||'')]||String(type||'點數異動');
+}
+
+function openPointHistoryDetail(index){
+  const row=currentPointHistoryRows[Number(index)];
+  if(!row) return;
+
+  const pts=Number(row.points||0);
+  const amount=document.getElementById('pointDetailAmount');
+  const title=document.getElementById('pointDetailTitle');
+
+  if(title) title.textContent=pointHistoryLabel(row.transactionType);
+  if(amount){
+    amount.className='point-detail-amount '+(pts>=0?'plus':'minus');
+    amount.textContent=`${pts>0?'+':''}${pts.toLocaleString()} 點`;
+  }
+
+  const time=document.getElementById('pointDetailTime');
+  const balance=document.getElementById('pointDetailBalance');
+  const desc=document.getElementById('pointDetailDesc');
+  const source=document.getElementById('pointDetailSource');
+
+  if(time) time.textContent=row.createdAt?new Date(row.createdAt).toLocaleString('zh-TW'):'--';
+  if(balance) balance.textContent=(row.balanceAfter===null||row.balanceAfter===undefined||row.balanceAfter==='')?'--':`${Number(row.balanceAfter).toLocaleString()} 點`;
+  if(desc) desc.textContent=row.description||'--';
+  if(source) source.textContent=row.sourceId||'--';
+
+  const mask=document.getElementById('pointHistoryDetailMask');
+  if(mask) mask.style.display='flex';
+}
+
+function closePointHistoryDetail(){
+  const mask=document.getElementById('pointHistoryDetailMask');
+  if(mask) mask.style.display='none';
+}
+
 function renderPointsMonthlySummary(rows){
   const now=new Date();
   const year=now.getFullYear();
@@ -1648,31 +1727,21 @@ async function loadPointHistory(){
     if(error) throw error;
 
     const rows=Array.isArray(data)?data:[];
+    currentPointHistoryRows=rows;
     renderPointsMonthlySummary(rows);
     if(!rows.length){
       box.innerHTML='<div class="row"><div><strong>尚無點數紀錄</strong><small>完成累點、折抵或活動贈點後會顯示在這裡</small></div></div>';
       return;
     }
 
-    const labels={
-      earn:'消費累點',
-      bonus:'活動贈點',
-      discount:'點數折抵',
-      redeem:'點數折抵',
-      reward_redeem:'點數兌換',
-      refund_deduct:'退貨扣點',
-      refund_restore:'退貨退回點數',
-      correction:'點數調整'
-    };
-
-    box.innerHTML=rows.map(t=>{
+    box.innerHTML=rows.map((t,index)=>{
       const pts=Number(t.points||0);
       const plus=pts>0;
       const balance=t.balanceAfter;
       const balanceText=(balance===null||balance===undefined||balance==='')?'':` · 餘額 ${Number(balance).toLocaleString()} 點`;
-      return `<div class="row">
+      return `<div class="row point-history-open" onclick="openPointHistoryDetail(${index})">
         <div>
-          <strong>${safeText(labels[t.transactionType]||t.transactionType||'點數異動')}</strong>
+          <strong>${safeText(pointHistoryLabel(t.transactionType))}</strong>
           <small>${safeText(t.description||'')}${t.createdAt?' · '+new Date(t.createdAt).toLocaleString('zh-TW'):''}${balanceText}</small>
         </div>
         <div class="${plus?'plus':'minus'}">${plus?'+':''}${pts.toLocaleString()}</div>
@@ -5491,6 +5560,22 @@ function toggleAnybuySubmenu(id){document.getElementById(id)?.classList.toggle('
     <p id="expiredProductModalText">此商品已超過兌換期限，不可兌換。</p>
     <div id="expiredProductModalRefund" class="refund"></div>
     <button onclick="closeExpiredProductModal()">確定</button>
+  </div>
+</div>
+
+
+<div id="pointHistoryDetailMask" class="point-detail-mask" onclick="if(event.target===this)closePointHistoryDetail()">
+  <div class="point-detail-sheet">
+    <div class="point-detail-handle"></div>
+    <div id="pointDetailTitle" class="point-detail-title">點數異動</div>
+    <div id="pointDetailAmount" class="point-detail-amount">0 點</div>
+    <div class="point-detail-list">
+      <div class="point-detail-row"><span>異動時間</span><b id="pointDetailTime">--</b></div>
+      <div class="point-detail-row"><span>異動後餘額</span><b id="pointDetailBalance">--</b></div>
+      <div class="point-detail-row"><span>說明</span><b id="pointDetailDesc">--</b></div>
+      <div class="point-detail-row"><span>來源編號</span><b id="pointDetailSource">--</b></div>
+    </div>
+    <button class="point-detail-close" onclick="closePointHistoryDetail()">關閉</button>
   </div>
 </div>
 
