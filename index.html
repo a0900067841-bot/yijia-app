@@ -1248,6 +1248,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <button id="payModeQrBtn" type="button" onclick="switchPayCodeMode('qr')">QR Code</button>
     </div>
     <div id="payCodeText" class="pay-screen-code-text">--</div>
+    <div id="payCodeCloudStatus" class="pay-screen-bottom-note">正在取得安全付款碼…</div>
     <div id="payCodeBottomNote" class="pay-screen-bottom-note">結帳時請出示付款條碼。</div>
   </div>
 
@@ -1311,7 +1312,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.5 Pay QR Timer</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.6 Pay Code Cloud Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1739,55 +1740,96 @@ let payCodeMode='pay';
 let payCodeExpiresAt=0;
 let payCodeTimer=null;
 let currentPayCode='';
+let payCodeCreating=false;
 
-function payCodeFromPhone(phone){
-  const digits=String(phone||'').replace(/\D/g,'');
-  const seed=String(Date.now()).slice(-6);
-  return digits ? `YP${digits}${seed}` : `YJPAY${seed}`;
+function setPayCodeCloudStatus(text,ok=true){
+  const el=document.getElementById('payCodeCloudStatus');
+  if(!el) return;
+  el.textContent=text||'';
+  el.style.color=ok?'#7a828a':'#b42318';
 }
 
-function ensurePayCodeState(forceNew=false){
+async function ensurePayCodeState(forceNew=false){
+  if(!currentUser) return false;
+
   const now=Date.now();
-  if(forceNew || !currentPayCode || !payCodeExpiresAt || now>=payCodeExpiresAt){
-    const memberPhone=currentMember?.phone || '';
-    currentPayCode=payCodeFromPhone(memberPhone);
-    payCodeExpiresAt=now + 60*1000;
+  if(!forceNew && currentPayCode && payCodeExpiresAt && now<payCodeExpiresAt){
+    updatePayCodeCountdown();
+    startPayCodeCountdown();
+    return true;
   }
-  updatePayCodeCountdown();
-  startPayCodeCountdown();
+
+  if(payCodeCreating) return false;
+  payCodeCreating=true;
+  setPayCodeCloudStatus('正在取得安全付款碼…',true);
+
+  try{
+    const {data,error}=await sb.rpc('app_create_yijiapay_pay_code');
+    if(error) throw error;
+
+    currentPayCode=String(data?.payCode||data?.paymentCode||'');
+    const expiresRaw=data?.expiresAt||data?.expires_at||null;
+    payCodeExpiresAt=expiresRaw ? new Date(expiresRaw).getTime() : Date.now()+60000;
+
+    if(!currentPayCode) throw new Error('付款碼建立失敗');
+
+    setPayCodeCloudStatus('安全付款碼已同步',true);
+    updatePayCodeCountdown();
+    startPayCodeCountdown();
+    return true;
+  }catch(e){
+    console.error('安全付款碼建立失敗',e);
+    currentPayCode='';
+    payCodeExpiresAt=0;
+    setPayCodeCloudStatus('付款碼同步失敗，請按 🔄 重試',false);
+    updatePayCodeCountdown();
+    return false;
+  }finally{
+    payCodeCreating=false;
+  }
 }
 
 function updatePayCodeCountdown(){
   const el=document.getElementById('payCodeCountdown');
   if(!el) return;
-  const remain=Math.max(0, Math.ceil((payCodeExpiresAt-Date.now())/1000));
+  if(!payCodeExpiresAt){
+    el.textContent='--秒';
+    return;
+  }
+  const remain=Math.max(0,Math.ceil((payCodeExpiresAt-Date.now())/1000));
   el.textContent=`${remain}秒`;
 }
 
 function startPayCodeCountdown(){
   if(payCodeTimer) return;
-  payCodeTimer=setInterval(()=>{
-    if(!document.getElementById('payCodeCountdown')){
+
+  payCodeTimer=setInterval(async()=>{
+    const el=document.getElementById('payCodeCountdown');
+    if(!el){
       clearInterval(payCodeTimer);
       payCodeTimer=null;
       return;
     }
-    const remain=Math.max(0, Math.ceil((payCodeExpiresAt-Date.now())/1000));
-    const el=document.getElementById('payCodeCountdown');
-    if(el) el.textContent=`${remain}秒`;
-    if(remain<=0){
-      refreshPayCode();
+
+    const remain=payCodeExpiresAt
+      ? Math.max(0,Math.ceil((payCodeExpiresAt-Date.now())/1000))
+      : 0;
+
+    el.textContent=payCodeExpiresAt?`${remain}秒`:'--秒';
+
+    if(payCodeExpiresAt && remain<=0 && !payCodeCreating){
+      await refreshPayCode();
     }
   },1000);
 }
 
-function refreshPayCode(){
-  ensurePayCodeState(true);
-  renderPayCode();
+async function refreshPayCode(){
+  const ok=await ensurePayCodeState(true);
+  if(ok) renderPayCode();
 }
 
 function switchPayCodeMode(mode){
-  payCodeMode = mode==='qr' ? 'qr' : 'pay';
+  payCodeMode=mode==='qr'?'qr':'pay';
   document.getElementById('payModePayBtn')?.classList.toggle('active',payCodeMode==='pay');
   document.getElementById('payModeQrBtn')?.classList.toggle('active',payCodeMode==='qr');
   renderPayCode();
@@ -1798,8 +1840,6 @@ function togglePayCode(){
 }
 
 function renderPayCode(){
-  ensurePayCodeState(false);
-
   const host=document.getElementById('payCodeHost');
   const note=document.getElementById('payCodeNote');
   const text=document.getElementById('payCodeText');
@@ -1807,33 +1847,59 @@ function renderPayCode(){
   const card=document.getElementById('payCodeCard');
   if(!host) return;
 
-  const code=currentPayCode || payCodeFromPhone(currentMember?.phone || '');
   host.innerHTML='';
-  host.classList.toggle('qr-mode', payCodeMode==='qr');
-  if(card) card.classList.toggle('qr-active', payCodeMode==='qr');
+  host.classList.toggle('qr-mode',payCodeMode==='qr');
+  if(card) card.classList.toggle('qr-active',payCodeMode==='qr');
+
+  if(!currentPayCode){
+    host.innerHTML='<div style="color:#7a828a;font-size:14px">付款碼讀取中…</div>';
+    if(text) text.textContent='--';
+    return;
+  }
 
   try{
     if(payCodeMode==='qr' && window.QRCode){
       const qrWrap=document.createElement('div');
       host.appendChild(qrWrap);
-      new QRCode(qrWrap,{text:code,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
+      new QRCode(qrWrap,{
+        text:currentPayCode,
+        width:220,
+        height:220,
+        correctLevel:QRCode.CorrectLevel.M
+      });
     }else if(window.JsBarcode){
       const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
       host.appendChild(svg);
-      JsBarcode(svg, code, {format:'CODE128', displayValue:false, height:72, width:1.5, margin:8});
+      JsBarcode(svg,currentPayCode,{
+        format:'CODE128',
+        displayValue:false,
+        height:72,
+        width:1.5,
+        margin:8
+      });
     }else{
-      host.textContent=code;
+      host.textContent=currentPayCode;
     }
   }catch(e){
     console.warn(e);
-    host.textContent=code;
+    host.textContent=currentPayCode;
   }
 
-  if(note) note.textContent = payCodeMode==='qr' ? '僅限億家通路使用（QR Code）' : '僅限億家通路使用';
-  if(text) text.textContent = code;
-  if(bottom) bottom.textContent = payCodeMode==='qr'
+  if(note) note.textContent=payCodeMode==='qr'
+    ? '僅限億家通路使用（QR Code）'
+    : '僅限億家通路使用';
+
+  if(text) text.textContent=currentPayCode;
+
+  if(bottom) bottom.textContent=payCodeMode==='qr'
     ? '結帳時請出示 QR Code。'
     : '結帳時請出示付款條碼。';
+}
+
+async function loadCurrentPayCode(){
+  const ok=await ensurePayCodeState(false);
+  renderPayCode();
+  return ok;
 }
 
 function setAuthMode(mode){
@@ -3176,8 +3242,8 @@ function renderBarcodes(){
     JsBarcode('#modalBarcode',code,{...opts,height:92,width:1.25,margin:8});
     document.getElementById('memberCodeText').textContent='會員編號：'+code;
   }catch(e){console.warn(e)}
-  try{ renderPayCode(); }catch(e){}
 }
+
 
 
 let notificationRows=[];
@@ -4283,7 +4349,7 @@ async function loadYijiaPaySummary(){
   if(cardStatus) cardStatus.textContent=yijiaPaySummary.hasCard ? (yijiaPaySummary.cardLabel||'已綁定') : '尚未綁定';
   if(payCardSummary) payCardSummary.textContent=yijiaPaySummary.hasCard ? (yijiaPaySummary.cardLabel||'已綁定') : '尚未綁定';
 
-  renderPayCode();
+  await loadCurrentPayCode();
   updateCheckoutPayAvailability();
 }
 
