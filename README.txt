@@ -1,30 +1,22 @@
-億家 App v0.10.13.6 Reload Test Ready
+億家 App v0.10.13.7 Points Completion Sync
 
-這版先把「儲值測試」真正接通，方便直接測 TM 儲值 + 億家Pay付款。
+這版把既有點數功能「成功後同步」正式收尾，不新增新玩法。
 
-App 儲值頁新增：
-- 顯示正式會員條碼，供 TM 掃描
-- 顯示會員代碼文字
-- 進入儲值頁後每 2.5 秒讀一次正式儲值摘要
-- TM 儲值成功後：
-  - App 自動偵測新儲值紀錄
-  - 顯示「儲值完成」
-  - 自動更新錢包餘額
-  - 自動更新最近儲值紀錄
-  - 同步億家Pay支付頁餘額
-- 離開儲值頁會停止輪詢，不在背景持續讀取
-
-正式 TM 儲值仍使用：
-tm_reload_yijiapay_wallet(phone, store_code, tm_sale_id, amount, description)
-
-測試順序建議：
-1. App → 億家Pay → 儲值
-2. TM 掃 App 上方會員條碼
-3. TM 輸入儲值金額、完成收現
-4. App 會自動更新餘額
-5. 回億家Pay
-6. TM 掃 60 秒付款條碼 / QR Code
-7. 完成付款，確認正式扣款與付款後餘額
+完成：
+- YPD 點數折抵被 TM 正式完成後：
+  - App 停止監看
+  - 呼叫 app_sync_my_points_from_hq()
+  - 重新讀取正式點數餘額
+  - 重新讀取點數歷史
+  - 重新整理通知中心
+- PR 點數兌換券被 TM 正式核銷後：
+  - App 呼叫 app_sync_my_points_from_hq()
+  - 重新讀取正式點數餘額
+  - 重新讀取兌換紀錄
+  - 重新整理通知中心
+- App 建立點數兌換後，也會重新同步 HQ 正式點數資料
+- HQ yj4_members 維持唯一點數權威來源
+- App 不直接自行修改點數餘額
 
 此版純前端。
 不用跑 SQL，只上傳新的 index.html。
