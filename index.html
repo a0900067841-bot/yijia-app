@@ -984,7 +984,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.7 Member Point Identity Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.8 Point Ledger Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1542,25 +1542,47 @@ async function loadPoints(){
 }
 
 async function loadPointHistory(){
-  const {data,error}=await sb
-    .from('app_point_transactions')
-    .select('*')
-    .eq('auth_user_id',currentUser.id)
-    .order('created_at',{ascending:false})
-    .limit(30);
-  if(error) throw error;
-
   const box=document.getElementById('pointsHistory');
   if(!box) return;
-  if(!data?.length){
-    box.innerHTML='<div class="row"><div><strong>尚無點數紀錄</strong><small>完成累點、折抵或活動贈點後會顯示在這裡</small></div></div>';
-    return;
+
+  try{
+    const {data,error}=await sb.rpc('app_get_my_point_history');
+    if(error) throw error;
+
+    const rows=Array.isArray(data)?data:[];
+    if(!rows.length){
+      box.innerHTML='<div class="row"><div><strong>尚無點數紀錄</strong><small>完成累點、折抵或活動贈點後會顯示在這裡</small></div></div>';
+      return;
+    }
+
+    const labels={
+      earn:'消費累點',
+      bonus:'活動贈點',
+      discount:'點數折抵',
+      redeem:'點數折抵',
+      reward_redeem:'點數兌換',
+      refund_deduct:'退貨扣點',
+      refund_restore:'退貨退回點數',
+      correction:'點數調整'
+    };
+
+    box.innerHTML=rows.map(t=>{
+      const pts=Number(t.points||0);
+      const plus=pts>0;
+      const balance=t.balanceAfter;
+      const balanceText=(balance===null||balance===undefined||balance==='')?'':` · 餘額 ${Number(balance).toLocaleString()} 點`;
+      return `<div class="row">
+        <div>
+          <strong>${safeText(labels[t.transactionType]||t.transactionType||'點數異動')}</strong>
+          <small>${safeText(t.description||'')}${t.createdAt?' · '+new Date(t.createdAt).toLocaleString('zh-TW'):''}${balanceText}</small>
+        </div>
+        <div class="${plus?'plus':'minus'}">${plus?'+':''}${pts.toLocaleString()}</div>
+      </div>`;
+    }).join('');
+  }catch(err){
+    console.error(err);
+    box.innerHTML='<div class="row"><div><strong>點數紀錄同步失敗</strong><small>請稍後重新整理</small></div></div>';
   }
-  const labels={earn:'消費累點',redeem:'點數折抵',discount:'點數折抵',reward_redeem:'點數兌換',refund_deduct:'退貨扣點',bonus:'活動贈點'};
-  box.innerHTML=data.map(t=>{
-    const plus=t.points>0;
-    return `<div class="row"><div><strong>${labels[t.transaction_type]||t.transaction_type}</strong><small>${t.description||''} · ${new Date(t.created_at).toLocaleString('zh-TW')}</small></div><div class="${plus?'plus':'minus'}">${plus?'+':''}${t.points}</div></div>`;
-  }).join('');
 }
 
 function renderPoints(p){
