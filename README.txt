@@ -1,16 +1,16 @@
-億家 App v0.10.9.6 Expired Product UX
+億家 App v0.10.9.7 Member Point Identity Sync
 
-逾期商品顯示調整：
-- 參考便利商店 App 的逾期商品呈現方式。
-- 逾期商品卡片淡化。
-- 商品圖顯示「已過期」遮罩。
-- 顯示兌換期限。
-- 右側新增 i 說明按鈕。
-- 點擊後顯示逾期說明與退款規則。
-- 尚未完成退款：顯示「已過期」。
-- 已完成/進入到期退款狀態：顯示「已到期退款」。
-- 逾期商品不再計入首頁待兌換數量。
-- 既有到期日 00:00 自動失效／退款規則不變。
+修正重點：
+- 解決 App 仍顯示 0 點。
+- 會員比對不再只看 phone/auth_user_id。
+- 會同步比對：
+  1. authUserId / auth_user_id
+  2. id
+  3. phone
+  4. memberNo / code
+  5. YJ + 手機號碼
+- 若 HQ yj4_members 找不到，會再讀 yijia_member_point_sync_events 最新 balance_after。
+- 找到後直接寫回 app_points。
 
-此版純前端，不需 SQL。
-只需上傳 index.html。
+這版 App 仍沿用原本每 5 秒自動同步。
+先執行 member_point_identity_sync_backend.sql，再上傳 index.html。
