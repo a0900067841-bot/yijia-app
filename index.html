@@ -1361,7 +1361,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.9 Pay Notification Link</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.12.0 Pay Amount Receipt</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1994,6 +1994,8 @@ async function openPayCompleteByCode(payCode){
 }
 
 function openPayCompleteSheet(data){
+  const amountEl=document.getElementById('payCompleteAmount');
+  if(amountEl) amountEl.textContent=data?.amount!=null ? money(Number(data.amount||0)) : '--';
   document.getElementById('payCompleteCode').textContent=data?.payCode||currentPayCode||'--';
   document.getElementById('payCompleteTime').textContent=data?.usedAt
     ? new Date(data.usedAt).toLocaleString('zh-TW')
@@ -3668,7 +3670,8 @@ async function buildNotificationRows(){
           icon:'💳',
           title:'億家Pay付款完成',
           message:
-            `${t.usedStoreCode?`門市 ${t.usedStoreCode}`:'億家門市'}`
+            `${t.amount!=null?`付款 ${money(Number(t.amount||0))} · `:''}`
+            +`${t.usedStoreCode?`門市 ${t.usedStoreCode}`:'億家門市'}`
             +`${t.tmSaleId?` · 交易 ${t.tmSaleId}`:''}`,
           time:t.usedAt||t.createdAt,
           target:'yijiaPayReceipt',
@@ -4530,6 +4533,7 @@ async function loadYijiaPayHistory(){
           <span class="pay-history-status">已完成</span>
         </div>
         <div class="pay-history-meta">
+          ${r.amount!=null?`付款金額：<b>${money(Number(r.amount||0))}</b><br>`:''}
           ${r.usedAt?new Date(r.usedAt).toLocaleString('zh-TW'):'--'}
           ${r.usedStoreCode?`<br>門市：${safeText(r.usedStoreCode)}`:''}
           ${r.tmSaleId?`<br>交易編號：${safeText(r.tmSaleId)}`:''}
@@ -6811,6 +6815,7 @@ function toggleAnybuySubmenu(id){document.getElementById(id)?.classList.toggle('
     <h3>付款完成</h3>
     <p>億家Pay 付款碼已由門市完成交易</p>
     <div class="pay-complete-rows">
+      <div class="pay-complete-row"><span>付款金額</span><b id="payCompleteAmount">--</b></div>
       <div class="pay-complete-row"><span>付款碼</span><b id="payCompleteCode">--</b></div>
       <div class="pay-complete-row"><span>完成時間</span><b id="payCompleteTime">--</b></div>
       <div class="pay-complete-row"><span>門市</span><b id="payCompleteStore">--</b></div>

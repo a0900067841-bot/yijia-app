@@ -1,15 +1,17 @@
-億家 App v0.10.11.9 Pay Notification Link
+億家 App v0.10.12.0 Pay Amount Receipt
 
 新增：
-- 億家Pay付款完成正式接進通知中心。
-- 通知顯示門市與 TM 交易編號。
-- 點擊通知直接打開該筆「付款完成明細」。
-- 億家Pay「最近交易」每一筆也可直接點開完成明細。
-- 完成明細沿用既有付款碼狀態資料：
-  - 完成時間
-  - 門市
-  - TM交易編號
-  - 付款碼
+- 億家Pay付款完成明細新增「付款金額」。
+- 最近交易顯示實際付款金額。
+- 付款完成通知顯示實際付款金額。
+- app_yijiapay_pay_codes 增加：
+  amount
+  balance_before
+  balance_after
+- 新版 TM 建議改用：
+  tm_complete_yijiapay_pay_code(pay_code, store_code, sale_id, amount)
+- 保留舊 3 參數版本相容，不會直接破壞目前 TM。
 
-此版純前端，不需 SQL。
-直接上傳新的 index.html。
+注意：
+此版只補「實際成交金額」紀錄。
+錢包真正扣款仍應由億家Pay正式扣款交易流程負責。
