@@ -1217,7 +1217,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.9 Point Discount Receipt</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.11.0 Point Discount Notification Link</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2649,6 +2649,24 @@ function refreshPointDiscountPreview(){
 let myPointDiscountTicketRows=[];
 
 
+
+async function openPointDiscountReceiptByCode(discountCode){
+  try{
+    await loadMyPointDiscountTickets();
+    const idx=myPointDiscountTicketRows.findIndex(
+      x=>String(x.discountCode||'')===String(discountCode||'')
+    );
+    if(idx<0){
+      alert('找不到這筆點數折抵明細。');
+      return;
+    }
+    openPointDiscountReceipt(idx);
+  }catch(e){
+    console.error(e);
+    alert('折抵明細讀取失敗。');
+  }
+}
+
 function openPointDiscountReceipt(index){
   const row=myPointDiscountTicketRows[Number(index)];
   if(!row) return;
@@ -3125,7 +3143,28 @@ async function buildNotificationRows(){
     }
   }catch(e){console.warn('通知：點數紀錄讀取失敗',e)}
 
-  // 4. 到期退款完成
+  // 4. 點數折抵券完成通知：直接連到 YPD 折抵完成明細
+  try{
+    const {data,error}=await sb.rpc('app_get_my_point_discount_tickets');
+    if(!error && Array.isArray(data)){
+      data
+        .filter(t=>String(t.status||'')==='used')
+        .forEach(t=>{
+          pushNotification(rows,{
+            id:notificationId('point-discount-ticket',t.discountCode,t.usedAt||t.createdAt),
+            icon:'🪙',
+            title:'點數折抵完成',
+            message:`已使用 ${Number(t.points||0).toLocaleString()} 點，折抵 ${money(Number(t.discountAmount||0))}。`,
+            time:t.usedAt||t.createdAt,
+            target:'pointDiscountReceipt',
+            discountCode:String(t.discountCode||''),
+            priority:1
+          });
+        });
+    }
+  }catch(e){console.warn('通知：點數折抵券讀取失敗',e)}
+
+  // 5. 到期退款完成
   try{
     const {data,error}=await sb.rpc('app_get_expiry_refund_history');
     if(!error && Array.isArray(data)){
@@ -3143,7 +3182,7 @@ async function buildNotificationRows(){
     }
   }catch(e){console.warn('通知：到期退款紀錄讀取失敗',e)}
 
-  // 5. 即將到期：3 天內、仍有剩餘數量
+  // 6. 即將到期：3 天內、仍有剩餘數量
   try{
     const {data,error}=await sb.rpc('app_get_member_products');
     if(!error && Array.isArray(data)){
@@ -3229,6 +3268,12 @@ function openNotification(id){
         loadPointBusinessHistory?.();
         loadPointRulesSummary?.();
       },100);
+    }
+    if(n.target==='pointDiscountReceipt' && n.discountCode){
+      setTimeout(()=>{
+        showView('pointDiscount');
+        openPointDiscountReceiptByCode(n.discountCode);
+      },120);
     }
   }else{
     renderNotificationCenter();
