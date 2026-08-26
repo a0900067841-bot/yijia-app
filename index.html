@@ -936,7 +936,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.3 Point Reward QR</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.9.4 Points Live Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1330,6 +1330,13 @@ function showView(id){
   if(id==='subscriptionManagement') loadSubscriptions();
   if(id==='reservationManagement') loadReservations();
   if(id==='notificationCenter') loadNotificationCenter(true);
+  if(id==='points'){
+    loadPoints();
+    loadPointHistory();
+    startPointsLiveSync();
+  }else{
+    stopPointsLiveSync();
+  }
   if(id==='pointRewards') loadPointRewards();
   if(id==='pointDiscount') openPointDiscount();
   if(id!=='pointDiscount') stopPointDiscountCountdown();
@@ -1450,6 +1457,23 @@ async function loadMember(){
 }
 
 async function loadPoints(){
+  // v0.10.9.4：先從 TM／SC 共用 HQ 會員主檔拉最新點數，再顯示 App 點數。
+  try{
+    const {data:syncData,error:syncErr}=await sb.rpc('app_sync_my_points_from_hq');
+    if(!syncErr && syncData){
+      renderPoints({
+        available_points:Number(syncData.availablePoints||0),
+        expiring_points:Number(syncData.expiringPoints||0),
+        expiry_date:syncData.expiryDate||null,
+        updated_at:syncData.updatedAt||new Date().toISOString()
+      });
+      return;
+    }
+    if(syncErr) console.warn('點數即時同步失敗，改讀 app_points',syncErr);
+  }catch(e){
+    console.warn('點數即時同步失敗，改讀 app_points',e);
+  }
+
   const {data,error}=await sb
     .from('app_points')
     .select('*')
@@ -1458,19 +1482,11 @@ async function loadPoints(){
   if(error) throw error;
 
   if(!data){
-    const {data:created,error:createErr}=await sb
-      .from('app_points')
-      .insert({
-        auth_user_id:currentUser.id,
-        phone:currentMember.phone,
-        available_points:0,
-        expiring_points:0,
-        updated_at:new Date().toISOString()
-      })
-      .select()
-      .single();
-    if(createErr) throw createErr;
-    renderPoints(created);
+    renderPoints({
+      available_points:0,
+      expiring_points:0,
+      updated_at:new Date().toISOString()
+    });
     return;
   }
   renderPoints(data);
@@ -1515,6 +1531,27 @@ function renderPoints(p){
       : '目前無即將到期點數';
 }
 
+
+let pointsLiveSyncTimer=null;
+
+function stopPointsLiveSync(){
+  if(pointsLiveSyncTimer){
+    clearInterval(pointsLiveSyncTimer);
+    pointsLiveSyncTimer=null;
+  }
+}
+
+function startPointsLiveSync(){
+  stopPointsLiveSync();
+  pointsLiveSyncTimer=setInterval(async()=>{
+    try{
+      await loadPoints();
+      await loadPointHistory();
+    }catch(e){
+      console.warn('點數頁自動同步失敗',e);
+    }
+  },5000);
+}
 
 let currentPointBalance=0;
 let pointRewardRows=[];
