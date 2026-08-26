@@ -686,6 +686,40 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .points-expiry-row small{display:block;color:#7a828a;margin-top:3px}
 .points-expiry-row b{white-space:nowrap}
 .points-expiry-empty{color:#7a828a;font-size:13px;padding-top:8px}
+
+/* v0.10.10.9 點數折抵完成明細 */
+.point-discount-receipt-mask{
+  position:fixed;inset:0;background:rgba(0,0,0,.46);z-index:10020;
+  display:none;align-items:flex-end;justify-content:center
+}
+.point-discount-receipt{
+  width:min(520px,100%);background:#fff;border-radius:24px 24px 0 0;
+  padding:20px 18px calc(24px + env(safe-area-inset-bottom));
+  max-height:84vh;overflow:auto
+}
+.point-discount-receipt-handle{
+  width:42px;height:5px;background:#d7dce0;border-radius:99px;margin:0 auto 16px
+}
+.point-discount-receipt-icon{font-size:48px;text-align:center}
+.point-discount-receipt h3{text-align:center;font-size:22px;margin:8px 0 4px}
+.point-discount-receipt-amount{
+  text-align:center;color:var(--green);font-size:30px;font-weight:900;margin:8px 0 18px
+}
+.point-discount-receipt-list{border-top:1px solid #edf0f2}
+.point-discount-receipt-row{
+  display:flex;justify-content:space-between;gap:18px;padding:13px 2px;
+  border-bottom:1px solid #edf0f2
+}
+.point-discount-receipt-row span{color:#7a828a}
+.point-discount-receipt-row b{text-align:right;word-break:break-all}
+.point-discount-receipt-close{
+  width:100%;margin-top:18px;border:0;border-radius:14px;background:var(--green);
+  color:#fff;padding:13px;font-size:17px;font-weight:900
+}
+.point-ticket-detail-btn{
+  width:100%;margin-top:10px;border:0;border-radius:11px;padding:9px;
+  background:#eef8f1;color:#137743;font-weight:900
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -1183,7 +1217,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.8 Points Expiry Detail</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.10.9 Point Discount Receipt</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2614,6 +2648,34 @@ function refreshPointDiscountPreview(){
 
 let myPointDiscountTicketRows=[];
 
+
+function openPointDiscountReceipt(index){
+  const row=myPointDiscountTicketRows[Number(index)];
+  if(!row) return;
+
+  const amount=document.getElementById('pointDiscountReceiptAmount');
+  const points=document.getElementById('pointDiscountReceiptPoints');
+  const time=document.getElementById('pointDiscountReceiptTime');
+  const store=document.getElementById('pointDiscountReceiptStore');
+  const sale=document.getElementById('pointDiscountReceiptSale');
+  const code=document.getElementById('pointDiscountReceiptCode');
+
+  if(amount) amount.textContent=money(Number(row.discountAmount||0));
+  if(points) points.textContent=`${Number(row.points||0).toLocaleString()} 點`;
+  if(time) time.textContent=row.usedAt?new Date(row.usedAt).toLocaleString('zh-TW'):'--';
+  if(store) store.textContent=row.usedStoreCode||'--';
+  if(sale) sale.textContent=row.tmSaleId||'--';
+  if(code) code.textContent=row.discountCode||'--';
+
+  const mask=document.getElementById('pointDiscountReceiptMask');
+  if(mask) mask.style.display='flex';
+}
+
+function closePointDiscountReceipt(){
+  const mask=document.getElementById('pointDiscountReceiptMask');
+  if(mask) mask.style.display='none';
+}
+
 function pointDiscountTicketStatusText(status){
   const s=String(status||'pending');
   if(s==='pending') return '待使用';
@@ -2662,6 +2724,7 @@ async function loadMyPointDiscountTickets(){
           <button class="primary" onclick="reopenPointDiscountTicket(${index})">再次出示 QR</button>
           <button class="danger" onclick="cancelPointDiscountTicket(${index})">取消</button>
         </div>`:''}
+        ${status==='used'?`<button class="point-ticket-detail-btn" onclick="openPointDiscountReceipt(${index})">查看折抵完成明細</button>`:''}
       </div>`;
     }).join('');
   }catch(e){
@@ -5980,6 +6043,25 @@ function toggleAnybuySubmenu(id){document.getElementById(id)?.classList.toggle('
       <div class="point-detail-row"><span>來源編號</span><b id="pointDetailSource">--</b></div>
     </div>
     <button class="point-detail-close" onclick="closePointHistoryDetail()">關閉</button>
+  </div>
+</div>
+
+
+<div id="pointDiscountReceiptMask" class="point-discount-receipt-mask"
+     onclick="if(event.target===this)closePointDiscountReceipt()">
+  <div class="point-discount-receipt">
+    <div class="point-discount-receipt-handle"></div>
+    <div class="point-discount-receipt-icon">✅</div>
+    <h3>點數折抵完成</h3>
+    <div id="pointDiscountReceiptAmount" class="point-discount-receipt-amount">$0</div>
+    <div class="point-discount-receipt-list">
+      <div class="point-discount-receipt-row"><span>使用點數</span><b id="pointDiscountReceiptPoints">--</b></div>
+      <div class="point-discount-receipt-row"><span>完成時間</span><b id="pointDiscountReceiptTime">--</b></div>
+      <div class="point-discount-receipt-row"><span>門市</span><b id="pointDiscountReceiptStore">--</b></div>
+      <div class="point-discount-receipt-row"><span>交易編號</span><b id="pointDiscountReceiptSale">--</b></div>
+      <div class="point-discount-receipt-row"><span>折抵條碼</span><b id="pointDiscountReceiptCode">--</b></div>
+    </div>
+    <button class="point-discount-receipt-close" onclick="closePointDiscountReceipt()">關閉</button>
   </div>
 </div>
 
