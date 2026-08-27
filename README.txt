@@ -1,28 +1,22 @@
-億家 App v0.10.13.23 Reload History Live Sync
+億家 App v0.10.13.24 Anybuy Product Checkout Ready
 
-這版把億家Pay「現金儲值完成後的 App 即時同步」再補完整。
+這版把「隨買跨店取 → 商品詳情 → 加入購物車」從開發提示整理成正式購物流程。
 
 完成：
-- 儲值頁每 2.5 秒讀 app_get_my_yijiapay_reload_summary()
-- 不只看最新一筆儲值 ID，也比較：
-  - walletBalance
-  - monthlyLimit
-  - usedThisMonth
-  - remainingThisMonth
-  - recentReloads
-- TM 完成儲值後，App 自動更新：
-  - 儲值成功提示
-  - 儲值頁錢包餘額
-  - 本月現金儲值額度
-  - 最近儲值紀錄
-  - 億家Pay首頁餘額
-  - 錢包帳本
-  - 通知中心
-- 即使後端 recentReloads 的 id 欄位型態不同，只要正式餘額或歷史資料變動仍可偵測。
-
-不新增儲值邏輯。
-儲值仍由 TM 正式 tm_reload_yijiapay_wallet() 執行，
-App 只讀正式結果。
+- 商品詳情購買按鍵改為「加入購物車」
+- 加入後直接進購物車，不再跳開發測試提示
+- 商品詳情會判斷正式可購買狀態：
+  - enabled / active
+  - 活動開始日
+  - 活動結束日
+  - 售價是否有效
+- 尚未開賣、活動已結束、停用、價格未設定時：
+  - 禁止加入購物車
+  - 明確顯示原因
+- 正常商品顯示「可加入購物車，結帳時再選擇付款方式」
+- 移除舊的「付款功能尚未接通 / 開發測試模式」字樣
+- 店舖結帳仍沿用既有正式待付款訂單 / QR Code 流程
+- 不新增信用卡或線上金流處理
 
 此版純前端，不用跑 SQL。
 只需要上傳新的 index.html。
