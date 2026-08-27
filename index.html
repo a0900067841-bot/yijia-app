@@ -1691,7 +1691,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.14 Member Barcode HQ Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.15 Member Barcode Official Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2541,17 +2541,56 @@ function phoneToInternalEmail(phone){
   // 僅 Supabase 內部技術識別，會員不會看到，也不是實際 Email。
   return 'tw'+phone+'@auth.yijia.invalid';
 }
-function getOfficialMemberBarcodeCode(member=currentMember){
-  const code =
-    member?.memberNo ||
-    member?.member_no ||
-    member?.memberCode ||
-    member?.member_code ||
-    member?.memberId ||
-    member?.member_id ||
-    '';
+function normalizeOfficialMemberCode(value){
+  return String(value||'').trim();
+}
 
-  return String(code||'').trim();
+function pickBestOfficialMemberCode(values){
+  const list=(Array.isArray(values)?values:[values])
+    .map(v=>normalizeOfficialMemberCode(v))
+    .filter(Boolean);
+  if(!list.length) return '';
+
+  const strong=list.find(v=>/^M\d{4,}$/i.test(v));
+  if(strong) return strong;
+
+  const medium=list.find(v=>/^[A-Z]\d{4,}$/i.test(v) && !/^YJ/i.test(v));
+  if(medium) return medium;
+
+  const fallback=list.find(v=>!/^09\d{8}$/.test(v));
+  return fallback||'';
+}
+
+function extractOfficialMemberCode(source){
+  if(!source || typeof source!=='object') return '';
+
+  const keys=[
+    'tm_member_no','tmMemberNo',
+    'member_barcode','memberBarcode',
+    'barcode','barcode_no','barcodeNo',
+    'card_no','cardNo',
+    'vip_no','vipNo',
+    'member_no','memberNo',
+    'member_code','memberCode',
+    'member_id','memberId'
+  ];
+
+  const nestedKeys=['member','profile','hqMember','tmMember','data','result'];
+  const values=[];
+
+  keys.forEach(k=>{ if(source?.[k]!==undefined && source?.[k]!==null) values.push(source[k]); });
+  nestedKeys.forEach(group=>{
+    const obj=source?.[group];
+    if(obj && typeof obj==='object'){
+      keys.forEach(k=>{ if(obj?.[k]!==undefined && obj?.[k]!==null) values.push(obj[k]); });
+    }
+  });
+
+  return pickBestOfficialMemberCode(values);
+}
+
+function getOfficialMemberBarcodeCode(member=currentMember){
+  return extractOfficialMemberCode(member);
 }
 
 async function loadOfficialMemberNoFromHq(){
@@ -2560,17 +2599,7 @@ async function loadOfficialMemberNoFromHq(){
   try{
     const {data,error}=await sb.rpc('app_current_member_json');
     if(error) throw error;
-
-    const memberNo =
-      data?.memberNo ||
-      data?.member_no ||
-      data?.memberCode ||
-      data?.member_code ||
-      data?.memberId ||
-      data?.member_id ||
-      '';
-
-    return String(memberNo||'').trim();
+    return extractOfficialMemberCode(data);
   }catch(e){
     console.warn('正式會員編號同步失敗',e);
     return '';
@@ -3919,7 +3948,7 @@ function renderBarcodes(){
   if(!code){
     if(home) home.innerHTML='';
     if(modal) modal.innerHTML='';
-    if(text) text.textContent='會員編號：尚未同步';
+    if(text) text.textContent='會員條碼：尚未同步正式會員編號';
     return;
   }
 
@@ -3927,7 +3956,7 @@ function renderBarcodes(){
   try{
     JsBarcode('#homeBarcode',code,opts);
     JsBarcode('#modalBarcode',code,{...opts,height:92,width:1.25,margin:8});
-    if(text) text.textContent='會員編號：'+code+'（與 TM 相同）';
+    if(text) text.textContent='會員編號：'+code+'（TM 正式會員條碼）';
   }catch(e){
     console.warn(e);
   }
@@ -4559,7 +4588,10 @@ async function applyUser(user){
     if(officialMemberNo){
       currentMember={
         ...currentMember,
-        memberNo:officialMemberNo
+        memberNo:officialMemberNo,
+        member_no:officialMemberNo,
+        tm_member_no:officialMemberNo,
+        member_barcode:officialMemberNo
       };
     }
 
