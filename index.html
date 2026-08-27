@@ -1694,7 +1694,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.2 Gift Claim Formal Flow</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.4 Points Formal Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -3223,6 +3223,8 @@ let activePointRewardTicket=null;
 let pointRewardTicketTimer=null;
 let pointDiscountEnabledByUser=false;
 let activePointDiscountCode='';
+let pointDiscountStartBalance=0;
+let pointDiscountRequestedPoints=0;
 let pointDiscountStatusTimer=null;
 let pointDiscountSettings={
   enabled:false,
@@ -3365,11 +3367,19 @@ async function refreshPointDiscountTicketStatus(){
     }
   }catch(e){ console.warn(e); }
 }
-function startPointDiscountStatusMonitor(){
+function startPointDiscountStatusMonitor(code,beforeBalance,points){
   stopPointDiscountStatusMonitor();
+  activePointDiscountCode=String(code||'').trim();
+  pointDiscountStartBalance=Number(beforeBalance||0);
+  pointDiscountRequestedPoints=Number(points||0);
+
   if(!activePointDiscountCode) return;
-  pointDiscountStatusTimer=setInterval(refreshPointDiscountTicketStatus,3000);
-  refreshPointDiscountTicketStatus();
+
+  pollPointDiscountStatus();
+  pointDiscountStatusTimer=setInterval(
+    pollPointDiscountStatus,
+    2500
+  );
 }
 
 async function redeemPointReward(rewardId){
@@ -4020,64 +4030,159 @@ async function cancelPointDiscountTicket(index){
   }
 }
 
+
+async function getFormalPointCore(){
+  let syncData=null;
+  try{
+    const {data,error}=await sb.rpc('app_sync_my_points_from_hq');
+    if(error) throw error;
+    syncData=data||null;
+  }catch(e){
+    console.warn('HQ 正式點數同步失敗',e);
+  }
+
+  let history=[];
+  try{
+    const {data,error}=await sb.rpc('app_get_my_point_history');
+    if(!error && Array.isArray(data)) history=data;
+  }catch(e){
+    console.warn('正式點數紀錄讀取失敗',e);
+  }
+
+  return {
+    balance:Number(syncData?.availablePoints||0),
+    expiry:Number(syncData?.expiringPoints||0),
+    expiryDate:syncData?.expiryDate||null,
+    memberNo:String(
+      syncData?.tmMemberNo ||
+      syncData?.memberNo ||
+      currentMember?.tmMemberNo ||
+      currentMember?.memberNo ||
+      ''
+    ).trim(),
+    history
+  };
+}
+
+async function verifyPointDiscountTicketCreated(data,points){
+  const code=String(
+    data?.discountCode ||
+    data?.ticketCode ||
+    data?.code ||
+    ''
+  ).trim().toUpperCase();
+
+  if(!code || !/^YPD[A-Z0-9]+$/.test(code)){
+    return {ok:false,reason:'後端沒有回傳正式 YPD 點數折抵碼'};
+  }
+
+  if(Number(points||0)<=0){
+    return {ok:false,reason:'點數折抵數量異常'};
+  }
+
+  return {ok:true,code};
+}
+
+async function verifyPointBalanceChanged(beforeBalance,expectedDelta){
+  const after=await getFormalPointCore();
+  const expected=Number(beforeBalance||0)+Number(expectedDelta||0);
+
+  return {
+    ok:Number(after.balance)===expected,
+    before:Number(beforeBalance||0),
+    after:Number(after.balance||0),
+    expected,
+    core:after
+  };
+}
+
+async function verifyPointRewardCreated(data){
+  const code=String(
+    data?.redeemCode ||
+    data?.rewardCode ||
+    data?.code ||
+    ''
+  ).trim().toUpperCase();
+
+  if(!code || !/^PR[A-Z0-9]+$/.test(code)){
+    return {ok:false,reason:'後端沒有回傳正式 PR 點數兌換碼'};
+  }
+
+  return {ok:true,code};
+}
+
 async function createPointDiscountTicket(){
+  if(!currentUser) return;
+
   if(!scAppSettings?.pointsSync){
     alert('總部目前暫停會員點數同步，暫時無法建立點數折抵碼。');
     return;
   }
-  if(!pointDiscountSettings.enabled){
-    alert('目前未開放點數折抵。');
-    return;
-  }
+
   const input=document.getElementById('discountPointsInput');
-  const points=Math.floor(Number(input?.value||0));
-  if(points<=0){
-    alert('請輸入要使用的點數。');
+  const points=Math.max(0,Number(input?.value||0));
+
+  if(!pointDiscountEnabledByUser || points<=0){
+    alert('請先選擇要折抵的點數。');
     return;
   }
 
-  const btn=document.getElementById('createPointDiscountBtn');
-  btn.disabled=true;
-  btn.textContent='產生中…';
+  const formal=await getFormalPointCore();
+  if(!formal.memberNo){
+    alert('尚未同步正式會員編號，請稍後再試。');
+    return;
+  }
+
+  if(formal.balance<points){
+    alert(`正式可用點數只有 ${formal.balance} 點。`);
+    await loadPoints();
+    return;
+  }
 
   try{
-    const {data,error}=await sb.rpc('app_create_point_discount_ticket',{p_points:points});
+    const {data,error}=await sb.rpc('app_create_point_discount_ticket',{
+      p_points:points
+    });
     if(error) throw error;
 
-    const code=String(data?.discountCode||data?.code||'');
-    if(!code) throw new Error('後端未回傳點數折抵碼');
+    const verified=await verifyPointDiscountTicketCreated(data,points);
+    if(!verified.ok) throw new Error(verified.reason);
 
-    pointDiscountExpiresAt=data?.expiresAt?new Date(data.expiresAt):new Date(Date.now()+600000);
+    activePointDiscountCode=verified.code;
+    pointDiscountStartBalance=formal.balance;
+    pointDiscountRequestedPoints=points;
+    pointDiscountCompleted=false;
 
-    document.getElementById('pointDiscountSetup').style.display='none';
-    document.getElementById('pointDiscountQrWrap').style.display='block';
-    activePointDiscountCode=code;
-    const syncBox=document.getElementById('pointDiscountSyncStatus');
-    if(syncBox){
-      syncBox.className='point-sync-status';
-      syncBox.innerHTML='等待 TM 完成交易，本頁會自動同步點數與折抵結果。';
-    }
-    document.getElementById('pointDiscountCode').textContent=code;
-    document.getElementById('pointDiscountSummary').innerHTML=
-      `使用 <strong>${Number(data?.points||points).toLocaleString()} 點</strong><br>`+
-      `折抵 <strong style="color:#ea6a00">${money(Number(data?.discountAmount||getPointDiscountAmount(points)))}</strong>`;
+    const codeEl=document.getElementById('pointDiscountCodeText');
+    if(codeEl) codeEl.textContent=verified.code;
 
     const qr=document.getElementById('pointDiscountQr');
-    qr.innerHTML='';
-    if(window.QRCode){
-      new QRCode(qr,{text:code,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
-    }else{
-      qr.textContent=code;
+    if(qr){
+      qr.innerHTML='';
+      if(window.QRCode){
+        new QRCode(qr,{
+          text:verified.code,
+          width:210,
+          height:210,
+          correctLevel:QRCode.CorrectLevel.M
+        });
+      }else{
+        qr.textContent=verified.code;
+      }
     }
+
+    showView('pointDiscountTicket');
     startPointDiscountCountdown();
-    startPointDiscountStatusMonitor();
-    loadMyPointDiscountTickets();
+    startPointDiscountStatusMonitor(
+      verified.code,
+      formal.balance,
+      points
+    );
+
+    alert('正式 YPD 點數折抵碼已建立，請給 TM 掃描。');
   }catch(err){
     console.error(err);
-    alert('點數折抵條碼建立失敗：'+(err?.message||err));
-  }finally{
-    btn.disabled=false;
-    btn.textContent='產生點數折抵 QR Code';
+    alert('建立點數折抵碼失敗：'+(err?.message||err));
   }
 }
 
@@ -7412,20 +7517,12 @@ async function pollReturnRequestStatus(){
   if(!view?.classList.contains('active')) return;
 
   try{
-    const rr=await sb
-      .from('yijia_app_state')
-      .select('data')
-      .eq('store_id','HQ')
-      .eq('data_key','yj_app_return_requests')
-      .maybeSingle();
-
-    const rows=
-      Array.isArray(rr?.data?.data) ? rr.data.data :
-      Array.isArray(rr?.data) ? rr.data :
-      Array.isArray(rr?.data?.data?.rows) ? rr.data.data.rows :
-      [];
-
-    const row=findReturnRequestByCode(rows,activeReturnCode);
+    const rows=await getFormalReturnRequests();
+    const row=matchReturnRequest(rows,{
+      returnCode:activeReturnCode,
+      memberProductId:String(selectedReturnProduct?.id||selectedReturnProduct?.memberProductId||''),
+      orderId:String(selectedReturnProduct?.orderId||'')
+    });
     if(!row) return;
 
     const rawStatus=String(
@@ -7443,7 +7540,20 @@ async function pollReturnRequestStatus(){
       : {label:rawStatus||'處理中',cls:'pending'};
 
     if(info.cls==='done'){
-      setReturnLiveStatus('退貨／退款完成，商品與訂單已更新','done');
+      const completed=await verifyReturnCompleted(
+        activeReturnCode,
+        selectedReturnProduct||{}
+      );
+
+      if(!completed.ok){
+        setReturnLiveStatus(
+          completed.reason||'退貨資料同步中',
+          'pending'
+        );
+        return;
+      }
+
+      setReturnLiveStatus('退貨／退款已正式完成','done');
       stopReturnStatusMonitor();
 
       if(typeof refreshAnybuyCoreData==='function'){
@@ -7454,16 +7564,11 @@ async function pollReturnRequestStatus(){
           gifts:false,
           notifications:true
         });
-      }else{
-        try{ await loadMyProducts(); }catch(_){}
-        try{ await loadOrderManagement(); }catch(_){}
-        try{ await loadProductUsage(); }catch(_){}
-        try{
-          if(typeof loadNotificationCenter==='function'){
-            await loadNotificationCenter(false);
-          }
-        }catch(_){}
       }
+
+      try{ await loadYijiaPaySummary(false); }catch(_){}
+      try{ await loadWalletLedger(); }catch(_){}
+
       return;
     }
 
@@ -7505,60 +7610,247 @@ function startReturnStatusMonitor(returnCode){
   );
 }
 
+
+async function getFormalReturnProduct(product){
+  try{
+    const {data,error}=await sb.rpc('app_get_member_products');
+    if(error) throw error;
+
+    const rows=Array.isArray(data)?data:[];
+    const pid=String(product?.id||product?.memberProductId||'').trim();
+    const code=String(product?.code||product?.productCode||'').trim();
+
+    return rows.find(x=>
+      (pid && String(x?.id||x?.memberProductId||'').trim()===pid) ||
+      (code && String(x?.code||x?.productCode||'').trim()===code)
+    )||null;
+  }catch(e){
+    console.warn('正式退貨商品讀取失敗',e);
+    return null;
+  }
+}
+
+function normalizeReturnRequestRows(raw){
+  return Array.isArray(raw?.data)?raw.data:
+    Array.isArray(raw)?raw:
+    Array.isArray(raw?.data?.rows)?raw.data.rows:
+    [];
+}
+
+async function getFormalReturnRequests(){
+  try{
+    const rr=await sb
+      .from('yijia_app_state')
+      .select('data')
+      .eq('store_id','HQ')
+      .eq('data_key','yj_app_return_requests')
+      .maybeSingle();
+
+    return normalizeReturnRequestRows(rr?.data);
+  }catch(e){
+    console.warn('正式退貨申請讀取失敗',e);
+    return [];
+  }
+}
+
+function matchReturnRequest(rows,{returnCode='',memberProductId='',orderId=''}={}){
+  const rc=String(returnCode||'').trim().toUpperCase();
+  const pid=String(memberProductId||'').trim();
+  const oid=String(orderId||'').trim();
+
+  return (Array.isArray(rows)?rows:[]).find(r=>{
+    const rowCode=String(
+      r?.returnCode||r?.return_code||r?.code||r?.requestCode||''
+    ).trim().toUpperCase();
+
+    const rowPid=String(
+      r?.memberProductId||r?.member_product_id||r?.productId||''
+    ).trim();
+
+    const rowOrder=String(
+      r?.orderId||r?.order_id||''
+    ).trim();
+
+    return (rc && rowCode===rc) ||
+      (pid && rowPid===pid) ||
+      (oid && rowOrder===oid);
+  })||null;
+}
+
+async function verifyReturnRequestCreated(data,product){
+  const returnCode=String(
+    data?.returnCode||
+    data?.return_code||
+    data?.code||
+    ''
+  ).trim().toUpperCase();
+
+  if(!returnCode || !/^YR[A-Z0-9]+$/.test(returnCode)){
+    return {ok:false,reason:'後端沒有回傳正式 YR 退貨碼'};
+  }
+
+  const rows=await getFormalReturnRequests();
+  const row=matchReturnRequest(rows,{
+    returnCode,
+    memberProductId:String(product?.id||product?.memberProductId||''),
+    orderId:String(product?.orderId||'')
+  });
+
+  if(!row){
+    return {ok:false,reason:'YR 已建立，但正式退貨申請紀錄尚未寫入'};
+  }
+
+  return {ok:true,returnCode,row};
+}
+
+async function verifyReturnCompleted(returnCode,product){
+  const rows=await getFormalReturnRequests();
+  const row=matchReturnRequest(rows,{
+    returnCode,
+    memberProductId:String(product?.id||product?.memberProductId||''),
+    orderId:String(product?.orderId||'')
+  });
+
+  if(!row){
+    return {ok:false,reason:'找不到正式退貨申請紀錄'};
+  }
+
+  const status=String(
+    row?.status||
+    row?.refundStatus||
+    row?.returnStatus||
+    ''
+  ).trim();
+
+  const completed=[
+    '退款完成','已退款','退貨完成','已退貨','完成',
+    'refunded','returned','completed'
+  ].includes(status);
+
+  if(!completed){
+    return {ok:false,reason:'退貨尚未正式完成',row,status};
+  }
+
+  const currentProduct=await getFormalReturnProduct(product);
+  const removedOrClosed=
+    !currentProduct ||
+    Number(currentProduct?.remainingQuantity||0)<=0 ||
+    ['已退貨','退款完成','已退款','退貨完成']
+      .includes(String(currentProduct?.status||''));
+
+  if(!removedOrClosed){
+    return {
+      ok:false,
+      reason:'退貨已標記完成，但「我的商品」尚未正式更新',
+      row,
+      status,
+      currentProduct
+    };
+  }
+
+  return {ok:true,row,status,currentProduct};
+}
+
 async function submitReturnRequest(){
   if(!selectedReturnProduct) return;
+
+  const latest=await getFormalReturnProduct(selectedReturnProduct);
+  if(!latest){
+    alert('找不到正式商品資料，請重新整理「我的商品」。');
+    return;
+  }
+
+  if(!latest.returnEligible){
+    alert('這筆商品目前已不符合退貨條件。');
+    await loadMyProducts();
+    return;
+  }
+
+  if(Number(latest.remainingQuantity||0)!==Number(latest.originalQuantity||0)){
+    alert('此商品已有兌換紀錄，依規則不可退貨。');
+    await loadMyProducts();
+    return;
+  }
+
+  const deadline=latest.returnDeadline?new Date(latest.returnDeadline):null;
+  if(deadline && Date.now()>deadline.getTime()){
+    alert('已超過 7 天退貨期限。');
+    await loadMyProducts();
+    return;
+  }
+
   const btn=document.getElementById('returnSubmitBtn');
-  btn.disabled=true;
-  btn.textContent='送出申請中…';
+  if(btn){
+    btn.disabled=true;
+    btn.textContent='建立正式退貨申請中…';
+  }
 
   try{
     const {data,error}=await sb.rpc('app_create_return_request',{
-      p_member_product_id:String(selectedReturnProduct.id)
+      p_member_product_id:String(latest.id||latest.memberProductId||'')
     });
     if(error) throw error;
 
-    document.getElementById('returnResultCode').textContent=data.returnCode||'--';
-    selectedReturnProduct = Object.assign({}, selectedReturnProduct||{}, data||{});
-
-    const returnCode=String(data.returnCode||'');
-    const barcodeWrap=document.getElementById('returnBarcodeWrap');
-    if(barcodeWrap) barcodeWrap.style.display = data.returnMode==='original_store' ? 'block' : 'none';
-
-    if(data.returnMode==='original_store' && window.JsBarcode && returnCode){
-      try{
-        JsBarcode('#returnResultBarcode', returnCode, {
-          format:'CODE128',
-          displayValue:false,
-          margin:6,
-          height:80,
-          width:1.3
-        });
-      }catch(e){
-        console.warn('退貨條碼產生失敗',e);
-      }
+    const verified=await verifyReturnRequestCreated(data,latest);
+    if(!verified.ok){
+      throw new Error(verified.reason);
     }
 
-    if(data.returnMode==='original_store'){
-      document.getElementById('returnResultText').innerHTML=
-        `請於退貨期限內回原付款門市辦理。<br>`+
-        `原付款門市：${safeText(data.paidStoreName||data.paidStoreCode||'原付款門市')}<br>`+
-        `此商品在退貨申請處理期間不可重複申請。`;
-    }else{
-      document.getElementById('returnResultText').innerHTML=
-        `已建立線上退貨申請。此筆不需要到門市，退款將依原付款方式處理。`;
-    }
-
+    const returnCode=verified.returnCode;
     activeReturnCode=returnCode;
     lastReturnStatus='';
-    selectedReturnProduct=null;
+
+    const codeEl=document.getElementById('returnCodeText');
+    if(codeEl) codeEl.textContent=returnCode;
+
+    const storeEl=document.getElementById('returnStoreText');
+    if(storeEl){
+      storeEl.textContent=
+        data?.returnMode==='original_store'
+          ? `請回原付款門市：${data?.paidStoreName||data?.paidStoreCode||latest.paidStoreName||latest.paidStoreCode||'原付款門市'}`
+          : '線上付款退貨將依正式退款流程處理';
+    }
+
+    const barcodeWrap=document.getElementById('returnBarcodeWrap');
+    if(barcodeWrap){
+      barcodeWrap.style.display=
+        data?.returnMode==='original_store' ? 'block' : 'none';
+    }
+
+    if(data?.returnMode==='original_store' && window.JsBarcode){
+      try{
+        JsBarcode('#returnBarcode',returnCode,{
+          format:'CODE128',
+          displayValue:false,
+          margin:8,
+          height:82,
+          width:1.4
+        });
+      }catch(e){console.warn(e)}
+    }
+
+    selectedReturnProduct=latest;
+
     showView('returnResult');
     startReturnStatusMonitor(returnCode);
+
+    await refreshAnybuyCoreData({
+      products:true,
+      orders:true,
+      usage:true,
+      gifts:false,
+      notifications:true
+    });
+
+    alert('正式退貨申請已建立。');
   }catch(err){
     console.error(err);
-    alert('退貨申請失敗：'+(err?.message||err));
+    alert('建立退貨申請失敗：'+(err?.message||err));
   }finally{
-    btn.disabled=false;
-    btn.textContent='確認申請退貨';
+    if(btn){
+      btn.disabled=false;
+      btn.textContent='確認申請退貨';
+    }
   }
 }
 

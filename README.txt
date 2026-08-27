@@ -1,44 +1,40 @@
-億家 App v0.10.14.2 Gift Claim Formal Flow
+億家 App v0.10.14.4 Points Formal Flow
 
-第三個主功能正式接通：
-轉贈 / 社群轉贈 / YG領取
+第五個主功能正式接通：
+會員點數 / YPD 點數折抵 / PR 點數兌換
 
-A. 直接手機轉贈
-- 轉贈前先讀 app_get_gift_transfer_data()
-- 確認來源商品仍存在
-- 確認 remainingQuantity 足夠
-- 呼叫 app_create_gift_transfer()
-- 完成後再次讀正式轉贈資料
-- 確認來源商品 remainingQuantity 已正式扣除
-- 才顯示「直接轉贈完成」
+正式會員與點數來源：
+- HQ yj4_members
+- app_sync_my_points_from_hq()
+- 正式會員編號 Mxxxxxxx
+- App 不用手機號碼當會員條碼
 
-B. 社群轉贈
-- 呼叫 app_create_gift_transfer()
-- 必須回傳 YG 開頭正式 giftCode
-- 再從 app_get_gift_transfer_data() 找到相同 YG 正式紀錄
-- 確認來源商品數量已正式扣除
-- 才顯示 / 分享 YG 領取碼
+YPD：
+- 建立前重新同步 HQ 正式點數
+- 確認正式會員編號與可用點數
+- app_create_point_discount_ticket()
+- 必須取得 YPD 開頭正式折抵碼
+- TM 完成後，App 再同步 HQ 點數
+- 正式點數必須扣除預期點數後，才顯示完成
 
-C. 領取 YG
-- 領取前先讀目前 app_get_member_products()
-- 呼叫 app_claim_gift_transfer()
-- 再讀 app_get_gift_transfer_data()
-- 該 YG 必須正式標記為已領取 / 已完成
-- 再讀 app_get_member_products()
-- 確認商品已正式出現在領取人的「我的商品」
-- 全部確認後才顯示領取成功
+PR：
+- 確認正式兌換商品與所需點數
+- 確認 HQ 正式點數足夠
+- app_create_point_reward_redemption()
+- 必須取得 PR 開頭正式兌換碼
+- TM 完成後，App 再同步 HQ 點數
+- 正式點數扣除所需點數後，才顯示完成
 
-正式 RPC：
-- app_get_gift_transfer_data
-- app_create_gift_transfer
-- app_claim_gift_transfer
-- app_get_member_products
+完成後同步：
+- 點數餘額
+- 點數明細
+- 通知中心
 
 安全原則：
-- App 不自己扣轉出人的商品數量
-- App 不自己增加領取人的商品
-- App 不建立假的轉贈紀錄
-- App 只在正式後端結果完成後顯示成功
+- App 不自行扣點
+- YPD / PR 產生本身不扣點
+- 只有 TM 正式完成後，由後端正式扣點
+- App 只驗證正式結果
 
 此版純前端，不用跑 SQL。
 只需要上傳新的 index.html。
