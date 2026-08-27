@@ -1,18 +1,17 @@
-億家 App v0.10.13.13 Member Barcode TM Sync
+億家 App v0.10.13.14 Member Barcode HQ Sync
 
-這版調整：
-- 首頁會員條碼改成與 TM 相同的正式會員條碼格式
-- 放大會員條碼視窗同步改成同一組正式會員條碼
-- 點數折抵頁中的會員條碼同步改成同一組正式會員條碼
-- 儲值頁會員條碼也統一改走同一個正式會員條碼來源
-- 會員條碼優先讀取：
-  1. memberNo
-  2. member_no
-  3. memberCode
-  4. member_code
-  5. memberId / member_id
-  6. phone（最後備援）
+修正 v0.10.13.13 的錯誤：
+- 會員條碼不能使用手機號碼。
+- App 會員條碼要與 TM / HQ 正式會員編號完全一致。
+- 例如正式會員編號是 M0143946，App 就必須顯示/產生 M0143946 的 Code128。
 
-說明：
-- 這版是前端調整，不用新增 SQL
-- 目的就是把 App 內的會員條碼顯示邏輯，統一成和 TM 一樣
+本版改成：
+- 登入後呼叫既有 app_current_member_json()
+- 從 HQ / TM 共用會員資料取得正式 memberNo
+- 把 memberNo 合併到 App 當前會員資料
+- 首頁會員條碼、放大會員條碼、儲值頁會員條碼、點數折抵會員條碼全部使用正式 memberNo
+- 不再以 phone / 手機號碼作為會員條碼備援
+- 如果正式 memberNo 尚未同步，畫面會顯示「尚未同步」，不會錯用手機號碼產生條碼
+
+此版純前端。
+不用跑 SQL，只上傳新的 index.html。

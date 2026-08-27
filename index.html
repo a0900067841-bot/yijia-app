@@ -1691,7 +1691,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.13 Member Barcode TM Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.14 Member Barcode HQ Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2549,11 +2549,32 @@ function getOfficialMemberBarcodeCode(member=currentMember){
     member?.member_code ||
     member?.memberId ||
     member?.member_id ||
-    member?.phone ||
-    currentUser?.phone ||
     '';
 
   return String(code||'').trim();
+}
+
+async function loadOfficialMemberNoFromHq(){
+  if(!currentUser) return '';
+
+  try{
+    const {data,error}=await sb.rpc('app_current_member_json');
+    if(error) throw error;
+
+    const memberNo =
+      data?.memberNo ||
+      data?.member_no ||
+      data?.memberCode ||
+      data?.member_code ||
+      data?.memberId ||
+      data?.member_id ||
+      '';
+
+    return String(memberNo||'').trim();
+  }catch(e){
+    console.warn('正式會員編號同步失敗',e);
+    return '';
+  }
 }
 
 async function submitAuth(){
@@ -3472,6 +3493,10 @@ function renderPointDiscountMemberCode(){
   if(!currentMember) return;
 
   const code=getOfficialMemberBarcodeCode(currentMember);
+  if(!code){
+    host.textContent='正式會員編號尚未同步';
+    return;
+  }
   try{
     if(window.JsBarcode){
       const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -3886,13 +3911,26 @@ function getDisplayName(){
 function renderBarcodes(){
   if(!currentMember||!window.JsBarcode)return;
   const code=getOfficialMemberBarcodeCode(currentMember);
+
+  const home=document.getElementById('homeBarcode');
+  const modal=document.getElementById('modalBarcode');
+  const text=document.getElementById('memberCodeText');
+
+  if(!code){
+    if(home) home.innerHTML='';
+    if(modal) modal.innerHTML='';
+    if(text) text.textContent='會員編號：尚未同步';
+    return;
+  }
+
   const opts={format:'CODE128',displayValue:false,margin:4,height:58,width:1.35};
   try{
     JsBarcode('#homeBarcode',code,opts);
     JsBarcode('#modalBarcode',code,{...opts,height:92,width:1.25,margin:8});
-    document.getElementById('memberCodeText').textContent=
-      code ? ('會員編號：'+code+'（與 TM 相同）') : '會員編號：--';
-  }catch(e){console.warn(e)}
+    if(text) text.textContent='會員編號：'+code+'（與 TM 相同）';
+  }catch(e){
+    console.warn(e);
+  }
 }
 
 
@@ -4516,6 +4554,15 @@ async function applyUser(user){
   currentUser=user;
   try{
     currentMember=await loadMember();
+
+    const officialMemberNo=await loadOfficialMemberNoFromHq();
+    if(officialMemberNo){
+      currentMember={
+        ...currentMember,
+        memberNo:officialMemberNo
+      };
+    }
+
     const name=getDisplayName();
     document.getElementById('memberName').textContent='您好，'+name;
     document.getElementById('memberEmail').textContent=currentMember.phone||'';
@@ -7758,7 +7805,7 @@ function renderReloadMemberBarcode(){
   const code = getOfficialMemberBarcodeCode(currentMember);
 
   const text=document.getElementById('reloadMemberCodeText');
-  if(text) text.textContent=code||'--';
+  if(text) text.textContent=code||'尚未同步正式會員編號';
 
   const svg=document.getElementById('reloadMemberBarcode');
   if(!svg || !code) return;
