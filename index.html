@@ -1047,6 +1047,9 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
 
 <section id="cart" class="view">
+  <div id="cartCatalogSyncStatus" class="small-muted" style="margin:8px 4px 10px">
+    購物車商品資料同步中…
+  </div>
   <div class="header2"><button class="back" onclick="showView('redeem')">‹</button><h2>購物車</h2></div>
   <div id="cartList" class="cart-list">
     <div class="empty-box"><div class="big">🛒</div>購物車目前是空的</div>
@@ -1691,7 +1694,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.26 My Products Live Sync Fix</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.27 Cart Catalog Validation</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2084,6 +2087,10 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(id==='cart'){
+    setTimeout(()=>syncCartWithCurrentCatalog(),0);
+  }
+
   if(id==='products'){
     setTimeout(()=>startMyProductsLiveMonitor(),0);
   }else{
@@ -5205,6 +5212,131 @@ function cartKey(){
   return CART_KEY_PREFIX+uid;
 }
 
+
+let cartCatalogSyncRunning=false;
+
+function findCurrentAnybuyProduct(cartItem){
+  const key=String(cartItem?.key||'');
+  const code=String(cartItem?.code||'');
+  const id=String(cartItem?.id||'');
+
+  return (Array.isArray(scAnybuyProducts)?scAnybuyProducts:[]).find(p=>{
+    return (
+      (key && String(p?.code||p?.id||'')===key) ||
+      (code && String(p?.code||'')===code) ||
+      (id && String(p?.id||'')===id)
+    );
+  })||null;
+}
+
+async function syncCartWithCurrentCatalog({showNotice=false}={}){
+  if(!currentUser || cartCatalogSyncRunning) return {
+    changed:false,
+    blocked:cartItems.some(x=>x.saleBlockedReason)
+  };
+
+  cartCatalogSyncRunning=true;
+  let changed=false;
+  let blocked=false;
+
+  const status=document.getElementById('cartCatalogSyncStatus');
+  if(status) status.textContent='正在核對最新商品資料…';
+
+  try{
+    // 重新讀 SC / HQ 正式 App 設定與隨買商品主檔。
+    try{ await loadSCAppState(); }catch(e){
+      console.warn('購物車商品主檔同步失敗',e);
+    }
+
+    cartItems=cartItems.map(item=>{
+      const current=findCurrentAnybuyProduct(item);
+
+      if(!current){
+        blocked=true;
+        if(item.saleBlockedReason!=='商品已下架或不存在') changed=true;
+        return {
+          ...item,
+          saleBlockedReason:'商品已下架或不存在'
+        };
+      }
+
+      const saleState=getAnybuyProductSaleState(current);
+      const latestPrice=Number(saleBundlePrice(current)||0);
+      const latestOriginal=Number(originalBundlePrice(current)||0);
+      const latestBundleQty=Math.max(1,Number(bundleQuantity(current)||1));
+      const latestLimit=Math.max(0,Number(limitGroups(current)||0));
+
+      let qty=Math.max(1,Number(item.cartQty||1));
+      if(latestLimit>0) qty=Math.min(qty,latestLimit);
+
+      const reason=saleState.enabled?'':String(saleState.label||'目前不可購買');
+      if(reason) blocked=true;
+
+      const next={
+        ...item,
+        id:current.id||item.id||'',
+        code:current.code||item.code||'',
+        name:current.name||item.name||'商品',
+        price:latestPrice,
+        originalPrice:latestOriginal,
+        image_url:current.image_url||current.imageUrl||item.image_url||'',
+        validityDays:Number(current.validityDays||item.validityDays||0),
+        bundleQuantity:latestBundleQty,
+        purchaseLimitGroups:latestLimit,
+        originalUnitPrice:Number(current.originalUnitPrice||item.originalUnitPrice||0),
+        cartQty:qty,
+        saleBlockedReason:reason
+      };
+
+      const before=JSON.stringify({
+        name:item.name,
+        price:Number(item.price||0),
+        originalPrice:Number(item.originalPrice||0),
+        bundleQuantity:Number(item.bundleQuantity||1),
+        purchaseLimitGroups:Number(item.purchaseLimitGroups||0),
+        cartQty:Number(item.cartQty||1),
+        saleBlockedReason:item.saleBlockedReason||''
+      });
+      const after=JSON.stringify({
+        name:next.name,
+        price:next.price,
+        originalPrice:next.originalPrice,
+        bundleQuantity:next.bundleQuantity,
+        purchaseLimitGroups:next.purchaseLimitGroups,
+        cartQty:next.cartQty,
+        saleBlockedReason:next.saleBlockedReason||''
+      });
+
+      if(before!==after) changed=true;
+      return next;
+    });
+
+    if(changed){
+      localStorage.setItem(cartKey(),JSON.stringify(cartItems));
+    }
+
+    updateCartUI();
+
+    if(status){
+      if(blocked){
+        status.textContent='購物車內有商品目前不可購買，請先調整';
+      }else if(changed){
+        status.textContent='已更新為最新商品價格與購買條件';
+      }else{
+        status.textContent='已核對最新商品資料';
+      }
+    }
+
+    if(showNotice && changed && !blocked){
+      alert('購物車商品資料已更新，請確認最新價格與數量後再結帳。');
+    }
+
+    return {changed,blocked};
+  }finally{
+    cartCatalogSyncRunning=false;
+  }
+}
+
 function loadCart(){
   try{
     const raw=localStorage.getItem(cartKey());
@@ -5308,6 +5440,7 @@ function renderCart(){
           <strong>${safeText(x.name)}</strong>
           <small>${money(x.price)}／組 ${Number(x.originalPrice||0)>0?`· 原價 ${money(x.originalPrice)}`:''} · 每組 ${Number(x.bundleQuantity||1)} 件</small>
           ${x.validityDays?`<small>效期 ${Number(x.validityDays)} 天</small>`:''}
+          ${x.saleBlockedReason?`<small style="color:#b42318;font-weight:800">⚠ ${safeText(x.saleBlockedReason)}</small>`:''}
         </div>
       </div>
       <div class="cart-controls">
@@ -5327,6 +5460,14 @@ function renderCart(){
     const total=document.getElementById('cartTotal');
     if(units) units.textContent=String(cartTotalUnits());
     if(total) total.textContent=money(cartTotalAmount());
+
+    const checkoutBtn=document.getElementById('cartCheckoutBtn');
+    const blocked=cartItems.some(x=>!!x.saleBlockedReason);
+    if(checkoutBtn){
+      checkoutBtn.disabled=blocked;
+      checkoutBtn.textContent=blocked?'請先調整不可購買商品':'前往結帳';
+      checkoutBtn.style.opacity=blocked?'.55':'1';
+    }
   }
 }
 
@@ -5334,11 +5475,20 @@ function renderCart(){
 let selectedPayMethod=null;
 let latestStoreOrder=null;
 
-function openCheckout(){
+async function openCheckout(){
   if(!cartItems.length){
     alert('購物車目前是空的。');
     return;
   }
+
+  const result=await syncCartWithCurrentCatalog({showNotice:true});
+
+  if(result?.blocked){
+    alert('購物車內有商品目前不可購買，請先刪除或調整後再結帳。');
+    showView('cart');
+    return;
+  }
+
   selectedPayMethod=null;
   renderCheckout();
   selectPayMethod(null);
