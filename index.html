@@ -1662,7 +1662,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.7 Points Completion Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.8 Anybuy Core Refresh</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2046,6 +2046,20 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(['myProducts','orderManagement','productUsage','giftTransfer','subscriptions','reservations'].includes(id)){
+    setTimeout(()=>{
+      refreshAnybuyCoreData({
+        products:id==='myProducts',
+        orders:id==='orderManagement',
+        usage:id==='productUsage',
+        gifts:id==='giftTransfer',
+        subscriptions:id==='subscriptions',
+        reservations:id==='reservations',
+        notifications:true
+      });
+    },0);
+  }
+
   if(id!=='payReload') stopReloadLiveMonitor();
 
   if(['points','pointCenter','pointsCenter','pointHistory','pointRewards','pointDiscount'].includes(id)){
@@ -6440,7 +6454,13 @@ async function createGiftTransfer(){
     document.getElementById('giftReceiverPhone').value='';
     document.getElementById('giftQty').value='1';
 
-    await loadGiftTransferData();
+    await refreshAnybuyCoreData({
+      products:true,
+      orders:false,
+      usage:true,
+      gifts:true,
+      notifications:true
+    });
     await loadMyProducts();
   }catch(err){
     console.error(err);
@@ -6462,7 +6482,13 @@ async function claimGiftTransfer(){
       u.searchParams.delete('gift');
       history.replaceState({},'',u.pathname+u.search+u.hash);
     }catch(e){}
-    await loadGiftTransferData();
+    await refreshAnybuyCoreData({
+      products:true,
+      orders:false,
+      usage:true,
+      gifts:true,
+      notifications:true
+    });
     await loadMyProducts();
     showView('products');
   }catch(err){
@@ -7578,6 +7604,61 @@ async function syncPointsCoreFromHq(){
     return null;
   }finally{
     pointsCoreSyncBusy=false;
+  }
+}
+
+
+let anybuyCoreRefreshBusy=false;
+
+async function refreshAnybuyCoreData(options={}){
+  if(!currentUser || anybuyCoreRefreshBusy) return;
+
+  const {
+    products=true,
+    orders=true,
+    usage=true,
+    gifts=false,
+    subscriptions=false,
+    reservations=false,
+    notifications=true
+  }=options||{};
+
+  anybuyCoreRefreshBusy=true;
+
+  try{
+    const tasks=[];
+
+    if(products && typeof loadMyProducts==='function'){
+      tasks.push(Promise.resolve().then(()=>loadMyProducts()));
+    }
+
+    if(orders && typeof loadOrderManagement==='function'){
+      tasks.push(Promise.resolve().then(()=>loadOrderManagement()));
+    }
+
+    if(usage && typeof loadProductUsage==='function'){
+      tasks.push(Promise.resolve().then(()=>loadProductUsage()));
+    }
+
+    if(gifts && typeof loadGiftTransferData==='function'){
+      tasks.push(Promise.resolve().then(()=>loadGiftTransferData()));
+    }
+
+    if(subscriptions && typeof loadSubscriptions==='function'){
+      tasks.push(Promise.resolve().then(()=>loadSubscriptions()));
+    }
+
+    if(reservations && typeof loadReservations==='function'){
+      tasks.push(Promise.resolve().then(()=>loadReservations()));
+    }
+
+    await Promise.allSettled(tasks);
+
+    if(notifications && typeof loadNotificationCenter==='function'){
+      try{ await loadNotificationCenter(false); }catch(_){}
+    }
+  }finally{
+    anybuyCoreRefreshBusy=false;
   }
 }
 
