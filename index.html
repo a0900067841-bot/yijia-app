@@ -1032,7 +1032,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 <main class="content">
 <section id="home" class="view active">
 <div id="appAnnouncement" class="announcement"></div>
-<div class="hero"><div class="hero-head"><div><div class="eyebrow">億家會員</div><div id="memberName" class="member-name">您好</div><div id="memberEmail" class="member-email"></div></div><div class="points" onclick="showView('points')"><span>可用點數</span><b id="homePoints">--</b><span id="homeExpiry">等待點數資料表</span></div></div><div class="barcode" onclick="openBarcode()"><svg id="homeBarcode" class="real-barcode"></svg><small>點一下放大會員條碼（與 TM 相同）</small></div></div>
+<div class="hero"><div class="hero-head"><div><div class="eyebrow">億家會員</div><div id="memberName" class="member-name">您好</div><div id="memberEmail" class="member-email"></div></div><div class="points" onclick="showView('points')"><span>可用點數</span><b id="homePoints">--</b><span id="homeExpiry">等待點數資料表</span></div></div><div class="barcode" onclick="openBarcode()"><svg id="homeBarcode" class="real-barcode"></svg><small>點一下放大會員條碼（與 TM 相同）</small><div id="homeSyncHint" style="font-size:10px;color:#9ca3af;margin-top:4px">回到 App 時自動同步會員資料</div></div></div>
 <div class="quick"><button class="q" onclick="showView('points')"><span class="ico">🪙</span>億家點數</button><button class="q" onclick="showView('redeem');loadShopProducts()"><span class="ico">☕</span>隨買跨店取</button><button class="q" onclick="showView('products')"><span class="ico">🛍️</span>我的商品</button><button class="q" onclick="showView('coupons')"><span class="ico">🎟️</span>優惠券</button></div>
 <div class="section-title"><h3>本期活動</h3><button>更多</button></div><div class="banner"><div><h2>億家會員專屬</h2><p>活動內容將由總部 App 後台設定同步顯示</p></div><div class="cup">🥤</div></div>
 <div class="section-title"><h3>我的服務</h3></div><div class="cards"><div class="card"><span class="badge">跨店取</span><b>待兌換 5 件</b><small>查看已購買商品</small></div><div class="card"><span class="badge">點數</span><b>本月 +320 點</b><small>查看累點明細</small></div><div class="card"><span class="badge">訂單</span><b>我的訂單</b><small>商城／預購紀錄</small></div><div class="card"><span class="badge">會員</span><b>個人資料</b><small>帳號與通知設定</small></div></div>
@@ -1691,7 +1691,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.20 Order Management Live Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.21 Foreground Data Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -4574,8 +4574,84 @@ async function loadNotificationCenter(render=true){
 renderNotificationCenter();
 }
 
+
+let foregroundSyncRunning=false;
+let lastForegroundSyncAt=0;
+
+async function syncAppForegroundData(){
+  if(!currentUser || foregroundSyncRunning) return;
+
+  const now=Date.now();
+  if(now-lastForegroundSyncAt<4000) return;
+
+  foregroundSyncRunning=true;
+  lastForegroundSyncAt=now;
+
+  try{
+    // 正式會員編號：只同步資料，不產生任何付款碼。
+    if(typeof loadOfficialMemberNoFromHq==='function'){
+      try{
+        await loadOfficialMemberNoFromHq();
+        if(typeof renderBarcodes==='function') renderBarcodes();
+        if(typeof renderReloadMemberBarcode==='function') renderReloadMemberBarcode();
+        if(typeof renderPointDiscountMemberCode==='function') renderPointDiscountMemberCode();
+      }catch(_){}
+    }
+
+    // 點數：從 HQ 正式會員主檔同步。
+    if(scAppSettings?.pointsSync){
+      try{ await loadPoints(); }catch(_){}
+      try{ await loadPointHistory(); }catch(_){}
+    }
+
+    // 億家Pay：只刷新錢包/歷史/帳本資料。
+    // 不重新產生付款條碼，不重設60秒，不處理背景恢復換碼。
+    try{
+      if(typeof loadYijiaPayWalletBalance==='function'){
+        await loadYijiaPayWalletBalance();
+      }
+    }catch(_){}
+
+    try{
+      if(typeof loadYijiaPayHistory==='function'){
+        await loadYijiaPayHistory();
+      }
+    }catch(_){}
+
+    // 隨買核心資料
+    if(typeof refreshAnybuyCoreData==='function'){
+      try{
+        await refreshAnybuyCoreData({
+          products:true,
+          orders:true,
+          usage:true,
+          gifts:true,
+          subscriptions:true,
+          reservations:true,
+          notifications:false
+        });
+      }catch(_){}
+    }
+
+    // 通知最後更新，讓前面所有正式資料先完成。
+    try{
+      await loadNotificationCenter(
+        document.getElementById('notificationCenter')?.classList.contains('active')
+      );
+    }catch(_){}
+  }finally{
+    foregroundSyncRunning=false;
+  }
+}
+
 window.addEventListener('focus',()=>{
-  if(currentUser) loadNotificationCenter(document.getElementById('notificationCenter')?.classList.contains('active'));
+  syncAppForegroundData();
+});
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){
+    syncAppForegroundData();
+  }
 });
 
 

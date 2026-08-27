@@ -1,22 +1,33 @@
-億家 App v0.10.13.20 Order Management Live Sync
+億家 App v0.10.13.21 Foreground Data Sync
 
-這版把「訂單紀錄 / 訂單管理」正式即時同步補完整。
+這版新增 App 回到前景時的正式資料同步。
 
-完成：
-- 進入訂單管理後，每 10 秒同步一次正式資料
-- 訂單本體：app_get_anybuy_order_history()
-- 到期退款：app_get_expiry_refund_history()
-- 退貨申請：沿用既有 HQ yj_app_return_requests
-- 偵測到付款、退貨、退款、到期退款等狀態改變時：
-  - 訂單頁自動更新
-  - 通知中心自動更新
-  - 我的商品同步刷新
-- 離開訂單管理頁後停止輪詢
+當使用者：
+- 從其他 App 切回億家 App
+- Safari / PWA 從背景回到前景
+- 螢幕重新顯示 App
 
-另外修正：
-- 訂單頁原本直接讀 yj_app_expiry_refunds raw state
-- 現在改用正式 app_get_expiry_refund_history() RPC
-- 避免同一份到期退款資料在不同 App 畫面走不同來源
+會自動同步：
+- TM / HQ 正式會員編號
+- 會員條碼
+- 點數與點數紀錄
+- 億家Pay錢包餘額
+- 億家Pay交易紀錄
+- 我的商品
+- 訂單
+- 商品使用紀錄
+- 轉贈
+- 訂閱
+- 預約
+- 通知中心
+
+重要：
+- 不重新產生億家Pay付款碼
+- 不重設付款碼60秒倒數
+- 不因背景 / 鎖屏恢復而換付款碼
+- 完全維持既定支付規則
+
+另加 4 秒防重複同步，避免 focus + visibilitychange 同時觸發造成重複請求。
 
 此版純前端，不用跑 SQL。
 只需要上傳新的 index.html。
