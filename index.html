@@ -1694,7 +1694,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.0 Anybuy Formal Purchase Flow</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.1 Anybuy Redeem Formal Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -6756,55 +6756,233 @@ function adjustRedeemTicketQty(delta){
   document.getElementById('redeemTicketQty').textContent=String(redeemTicketQty);
 }
 
+
+function getRedeemRequestedQty(){
+  return Math.max(1,Number(
+    document.getElementById('redeemTicketQty')?.textContent ||
+    document.getElementById('redeemQty')?.textContent ||
+    1
+  ));
+}
+
+async function getMemberProductByIdOrCode(product){
+  try{
+    const {data,error}=await sb.rpc('app_get_member_products');
+    if(error) throw error;
+
+    const rows=Array.isArray(data)?data:[];
+    const pid=String(product?.id||product?.memberProductId||'').trim();
+    const code=String(product?.code||product?.productCode||'').trim();
+
+    const row=rows.find(x=>
+      (pid && String(x?.id||x?.memberProductId||'').trim()===pid) ||
+      (code && String(x?.code||x?.productCode||'').trim()===code)
+    )||null;
+
+    return {row,rows};
+  }catch(e){
+    console.warn('讀取我的商品正式資料失敗',e);
+    return {row:null,rows:[]};
+  }
+}
+
+async function verifyRedeemTicketCreated(ticket,product,qty){
+  const code=String(
+    ticket?.redeemCode ||
+    ticket?.ticketCode ||
+    ticket?.code ||
+    ''
+  ).trim();
+
+  if(!code || !/^YD/i.test(code)){
+    return {ok:false,reason:'後端沒有回傳正式 YD 兌換碼'};
+  }
+
+  const current=await getMemberProductByIdOrCode(product);
+  if(!current.row){
+    return {ok:false,reason:'兌換商品已不在正式「我的商品」資料中'};
+  }
+
+  const remaining=Number(current.row.remainingQuantity||0);
+  if(remaining<qty){
+    return {ok:false,reason:'正式剩餘數量不足，無法建立此次兌換'};
+  }
+
+  return {ok:true,code,currentRow:current.row};
+}
+
+async function verifyRedeemCompleted(product,startRemaining,qty){
+  const current=await getMemberProductByIdOrCode(product);
+  if(!current.row){
+    return {ok:true,row:null,remaining:0};
+  }
+
+  const remaining=Number(current.row.remainingQuantity||0);
+  const expected=Math.max(0,Number(startRemaining||0)-Number(qty||0));
+
+  return {
+    ok:remaining<=expected,
+    row:current.row,
+    remaining,
+    expected
+  };
+}
+
 async function createRedeemTicket(){
   if(!ensureCrossStoreOperationAllowed()) return;
   if(!selectedRedeemProduct) return;
 
+  const qty=getRedeemRequestedQty();
+  const formalBefore=await getMemberProductByIdOrCode(selectedRedeemProduct);
+
+  if(!formalBefore.row){
+    alert('找不到正式商品資料，請重新整理「我的商品」後再試。');
+    return;
+  }
+
+  const currentRemaining=Number(formalBefore.row.remainingQuantity||0);
+  if(currentRemaining<qty){
+    alert(`正式剩餘數量只有 ${currentRemaining}，無法兌換 ${qty} 件。`);
+    await loadMyProducts();
+    return;
+  }
+
   const btn=document.getElementById('redeemTicketCreateBtn');
-  btn.disabled=true;
-  btn.textContent='產生中…';
+  const notice=document.getElementById('redeemTicketSuccessNotice');
+
+  if(btn){
+    btn.disabled=true;
+    btn.textContent='建立正式兌換碼中…';
+  }
+  if(notice){
+    notice.style.display='none';
+  }
 
   try{
     const {data,error}=await sb.rpc('app_create_redeem_ticket',{
-      p_member_product_id:String(selectedRedeemProduct.id),
-      p_quantity:Number(redeemTicketQty)
+      p_member_product_id:String(formalBefore.row.id||formalBefore.row.memberProductId||''),
+      p_quantity:qty
     });
     if(error) throw error;
 
-    const code=String(data?.redeemCode||data?.code||'');
-    if(!code) throw new Error('後端未回傳兌換碼');
+    const verified=await verifyRedeemTicketCreated(
+      data,
+      formalBefore.row,
+      qty
+    );
 
-    redeemTicketExpiresAt=data?.expiresAt?new Date(data.expiresAt):new Date(Date.now()+600000);
-
-    document.getElementById('redeemTicketSetup').style.display='none';
-    document.getElementById('redeemTicketQrWrap').style.display='block';
-    document.getElementById('redeemTicketCode').textContent=code;
-    document.getElementById('redeemTicketSummary').innerHTML=
-      `<strong>${safeText(data?.productName||selectedRedeemProduct.name||'商品')}</strong><br>`+
-      `本次兌換 ${Number(data?.quantity||redeemTicketQty)} 件`;
-
-    const qr=document.getElementById('redeemTicketQr');
-    qr.innerHTML='';
-    if(window.QRCode){
-      new QRCode(qr,{
-        text:code,
-        width:220,
-        height:220,
-        correctLevel:QRCode.CorrectLevel.M
-      });
-    }else{
-      qr.innerHTML=`<div style="font-size:14px;color:#777">${safeText(code)}</div>`;
+    if(!verified.ok){
+      throw new Error(verified.reason);
     }
 
+    selectedRedeemProduct=formalBefore.row;
+    redeemTicketStartRemaining=currentRemaining;
+    redeemTicketCompleted=false;
+
+    const code=verified.code;
+    const codeText=document.getElementById('redeemTicketCodeText');
+    if(codeText) codeText.textContent=code;
+
+    const qr=document.getElementById('redeemTicketQr');
+    if(qr){
+      qr.innerHTML='';
+      if(window.QRCode){
+        new QRCode(qr,{
+          text:code,
+          width:210,
+          height:210,
+          correctLevel:QRCode.CorrectLevel.M
+        });
+      }else{
+        qr.textContent=code;
+      }
+    }
+
+    const status=document.getElementById('redeemTicketCountdown');
+    if(status) status.textContent='等待 TM 掃描兌換';
+
     startRedeemTicketCountdown();
-    startRedeemTicketSyncMonitor();
+    startRedeemTicketCompletionMonitor(code,qty);
+
+    alert('YD 兌換碼已正式建立，請出示給 TM 掃描。');
   }catch(err){
     console.error(err);
-    alert('兌換條碼建立失敗：'+(err?.message||err));
+    alert('建立兌換碼失敗：'+(err?.message||err));
   }finally{
-    btn.disabled=false;
-    btn.textContent='產生兌換 QR Code';
+    if(btn){
+      btn.disabled=false;
+      btn.textContent='產生兌換 QR Code';
+    }
   }
+}
+
+
+
+function stopRedeemTicketCompletionMonitor(){
+  if(redeemTicketSyncTimer){
+    clearInterval(redeemTicketSyncTimer);
+    redeemTicketSyncTimer=null;
+  }
+}
+
+function startRedeemTicketCompletionMonitor(redeemCode,qty){
+  stopRedeemTicketCompletionMonitor();
+
+  redeemTicketCompleted=false;
+  const startedProduct={...selectedRedeemProduct};
+  const startedRemaining=Number(redeemTicketStartRemaining||0);
+
+  redeemTicketSyncTimer=setInterval(async()=>{
+    if(redeemTicketCompleted || document.hidden) return;
+
+    try{
+      const check=await verifyRedeemCompleted(
+        startedProduct,
+        startedRemaining,
+        qty
+      );
+
+      if(!check.ok) return;
+
+      redeemTicketCompleted=true;
+      stopRedeemTicketCompletionMonitor();
+      stopRedeemTicketCountdown();
+
+      const notice=document.getElementById('redeemTicketSuccessNotice');
+      if(notice){
+        notice.style.display='block';
+        notice.textContent='兌換完成，正式剩餘數量已更新。';
+      }
+
+      const countdown=document.getElementById('redeemTicketCountdown');
+      if(countdown) countdown.textContent='兌換完成';
+
+      const qr=document.getElementById('redeemTicketQr');
+      if(qr){
+        qr.innerHTML=`
+          <div style="padding:28px 0;text-align:center">
+            <div style="font-size:54px">✓</div>
+            <div style="font-weight:900;font-size:18px">已完成兌換</div>
+          </div>
+        `;
+      }
+
+      await refreshAnybuyCoreData({
+        products:true,
+        orders:false,
+        usage:true,
+        gifts:false,
+        subscriptions:false,
+        reservations:false,
+        notifications:true
+      });
+
+      // 再確認使用紀錄已出現兌換資料。
+      try{ await loadRedemptions(); }catch(_){}
+    }catch(e){
+      console.warn('YD 正式兌換完成驗證失敗',e);
+    }
+  },2500);
 }
 
 function startRedeemTicketCountdown(){
@@ -6836,6 +7014,18 @@ function closeRedeemTicket(){
   stopRedeemTicketSyncMonitor();
   selectedRedeemProduct=null;
   showView('products');
+
+  if(redeemTicketCompleted && typeof refreshAnybuyCoreData==='function'){
+    refreshAnybuyCoreData({
+      products:true,
+      orders:false,
+      usage:true,
+      gifts:false,
+      subscriptions:false,
+      reservations:false,
+      notifications:true
+    });
+  }
 }
 
 function cancelRedeemTicketView(){
