@@ -1691,7 +1691,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.16 Member Barcode Exact Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.17 Gift Claim Live Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1817,6 +1817,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
         <svg id="giftCodeBarcode"></svg>
       </div>
       <div class="small-muted" id="giftCreateHint">可將領取碼或條碼提供給對方。</div>
+      <div id="giftLiveStatus" class="small-muted" style="margin-top:8px;font-weight:800"></div>
 
       <div id="giftSocialShareBox" style="display:none">
         <div id="giftShareLink" class="gift-share-link"></div>
@@ -2075,6 +2076,10 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(id!=='giftTransfer'){
+    stopGiftClaimMonitor();
+  }
+
   if(id!=='returnResult'){
     stopReturnStatusMonitor();
   }
@@ -6656,6 +6661,127 @@ let giftHistoryCache=[];
 let lastGiftShareCode='';
 let lastGiftShareUrl='';
 let giftHtml5Scanner=null;
+let activeGiftClaimCode='';
+let giftClaimMonitorTimer=null;
+let lastGiftClaimStatus='';
+
+
+function stopGiftClaimMonitor(){
+  if(giftClaimMonitorTimer){
+    clearInterval(giftClaimMonitorTimer);
+    giftClaimMonitorTimer=null;
+  }
+}
+
+function setGiftLiveStatus(text,kind='pending'){
+  const el=document.getElementById('giftLiveStatus');
+  if(!el) return;
+
+  el.textContent=text||'';
+  if(kind==='done') el.style.color='#176c34';
+  else if(kind==='error') el.style.color='#b42318';
+  else el.style.color='#6b7280';
+}
+
+function findGiftHistoryByCode(rows,code){
+  const target=String(code||'').trim().toUpperCase();
+  if(!target) return null;
+
+  return (Array.isArray(rows)?rows:[]).find(r=>{
+    const c=String(
+      r?.giftCode ||
+      r?.gift_code ||
+      r?.code ||
+      ''
+    ).trim().toUpperCase();
+    return c===target;
+  })||null;
+}
+
+async function pollGiftClaimStatus(){
+  if(!activeGiftClaimCode || document.hidden) return;
+
+  const view=document.getElementById('giftTransfer');
+  if(!view?.classList.contains('active')) return;
+
+  try{
+    const {data,error}=await sb.rpc('app_get_gift_transfer_data');
+    if(error) throw error;
+
+    giftProductsCache=Array.isArray(data?.products)?data.products:[];
+    giftHistoryCache=Array.isArray(data?.history)?data.history:[];
+
+    const row=findGiftHistoryByCode(
+      giftHistoryCache,
+      activeGiftClaimCode
+    );
+    if(!row) return;
+
+    const status=String(row.status||'').trim();
+    if(status===lastGiftClaimStatus && status) return;
+    lastGiftClaimStatus=status;
+
+    const completed =
+      !!(row.claimedAt||row.deliveredAt) ||
+      ['已領取','已轉贈','claimed','delivered','完成'].includes(status);
+
+    if(completed){
+      stopGiftClaimMonitor();
+      setGiftLiveStatus('對方已完成領取','done');
+
+      const titleEl=document.getElementById('giftCreateResultTitle');
+      if(titleEl) titleEl.textContent='轉贈已完成';
+
+      const hint=document.getElementById('giftCreateHint');
+      if(hint) hint.textContent='此領取碼已完成領取，不能再次使用。';
+
+      if(typeof refreshAnybuyCoreData==='function'){
+        await refreshAnybuyCoreData({
+          products:true,
+          orders:false,
+          usage:true,
+          gifts:true,
+          notifications:true
+        });
+      }else{
+        try{ await loadGiftTransferData(); }catch(_){}
+        try{ await loadMyProducts(); }catch(_){}
+        try{
+          if(typeof loadNotificationCenter==='function'){
+            await loadNotificationCenter(false);
+          }
+        }catch(_){}
+      }
+
+      renderGiftHistory();
+      return;
+    }
+
+    setGiftLiveStatus(
+      status ? ('目前狀態：'+status) : '等待對方領取',
+      'pending'
+    );
+  }catch(e){
+    console.warn('轉贈領取狀態同步失敗',e);
+  }
+}
+
+function startGiftClaimMonitor(code){
+  stopGiftClaimMonitor();
+
+  activeGiftClaimCode=String(code||'').trim().toUpperCase();
+  lastGiftClaimStatus='';
+
+  if(!activeGiftClaimCode) return;
+
+  setGiftLiveStatus('等待對方領取','pending');
+  pollGiftClaimStatus();
+
+  giftClaimMonitorTimer=setInterval(
+    pollGiftClaimStatus,
+    3000
+  );
+}
 
 function buildGiftShareUrl(code){
   const base=location.origin+location.pathname;
@@ -6827,6 +6953,11 @@ async function createGiftTransfer(){
 
     if(resultBox) resultBox.style.display='block';
 
+    stopGiftClaimMonitor();
+    activeGiftClaimCode='';
+    lastGiftClaimStatus='';
+    setGiftLiveStatus('');
+
     const socialShareBox=document.getElementById('giftSocialShareBox');
     const shareLinkEl=document.getElementById('giftShareLink');
     const titleEl=document.getElementById('giftCreateResultTitle');
@@ -6839,6 +6970,7 @@ async function createGiftTransfer(){
       if(barcodeWrap) barcodeWrap.style.display='none';
       if(socialShareBox) socialShareBox.style.display='none';
       if(hint) hint.textContent=`商品已直接加入 ${data.receiverPhone||'對方'} 的「我的商品」，不需要領取碼。`;
+      setGiftLiveStatus('已直接轉贈完成','done');
       alert(`轉贈成功，商品已直接送到 ${data.receiverPhone||'對方會員'} 的 App。`);
     }else{
       lastGiftShareCode=String(data.giftCode||'');
@@ -6857,6 +6989,8 @@ async function createGiftTransfer(){
           });
         }catch(e){console.warn(e)}
       }
+
+      startGiftClaimMonitor(lastGiftShareCode);
     }
 
     document.getElementById('giftReceiverPhone').value='';

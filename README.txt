@@ -1,8 +1,23 @@
-億家 App v0.10.13.16 Member Barcode Exact Sync
+億家 App v0.10.13.17 Gift Claim Live Sync
 
-正式 RPC app_current_member_json() 已確認回傳 tmMemberNo / memberNo。
-App 會員條碼固定優先使用 tmMemberNo，其次 memberNo。
-目前正式會員條碼應為 M0143946。
-不再使用手機號碼或 YJ+手機號碼。
+這版把「隨買跨店取 → 社群轉贈 / 領取」完成狀態即時同步接完整。
 
-此版純前端，不用跑 SQL，只上傳新的 index.html。
+完成：
+- 產生 YG 社群領取碼後，每 3 秒讀 app_get_gift_transfer_data()
+- 依 giftCode 找到正式轉贈紀錄
+- 對方完成領取後：
+  - App 自動顯示「對方已完成領取」
+  - 標題改成「轉贈已完成」
+  - 提示此領取碼不能再次使用
+  - 更新我的商品
+  - 更新商品使用紀錄
+  - 更新轉贈紀錄
+  - 更新通知中心
+- 直接轉贈給指定會員時，立即顯示「已直接轉贈完成」
+- 離開轉贈頁後停止輪詢
+
+不新增第二套轉贈資料。
+仍以 app_get_gift_transfer_data() 為正式來源。
+
+此版純前端，不用跑 SQL。
+只需要上傳新的 index.html。
