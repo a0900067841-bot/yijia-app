@@ -1198,6 +1198,9 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 </section>
 
 <section id="returnResult" class="view">
+  <div id="returnLiveStatusNotice" style="background:#f7f8fa;border:1px solid #e4e7eb;color:#5f6770;border-radius:14px;padding:11px 13px;margin:10px 0;font-weight:800;text-align:center">
+    退貨狀態同步中…
+  </div>
   <div class="header2"><button class="back" onclick="showView('products')">‹</button><h2>退貨申請</h2></div>
   <div class="return-card">
     <span class="store-status">已送出申請</span>
@@ -1688,7 +1691,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.11 Anybuy Redemption Completion Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.12 Anybuy Return Completion Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2072,6 +2075,10 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(id!=='returnResult'){
+    stopReturnStatusMonitor();
+  }
+
   if(['myProducts','orderManagement','productUsage','giftTransfer','subscriptions','reservations'].includes(id)){
     setTimeout(()=>{
       refreshAnybuyCoreData({
@@ -2114,6 +2121,9 @@ function showView(id){
   if(id==='payHistory') loadYijiaPayHistoryPage();
   if(id==='payReload') loadYijiaPayReloadPage(true);
   if(id==='walletLedger') loadWalletLedger();
+  if(id==='returnResult' && activeReturnCode){
+    startReturnStatusMonitor(activeReturnCode);
+  }
   if(id==='points'){
     loadPoints();
     loadPointHistory();
@@ -6089,6 +6099,9 @@ function cancelRedeemTicketView(){
 
 
 let selectedReturnProduct=null;
+let activeReturnCode='';
+let returnStatusMonitorTimer=null;
+let lastReturnStatus='';
 
 function productLifecycleState(x){
   const status=String(x?.status||'').trim();
@@ -6331,6 +6344,157 @@ function showExistingReturnBarcode(code,storeName){
     try{JsBarcode('#returnResultBarcode',c,{format:'CODE128',displayValue:false,margin:6,height:80,width:1.3})}catch(e){console.warn(e)}
   }
   showView('returnResult');
+
+  activeReturnCode=String(returnCode||'').trim();
+  lastReturnStatus='';
+  startReturnStatusMonitor(activeReturnCode);
+}
+
+
+function stopReturnStatusMonitor(){
+  if(returnStatusMonitorTimer){
+    clearInterval(returnStatusMonitorTimer);
+    returnStatusMonitorTimer=null;
+  }
+}
+
+function setReturnLiveStatus(text,kind='pending'){
+  const el=document.getElementById('returnLiveStatusNotice');
+  if(!el) return;
+
+  el.textContent=text||'';
+  el.style.display='block';
+
+  if(kind==='done'){
+    el.style.background='#eef8f1';
+    el.style.borderColor='#cfe9d5';
+    el.style.color='#176c34';
+  }else if(kind==='reject'){
+    el.style.background='#fff0ef';
+    el.style.borderColor='#f1c9c5';
+    el.style.color='#a63a32';
+  }else{
+    el.style.background='#f7f8fa';
+    el.style.borderColor='#e4e7eb';
+    el.style.color='#5f6770';
+  }
+}
+
+function findReturnRequestByCode(rows,code){
+  const target=String(code||'').trim().toUpperCase();
+  if(!target) return null;
+
+  return (Array.isArray(rows)?rows:[]).find(r=>{
+    const keys=[
+      r?.returnCode,
+      r?.return_code,
+      r?.code,
+      r?.requestCode,
+      r?.returnRequestCode
+    ].filter(Boolean).map(v=>String(v).trim().toUpperCase());
+
+    return keys.includes(target);
+  })||null;
+}
+
+async function pollReturnRequestStatus(){
+  if(!activeReturnCode || document.hidden) return;
+
+  const view=document.getElementById('returnResult');
+  if(!view?.classList.contains('active')) return;
+
+  try{
+    const rr=await sb
+      .from('yijia_app_state')
+      .select('data')
+      .eq('store_id','HQ')
+      .eq('data_key','yj_app_return_requests')
+      .maybeSingle();
+
+    const rows=
+      Array.isArray(rr?.data?.data) ? rr.data.data :
+      Array.isArray(rr?.data) ? rr.data :
+      Array.isArray(rr?.data?.data?.rows) ? rr.data.data.rows :
+      [];
+
+    const row=findReturnRequestByCode(rows,activeReturnCode);
+    if(!row) return;
+
+    const rawStatus=String(
+      row.status ??
+      row.refundStatus ??
+      row.returnStatus ??
+      ''
+    ).trim();
+
+    if(rawStatus===lastReturnStatus && rawStatus) return;
+    lastReturnStatus=rawStatus;
+
+    const info=typeof refundStatusInfo==='function'
+      ? refundStatusInfo(row)
+      : {label:rawStatus||'處理中',cls:'pending'};
+
+    if(info.cls==='done'){
+      setReturnLiveStatus('退貨／退款完成，商品與訂單已更新','done');
+      stopReturnStatusMonitor();
+
+      if(typeof refreshAnybuyCoreData==='function'){
+        await refreshAnybuyCoreData({
+          products:true,
+          orders:true,
+          usage:true,
+          gifts:false,
+          notifications:true
+        });
+      }else{
+        try{ await loadMyProducts(); }catch(_){}
+        try{ await loadOrderManagement(); }catch(_){}
+        try{ await loadProductUsage(); }catch(_){}
+        try{
+          if(typeof loadNotificationCenter==='function'){
+            await loadNotificationCenter(false);
+          }
+        }catch(_){}
+      }
+      return;
+    }
+
+    if(info.cls==='reject'){
+      setReturnLiveStatus('退貨申請已被拒絕','reject');
+      stopReturnStatusMonitor();
+
+      if(typeof refreshAnybuyCoreData==='function'){
+        await refreshAnybuyCoreData({
+          products:true,
+          orders:true,
+          usage:false,
+          gifts:false,
+          notifications:true
+        });
+      }
+      return;
+    }
+
+    setReturnLiveStatus(info.label||'退貨申請處理中','pending');
+  }catch(e){
+    console.warn('退貨狀態同步失敗',e);
+  }
+}
+
+function startReturnStatusMonitor(returnCode){
+  stopReturnStatusMonitor();
+
+  activeReturnCode=String(returnCode||'').trim();
+  lastReturnStatus='';
+
+  if(!activeReturnCode) return;
+
+  setReturnLiveStatus('退貨申請處理中','pending');
+  pollReturnRequestStatus();
+  returnStatusMonitorTimer=setInterval(
+    pollReturnRequestStatus,
+    3000
+  );
 }
 
 async function submitReturnRequest(){
@@ -6376,8 +6540,11 @@ async function submitReturnRequest(){
         `已建立線上退貨申請。此筆不需要到門市，退款將依原付款方式處理。`;
     }
 
+    activeReturnCode=returnCode;
+    lastReturnStatus='';
     selectedReturnProduct=null;
     showView('returnResult');
+    startReturnStatusMonitor(returnCode);
   }catch(err){
     console.error(err);
     alert('退貨申請失敗：'+(err?.message||err));
