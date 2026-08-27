@@ -1694,7 +1694,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.28 SC App State Live Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.29 Feature Access Guard</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -4021,6 +4021,10 @@ async function cancelPointDiscountTicket(index){
 }
 
 async function createPointDiscountTicket(){
+  if(!scAppSettings?.pointsSync){
+    alert('總部目前暫停會員點數同步，暫時無法建立點數折抵碼。');
+    return;
+  }
   if(!pointDiscountSettings.enabled){
     alert('目前未開放點數折抵。');
     return;
@@ -5122,6 +5126,51 @@ async function loadSCAppState(){
   renderShopProducts();
 }
 
+
+function ensureAppServiceAvailable(){
+  if(scAppSettings?.enabled===false){
+    alert('億家 App 服務目前暫停，請稍後再試。');
+    return false;
+  }
+  if(scAppSettings?.maintenance===true){
+    alert('億家 App 目前維護中，請稍後再試。');
+    return false;
+  }
+  return true;
+}
+
+function ensureCrossStoreOperationAllowed(){
+  if(!ensureAppServiceAvailable()) return false;
+  if(scAppSettings?.crossStoreRedeem===false){
+    alert('隨買跨店取目前暫停新購買／兌換，請稍後再試。');
+    return false;
+  }
+  return true;
+}
+
+function applyLiveFeatureAccessState(){
+  const shoppingViews=['redeem','anybuyProductDetail','cart','checkout'];
+  const current=shoppingViews.find(id=>document.getElementById(id)?.classList.contains('active'));
+
+  if(scAppSettings?.crossStoreRedeem===false && current){
+    showView('anybuyCenter');
+    alert('隨買跨店取目前暫停新購買／兌換，已返回服務首頁。');
+  }
+
+  if(!scAppSettings?.pointsSync){
+    const nodes=[
+      ['homePoints','--'],
+      ['homeExpiry','點數同步暫停'],
+      ['pointsBalance','-- 點'],
+      ['pointsExpiry','總部目前暫停會員點數同步']
+    ];
+    nodes.forEach(([id,text])=>{
+      const el=document.getElementById(id);
+      if(el) el.textContent=text;
+    });
+  }
+}
+
 function applySCAppSettings(){
   const overlay=document.getElementById('appServiceOverlay');
   const title=document.getElementById('appServiceTitle');
@@ -5172,6 +5221,8 @@ function applySCAppSettings(){
   const limit=Math.max(0,Number(scAppSettings.yijiaPayMonthlyCashTopupLimit||0));
   window.MONTHLY_CASH_RELOAD_LIMIT_DYNAMIC=limit;
   renderCashReloadQuota(window.currentCashReloadUsed||0);
+
+  applyLiveFeatureAccessState();
 }
 
 function couponValueText(c){
@@ -5604,6 +5655,8 @@ let selectedPayMethod=null;
 let latestStoreOrder=null;
 
 async function openCheckout(){
+  if(!ensureCrossStoreOperationAllowed()) return;
+
   if(!cartItems.length){
     alert('購物車目前是空的。');
     return;
@@ -6001,9 +6054,6 @@ function selectPayMethod(method){
     const enough=Number(yijiaPaySummary.walletBalance||0)>=cartTotalAmount();
     btn.disabled=!enough;
     btn.textContent=enough?'使用億家Pay錢包付款':'錢包餘額不足';
-  }else if(method==='card'){
-    btn.disabled=!yijiaPaySummary.hasCard;
-    btn.textContent=yijiaPaySummary.hasCard?'使用綁定信用卡付款':'尚未綁定信用卡';
   }else if(method==='store'){
     btn.disabled=false;
     btn.textContent='建立店舖待付款訂單';
@@ -6024,6 +6074,7 @@ async function confirmCheckout(){
 }
 
 async function createYijiaPayOrder(source){
+  if(!ensureCrossStoreOperationAllowed()) return;
   if(!currentUser || !cartItems.length) return;
 
   if(source!=='wallet'){
@@ -6112,6 +6163,7 @@ async function createYijiaPayOrder(source){
 }
 
 async function createStoreCheckoutOrder(){
+  if(!ensureCrossStoreOperationAllowed()) return;
   if(!currentUser || !cartItems.length) return;
   const btn=document.getElementById('checkoutContinueBtn');
   btn.disabled=true;
@@ -6623,6 +6675,7 @@ function adjustRedeemTicketQty(delta){
 }
 
 async function createRedeemTicket(){
+  if(!ensureCrossStoreOperationAllowed()) return;
   if(!selectedRedeemProduct) return;
 
   const btn=document.getElementById('redeemTicketCreateBtn');
@@ -9311,6 +9364,7 @@ function renderAnybuyDetailSaleState(p){
 }
 
 function openAnybuyProductDetail(p){
+  if(!ensureCrossStoreOperationAllowed()) return;
   anybuyDetailProduct=p; anybuyDetailQty=1;
   const oq=bundleQty(p), op=originalBundlePrice(p), sp=saleBundlePrice(p), lim=limitGroups(p);
   const img=p.imageUrl||p.image_url||'', act=p.activityContent||p.note||p.description||'';
@@ -9351,6 +9405,7 @@ function buildAnybuyPurchaseSnapshot(p,groups){
   return {...p,cartQuantity:g,bundleQuantity:bq,originalBundlePrice:op,bundlePrice:sp,salePrice:sp,paidAmount:sp*g,totalQuantity:bq*g,originalUnitPrice:bq?op/bq:0,purchaseSnapshot:{capturedAt:new Date().toISOString(),originalBundlePrice:op,saleBundlePrice:sp,bundleQuantity:bq,purchasedGroups:g,paidAmount:sp*g,originalUnitPrice:bq?op/bq:0}};
 }
 async function buyAnybuyDetailProduct(){
+  if(!ensureCrossStoreOperationAllowed()) return;
   if(!anybuyDetailProduct) return;
 
   const saleState=getAnybuyProductSaleState(anybuyDetailProduct);
