@@ -1694,7 +1694,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.27 Cart Catalog Validation</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.28 SC App State Live Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -4762,6 +4762,9 @@ async function syncAppForegroundData(){
   lastForegroundSyncAt=now;
 
   try{
+    // 先同步 SC / HQ App 設定、公告、優惠券與隨買商品主檔。
+    try{ await refreshSCAppStateLive(); }catch(_){}
+
     // 正式會員編號：只同步資料，不產生任何付款碼。
     if(typeof loadOfficialMemberNoFromHq==='function'){
       try{
@@ -4845,6 +4848,8 @@ async function applyUser(user){
     renderProfile();
     renderBarcodes();
     await loadSCAppState();
+    scAppStateSnapshot=makeSCAppStateSnapshot();
+    startSCAppStateLiveMonitor();
     if(scAppSettings.pointsSync){ await loadPoints(); await loadPointHistory(); }
     renderShopProducts();
     await loadMyProducts();
@@ -4860,6 +4865,7 @@ async function applyUser(user){
 }
 
 async function signOut(){
+  stopSCAppStateLiveMonitor();
   await sb.auth.signOut();
   currentUser=null; currentMember=null;
   document.getElementById('authScreen').classList.remove('hidden');
@@ -4932,11 +4938,133 @@ const SC_KEY_ANYBUY='yj_app_anybuy_products';
 let scAppSettings={enabled:true,maintenance:false,pointsSync:true,crossStoreRedeem:true,announcement:'',yijiaPayMonthlyCashTopupLimit:5000};
 let scCoupons=[];
 let scAnybuyProducts=[];
+let scAppStateLiveTimer=null;
+let scAppStateSnapshot='';
+let scAppStateLiveRunning=false;
 
 function normalizeStateData(v){
   if(v==null) return null;
   if(typeof v==='string'){try{return JSON.parse(v)}catch{return v}}
   return v;
+}
+
+
+function makeSCAppStateSnapshot(){
+  return JSON.stringify({
+    settings:{
+      enabled:scAppSettings?.enabled,
+      maintenance:scAppSettings?.maintenance,
+      pointsSync:scAppSettings?.pointsSync,
+      crossStoreRedeem:scAppSettings?.crossStoreRedeem,
+      announcement:scAppSettings?.announcement||'',
+      yijiaPayMonthlyCashTopupLimit:scAppSettings?.yijiaPayMonthlyCashTopupLimit??0
+    },
+    coupons:(Array.isArray(scCoupons)?scCoupons:[]).map(c=>({
+      id:c?.id||c?.code||'',
+      code:c?.code||'',
+      name:c?.name||'',
+      active:c?.active!==false,
+      startDate:c?.startDate||'',
+      endDate:c?.endDate||'',
+      value:c?.value??null,
+      updatedAt:c?.updatedAt||''
+    })),
+    anybuy:(Array.isArray(scAnybuyProducts)?scAnybuyProducts:[]).map(p=>({
+      id:p?.id||p?.code||'',
+      code:p?.code||'',
+      name:p?.name||'',
+      active:p?.active!==false,
+      price:p?.price??p?.salePrice??p?.sale_price??null,
+      originalPrice:p?.originalPrice??p?.original_price??null,
+      quantity:p?.quantity??p?.bundleQuantity??null,
+      limit:p?.maxPurchaseGroups??p?.purchaseLimitGroups??p?.limitGroups??null,
+      activityStartDate:p?.activityStartDate||p?.activity_start_date||'',
+      activityEndDate:p?.activityEndDate||p?.activity_end_date||'',
+      updatedAt:p?.updatedAt||''
+    }))
+  });
+}
+
+function stopSCAppStateLiveMonitor(){
+  if(scAppStateLiveTimer){
+    clearInterval(scAppStateLiveTimer);
+    scAppStateLiveTimer=null;
+  }
+}
+
+async function refreshSCAppStateLive(){
+  if(!currentUser || document.hidden || scAppStateLiveRunning) return;
+
+  scAppStateLiveRunning=true;
+  try{
+    const before=scAppStateSnapshot||makeSCAppStateSnapshot();
+
+    await loadSCAppState();
+
+    const after=makeSCAppStateSnapshot();
+    const changed=before!==after;
+    scAppStateSnapshot=after;
+
+    if(!changed) return;
+
+    // 點數同步開關重新開啟時，立即拉一次正式點數。
+    if(scAppSettings?.pointsSync){
+      try{ await loadPoints(); }catch(_){}
+      try{ await loadPointHistory(); }catch(_){}
+    }
+
+    // 如果目前就在優惠券頁，立即刷新。
+    if(document.getElementById('coupons')?.classList.contains('active')){
+      renderCoupons();
+    }
+
+    // 如果目前就在隨買頁 / 商品詳情 / 購物車，重新套用最新商品主檔。
+    const anybuyVisible=
+      document.getElementById('redeem')?.classList.contains('active') ||
+      document.getElementById('anybuyProductDetail')?.classList.contains('active') ||
+      document.getElementById('cart')?.classList.contains('active');
+
+    if(anybuyVisible){
+      try{ renderShopProducts(); }catch(_){}
+      try{
+        if(document.getElementById('cart')?.classList.contains('active') &&
+           typeof syncCartWithCurrentCatalog==='function'){
+          await syncCartWithCurrentCatalog();
+        }
+      }catch(_){}
+    }
+
+    // 現金儲值上限若被 SC 改動，立即更新正在顯示的儲值頁。
+    try{
+      if(document.getElementById('payReload')?.classList.contains('active')){
+        await loadYijiaPayReloadPage(false);
+      }
+    }catch(_){}
+
+    // 通知中心最後刷新。
+    try{
+      if(typeof loadNotificationCenter==='function'){
+        await loadNotificationCenter(
+          document.getElementById('notificationCenter')?.classList.contains('active')
+        );
+      }
+    }catch(_){}
+  }catch(e){
+    console.warn('SC App 設定即時同步失敗',e);
+  }finally{
+    scAppStateLiveRunning=false;
+  }
+}
+
+function startSCAppStateLiveMonitor(){
+  stopSCAppStateLiveMonitor();
+  if(!currentUser) return;
+
+  scAppStateSnapshot=makeSCAppStateSnapshot();
+  scAppStateLiveTimer=setInterval(
+    refreshSCAppStateLive,
+    30000
+  );
 }
 
 async function loadSCAppState(){
