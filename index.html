@@ -1691,7 +1691,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.21 Foreground Data Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.22 Wallet Refund Live Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2084,6 +2084,12 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(id==='payHistory'){
+    setTimeout(()=>startPayHistoryLiveMonitor(),0);
+  }else{
+    stopPayHistoryLiveMonitor();
+  }
+
   if(id==='orderManagement'){
     setTimeout(()=>startOrderManagementMonitor(),0);
   }else{
@@ -2407,6 +2413,152 @@ function stopPayCodeStatusMonitor(){
 }
 
 
+
+let payRefundLiveTimer=null;
+let payRefundLiveCode='';
+let payRefundLastAmount=null;
+let payHistoryLiveTimer=null;
+let payHistorySnapshot='';
+
+function stopPayRefundLiveMonitor(){
+  if(payRefundLiveTimer){
+    clearInterval(payRefundLiveTimer);
+    payRefundLiveTimer=null;
+  }
+}
+
+function setPayRefundLiveStatus(text,kind=''){
+  const el=document.getElementById('payCompleteRefundLive');
+  if(!el) return;
+  el.textContent=text||'';
+  el.style.color=kind==='done' ? '#176c34' : '#6b7280';
+}
+
+async function refreshPayRefundLive(){
+  if(!currentUser || !payRefundLiveCode || document.hidden) return;
+
+  const mask=document.getElementById('payCompleteMask');
+  if(!mask || mask.style.display==='none') return;
+
+  try{
+    const {data,error}=await sb.rpc('app_get_yijiapay_pay_code_status',{
+      p_pay_code:payRefundLiveCode
+    });
+    if(error) throw error;
+    if(!data?.found || String(data.status||'')!=='used') return;
+
+    const refunded=Number(data.refundedAmount||0);
+    const refundable=Number(data.refundableAmount||0);
+    const changed=payRefundLastAmount!==null && refunded!==payRefundLastAmount;
+
+    payRefundLastAmount=refunded;
+    openPayCompleteSheet(data,false);
+
+    if(refunded>0){
+      setPayRefundLiveStatus(
+        refundable>0
+          ? `已退款 ${money(refunded)}，尚可退款 ${money(refundable)}`
+          : `已全額退款 ${money(refunded)}`,
+        'done'
+      );
+    }else{
+      setPayRefundLiveStatus('退款狀態即時同步中');
+    }
+
+    if(changed){
+      try{ await loadYijiaPayHistory(); }catch(_){}
+      try{ await loadYijiaPayHistoryPage(); }catch(_){}
+      try{
+        if(typeof loadYijiaPayWalletBalance==='function'){
+          await loadYijiaPayWalletBalance();
+        }
+      }catch(_){}
+      try{
+        if(typeof loadWalletLedger==='function'){
+          await loadWalletLedger();
+        }
+      }catch(_){}
+      try{
+        if(typeof loadNotificationCenter==='function'){
+          await loadNotificationCenter(false);
+        }
+      }catch(_){}
+    }
+  }catch(e){
+    console.warn('億家Pay退款狀態同步失敗',e);
+  }
+}
+
+function startPayRefundLiveMonitor(payCode,initialRefunded){
+  stopPayRefundLiveMonitor();
+  payRefundLiveCode=String(payCode||'').trim();
+  payRefundLastAmount=initialRefunded==null?null:Number(initialRefunded||0);
+
+  if(!payRefundLiveCode) return;
+
+  refreshPayRefundLive();
+  payRefundLiveTimer=setInterval(refreshPayRefundLive,3000);
+}
+
+function stopPayHistoryLiveMonitor(){
+  if(payHistoryLiveTimer){
+    clearInterval(payHistoryLiveTimer);
+    payHistoryLiveTimer=null;
+  }
+}
+
+function makePayHistorySnapshot(rows){
+  return JSON.stringify(
+    (Array.isArray(rows)?rows:[]).map(r=>({
+      payCode:r.payCode||'',
+      amount:r.amount??null,
+      refundedAmount:r.refundedAmount??0,
+      refundableAmount:r.refundableAmount??null,
+      usedAt:r.usedAt||''
+    }))
+  );
+}
+
+async function refreshPayHistoryLive(){
+  if(!currentUser || document.hidden) return;
+  if(!document.getElementById('payHistory')?.classList.contains('active')) return;
+
+  try{
+    const {data,error}=await sb.rpc('app_get_my_yijiapay_pay_history');
+    if(error) throw error;
+
+    const rows=Array.isArray(data)?data:[];
+    const next=makePayHistorySnapshot(rows);
+    const changed=payHistorySnapshot && payHistorySnapshot!==next;
+
+    payHistorySnapshot=next;
+    payHistoryPageRows=rows;
+    renderYijiaPayHistoryPage();
+
+    if(changed){
+      try{ await loadYijiaPayHistory(); }catch(_){}
+      try{
+        if(typeof loadYijiaPayWalletBalance==='function'){
+          await loadYijiaPayWalletBalance();
+        }
+      }catch(_){}
+      try{
+        if(typeof loadNotificationCenter==='function'){
+          await loadNotificationCenter(false);
+        }
+      }catch(_){}
+    }
+  }catch(e){
+    console.warn('億家Pay完整交易紀錄即時同步失敗',e);
+  }
+}
+
+function startPayHistoryLiveMonitor(){
+  stopPayHistoryLiveMonitor();
+  refreshPayHistoryLive();
+  payHistoryLiveTimer=setInterval(refreshPayHistoryLive,10000);
+}
+
 async function openPayCompleteByCode(payCode){
   try{
     const {data,error}=await sb.rpc('app_get_yijiapay_pay_code_status',{
@@ -2425,13 +2577,14 @@ async function openPayCompleteByCode(payCode){
     }
 
     openPayCompleteSheet(data);
+    startPayRefundLiveMonitor(data.payCode||payCode,data.refundedAmount);
   }catch(e){
     console.error(e);
     alert('付款完成明細讀取失敗。');
   }
 }
 
-function openPayCompleteSheet(data){
+function openPayCompleteSheet(data,startMonitor=true){
   const amountEl=document.getElementById('payCompleteAmount');
   const beforeEl=document.getElementById('payCompleteBefore');
   const afterEl=document.getElementById('payCompleteAfter');
@@ -2450,9 +2603,17 @@ function openPayCompleteSheet(data){
   document.getElementById('payCompleteSale').textContent=data?.tmSaleId||'--';
   const mask=document.getElementById('payCompleteMask');
   if(mask) mask.style.display='flex';
+
+  if(startMonitor){
+    startPayRefundLiveMonitor(data?.payCode||currentPayCode,data?.refundedAmount);
+  }
 }
 
 async function closePayCompleteSheet(){
+  stopPayRefundLiveMonitor();
+  payRefundLiveCode='';
+  payRefundLastAmount=null;
+
   const mask=document.getElementById('payCompleteMask');
   if(mask) mask.style.display='none';
 
@@ -5220,7 +5381,11 @@ async function loadYijiaPayHistory(){
       <div class="pay-history-row" onclick="openPayCompleteByCode('${safeText(r.payCode||'')}')">
         <div class="pay-history-top">
           <strong>億家Pay付款</strong>
-          <span class="pay-history-status">已完成</span>
+          <span class="pay-history-status">${
+            Number(r.refundedAmount||0)>0
+              ? (Number(r.refundableAmount||0)>0?'部分退款':'已退款')
+              : '已完成'
+          }</span>
         </div>
         <div class="pay-history-meta">
           ${r.amount!=null?`付款金額：<b>${money(Number(r.amount||0))}</b><br>`:''}
@@ -5228,6 +5393,8 @@ async function loadYijiaPayHistory(){
           ${r.usedStoreCode?`<br>門市：${safeText(r.usedStoreCode)}`:''}
           ${r.tmSaleId?`<br>交易編號：${safeText(r.tmSaleId)}`:''}
           ${(r.balanceBefore!=null && r.balanceAfter!=null)?`<br>錢包：${money(Number(r.balanceBefore||0))} → ${money(Number(r.balanceAfter||0))}`:''}
+          ${Number(r.refundedAmount||0)>0?`<br>已退款：<b>${money(Number(r.refundedAmount||0))}</b>`:''}
+          ${(r.refundableAmount!=null && Number(r.refundableAmount||0)>=0)?`<br>剩餘可退款：${money(Number(r.refundableAmount||0))}`:''}
           ${r.payCode?`<br>付款碼：${safeText(r.payCode)}`:''}
           <br><span style="color:var(--green);font-weight:800">點一下查看完成明細</span>
         </div>
@@ -5416,13 +5583,19 @@ function renderYijiaPayHistoryPage(){
       <div class="pay-history-row" onclick="openPayCompleteByCode('${safeText(r.payCode||'')}')">
         <div class="pay-history-top">
           <strong>${r.amount!=null?money(Number(r.amount||0)):'億家Pay付款'}</strong>
-          <span class="pay-history-status">已完成</span>
+          <span class="pay-history-status">${
+            Number(r.refundedAmount||0)>0
+              ? (Number(r.refundableAmount||0)>0?'部分退款':'已退款')
+              : '已完成'
+          }</span>
         </div>
         <div class="pay-history-meta">
           ${r.usedAt?new Date(r.usedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'--'}
           ${r.usedStoreCode?`<br>門市：${safeText(r.usedStoreCode)}`:''}
           ${r.tmSaleId?`<br>交易編號：${safeText(r.tmSaleId)}`:''}
           ${(r.balanceBefore!=null && r.balanceAfter!=null)?`<br>錢包：${money(Number(r.balanceBefore||0))} → ${money(Number(r.balanceAfter||0))}`:''}
+          ${Number(r.refundedAmount||0)>0?`<br>已退款：<b>${money(Number(r.refundedAmount||0))}</b>`:''}
+          ${(r.refundableAmount!=null && Number(r.refundableAmount||0)>=0)?`<br>剩餘可退款：${money(Number(r.refundableAmount||0))}`:''}
           ${r.payCode?`<br>付款碼：${safeText(r.payCode)}`:''}
           <br><span style="color:var(--green);font-weight:800">查看完成明細</span>
         </div>
@@ -5441,6 +5614,7 @@ async function loadYijiaPayHistoryPage(){
     if(error) throw error;
 
     payHistoryPageRows=Array.isArray(data)?data:[];
+    payHistorySnapshot=makePayHistorySnapshot(payHistoryPageRows);
     renderYijiaPayHistoryPage();
   }catch(e){
     console.warn('億家Pay完整交易紀錄讀取失敗',e);
@@ -8936,6 +9110,7 @@ function toggleAnybuySubmenu(id){document.getElementById(id)?.classList.toggle('
       <div class="pay-complete-row"><span>完成時間</span><b id="payCompleteTime">--</b></div>
       <div class="pay-complete-row"><span>門市</span><b id="payCompleteStore">--</b></div>
       <div class="pay-complete-row"><span>TM 交易編號</span><b id="payCompleteSale">--</b></div>
+      <div id="payCompleteRefundLive" class="small-muted" style="margin-top:10px;text-align:center;font-weight:800"></div>
     </div>
     <button class="pay-complete-close" onclick="closePayCompleteSheet()">關閉</button>
   </div>
