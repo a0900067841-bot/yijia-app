@@ -1694,7 +1694,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.29 Feature Access Guard</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.0 Anybuy Formal Purchase Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -6073,24 +6073,76 @@ async function confirmCheckout(){
   }
 }
 
+
+async function verifyAnybuyPurchaseCompleted({orderId='',paymentCode='',expectedProductCodes=[]}={}){
+  const result={orderFound:false,orderPaid:false,productsFound:false,order:null,products:[]};
+
+  try{
+    const {data,error}=await sb.rpc('app_get_anybuy_order_history');
+    if(!error && Array.isArray(data)){
+      const code=String(paymentCode||'').trim();
+      const oid=String(orderId||'').trim();
+      const row=data.find(x=>
+        (oid && String(x?.orderId||x?.id||'')===oid) ||
+        (code && String(x?.paymentCode||x?.orderCode||'')===code)
+      );
+      if(row){
+        result.orderFound=true;
+        result.order=row;
+        result.orderPaid=row?.paymentStatus==='paid' || row?.status==='已付款';
+      }
+    }
+  }catch(e){
+    console.warn('正式訂單驗證失敗',e);
+  }
+
+  try{
+    const {data,error}=await sb.rpc('app_get_member_products');
+    if(!error && Array.isArray(data)){
+      result.products=data;
+      const wanted=(Array.isArray(expectedProductCodes)?expectedProductCodes:[])
+        .map(v=>String(v||'').trim()).filter(Boolean);
+      result.productsFound=wanted.length===0 || wanted.every(code=>
+        data.some(p=>String(p?.code||p?.productCode||'').trim()===code)
+      );
+    }
+  }catch(e){
+    console.warn('正式我的商品驗證失敗',e);
+  }
+  return result;
+}
+
+async function verifyStoreCheckoutOrderCreated(order){
+  const paymentCode=String(order?.paymentCode||order?.orderCode||'').trim();
+  if(!paymentCode) return {ok:false,order:null};
+  try{
+    const {data,error}=await sb.rpc('app_get_anybuy_order',{p_payment_code:paymentCode});
+    if(error) throw error;
+    return {
+      ok:!!data && String(data?.paymentCode||data?.orderCode||'').trim()===paymentCode,
+      order:data||null
+    };
+  }catch(e){
+    console.warn('店舖結帳正式訂單驗證失敗',e);
+    return {ok:false,order:null};
+  }
+}
+
 async function createYijiaPayOrder(source){
   if(!ensureCrossStoreOperationAllowed()) return;
   if(!currentUser || !cartItems.length) return;
-
   if(source!=='wallet'){
     alert('目前線上付款僅開放億家Pay錢包。');
     return;
   }
 
   const total=cartTotalAmount();
-  const balance=Number(yijiaPaySummary.walletBalance||0);
-
+  const balanceBefore=Number(yijiaPaySummary.walletBalance||0);
   if(!(total>0)){
     alert('購物車金額異常，請重新整理後再試。');
     return;
   }
-
-  if(balance<total){
+  if(balanceBefore<total){
     alert('億家Pay錢包餘額不足。');
     selectPayMethod(null);
     return;
@@ -6098,10 +6150,14 @@ async function createYijiaPayOrder(source){
 
   const btn=document.getElementById('checkoutContinueBtn');
   const notice=document.getElementById('checkoutPayNotice');
-
   btn.disabled=true;
-  btn.textContent='處理億家Pay付款中…';
+  btn.textContent='正式付款處理中…';
+  if(notice){
+    notice.style.display='block';
+    notice.textContent='正在由後端完成扣款、建立訂單與發放商品…';
+  }
 
+  const expectedProductCodes=cartItems.map(x=>String(x.code||x.key||'').trim()).filter(Boolean);
   const payload=cartItems.map(x=>({
     productKey:String(x.code||x.key),
     cartQty:Number(x.cartQty||1),
@@ -6118,44 +6174,51 @@ async function createYijiaPayOrder(source){
     });
     if(error) throw error;
 
-    const paid=
-      data?.paymentStatus==='paid' ||
-      data?.status==='已付款';
+    const paid=data?.paymentStatus==='paid' || data?.status==='已付款';
+    if(!paid) throw new Error('後端沒有回傳付款完成狀態');
 
-    if(!paid){
-      if(notice){
-        notice.style.display='block';
-        notice.textContent='後端尚未回傳付款完成，因此購物車不會清除，也不會發放商品。';
-      }
-      return;
+    const orderId=String(data?.orderId||data?.id||'');
+    const paymentCode=String(data?.paymentCode||data?.orderCode||'');
+
+    const verified=await verifyAnybuyPurchaseCompleted({
+      orderId,paymentCode,expectedProductCodes
+    });
+
+    if(!verified.orderFound || !verified.orderPaid){
+      throw new Error('付款已回成功，但正式訂單尚未確認為已付款');
+    }
+    if(!verified.productsFound){
+      throw new Error('付款已完成，但商品尚未完整發放到「我的商品」');
+    }
+
+    await loadYijiaPaySummary(false);
+    const balanceAfter=Number(yijiaPaySummary.walletBalance||0);
+    if(balanceAfter>balanceBefore-total+0.009){
+      console.warn('億家Pay正式餘額變化與購物車金額不一致',{
+        balanceBefore,total,balanceAfter,orderId,paymentCode
+      });
     }
 
     cartItems=[];
     saveCart();
 
-    if(typeof refreshAnybuyCoreData==='function'){
-      await refreshAnybuyCoreData({
-        products:true,
-        orders:true,
-        usage:true,
-        gifts:false,
-        subscriptions:false,
-        reservations:false,
-        notifications:true
-      });
-    }else{
-      try{ await loadMyProducts(); }catch(_){}
-      try{ await loadOrderManagement(); }catch(_){}
-    }
+    await refreshAnybuyCoreData({
+      products:true,orders:true,usage:true,gifts:false,
+      subscriptions:false,reservations:false,notifications:true
+    });
 
-    try{ await loadYijiaPaySummary(false); }catch(_){}
     try{ await loadWalletLedger(); }catch(_){}
 
+    if(notice) notice.textContent='付款、訂單與商品發放皆已確認完成。';
     showView('products');
-    alert('億家Pay付款完成，商品已加入「我的商品」。');
+    alert('億家Pay購買完成，商品已正式加入「我的商品」。');
   }catch(err){
     console.error(err);
-    alert('億家Pay付款失敗：'+(err?.message||err));
+    if(notice){
+      notice.style.display='block';
+      notice.textContent='購買尚未完整確認：'+(err?.message||err);
+    }
+    alert('億家Pay購買尚未完整完成：'+(err?.message||err));
   }finally{
     btn.disabled=false;
     selectPayMethod('wallet');
@@ -6165,9 +6228,10 @@ async function createYijiaPayOrder(source){
 async function createStoreCheckoutOrder(){
   if(!ensureCrossStoreOperationAllowed()) return;
   if(!currentUser || !cartItems.length) return;
+
   const btn=document.getElementById('checkoutContinueBtn');
   btn.disabled=true;
-  btn.textContent='建立待付款訂單中…';
+  btn.textContent='建立正式待付款訂單中…';
 
   const payload=cartItems.map(x=>({
     productKey:String(x.code||x.key),
@@ -6179,19 +6243,30 @@ async function createStoreCheckoutOrder(){
   }));
 
   try{
-    const {data,error}=await sb.rpc('app_create_store_checkout_order',{
-      p_items:payload
-    });
+    const {data,error}=await sb.rpc('app_create_store_checkout_order',{p_items:payload});
     if(error) throw error;
 
-    latestStoreOrder=data;
+    const paymentCode=String(data?.paymentCode||data?.orderCode||'').trim();
+    if(!paymentCode || !/^YS/i.test(paymentCode)){
+      throw new Error('後端沒有回傳正式 YS 店舖結帳碼');
+    }
+
+    const verified=await verifyStoreCheckoutOrderCreated(data);
+    if(!verified.ok){
+      throw new Error('待付款訂單建立後，正式訂單資料尚未讀取到');
+    }
+
+    latestStoreOrder=verified.order||data;
     const paidNotice=document.getElementById('storeOrderPaidNotice');
     if(paidNotice) paidNotice.style.display='none';
-    renderStoreOrder(data);
+
+    renderStoreOrder(latestStoreOrder);
+
     cartItems=[];
     saveCart();
+
     showView('storeOrder');
-    startStoreOrderMonitor(String(data.paymentCode||data.orderCode||''));
+    startStoreOrderMonitor(paymentCode);
   }catch(err){
     console.error(err);
     alert('建立店舖結帳訂單失敗：'+(err?.message||err));
@@ -6251,6 +6326,7 @@ function startStoreOrderMonitor(paymentCode){
 
 async function refreshStoreOrderStatus(showError=true){
   if(!monitoredPaymentCode || !currentUser) return;
+
   const {data,error}=await sb.rpc('app_get_anybuy_order',{
     p_payment_code:monitoredPaymentCode
   });
@@ -6269,30 +6345,36 @@ async function refreshStoreOrderStatus(showError=true){
     stopStoreOrderMonitor();
 
     const notice=document.getElementById('storeOrderPaidNotice');
-    if(notice) notice.style.display='block';
+    if(notice){
+      notice.style.display='block';
+      notice.textContent='TM 已收款，正在確認商品正式發放…';
+    }
 
     if(typeof refreshAnybuyCoreData==='function'){
       await refreshAnybuyCoreData({
-        products:true,
-        orders:true,
-        usage:true,
-        gifts:false,
-        notifications:true
+        products:true,orders:true,usage:true,gifts:false,notifications:true
       });
     }else{
       try{ await loadMyProducts(); }catch(_){}
       try{ await loadOrderManagement(); }catch(_){}
       try{ await loadProductUsage(); }catch(_){}
-      try{
-        if(typeof loadNotificationCenter==='function'){
-          await loadNotificationCenter(false);
-        }
-      }catch(_){}
+      try{ if(typeof loadNotificationCenter==='function') await loadNotificationCenter(false); }catch(_){}
     }
 
-    setTimeout(()=>{
-      if(notice) notice.style.display='none';
-    },5000);
+    const expectedCodes=(Array.isArray(data?.items)?data.items:[])
+      .map(x=>String(x?.code||x?.productCode||'').trim()).filter(Boolean);
+
+    const verified=await verifyAnybuyPurchaseCompleted({
+      orderId:String(data?.orderId||data?.id||''),
+      paymentCode:String(data?.paymentCode||data?.orderCode||''),
+      expectedProductCodes:expectedCodes
+    });
+
+    if(notice){
+      notice.textContent=verified.productsFound
+        ? '付款完成，商品已正式加入「我的商品」。'
+        : 'TM 已收款；商品發放資料同步中，請稍候。';
+    }
   }
 }
 
