@@ -1691,7 +1691,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.18 Subscription Reservation Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.19 Expiry Refund Core Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1771,6 +1771,9 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 </section>
 
 <section id="productUsage" class="view">
+  <div id="expiryRefundSyncStatus" class="small-muted" style="margin:8px 4px 10px">
+    到期退款資料同步中…
+  </div>
   <div class="header2"><button class="back" onclick="showView('anybuyCenter')">‹</button><h2>商品使用紀錄</h2></div>
   <div class="history-toolbar">
     <button class="history-tab active" data-usage-tab="purchase" onclick="setUsageTab('purchase',this)">購買</button>
@@ -2078,6 +2081,12 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(id==='myProducts' || id==='productUsage'){
+    setTimeout(()=>startExpiryRefundMonitor(),0);
+  }else{
+    stopExpiryRefundMonitor();
+  }
+
   if(id==='subscriptionManagement' || id==='reservationManagement'){
     setTimeout(()=>startSubscriptionReservationMonitor(),0);
   }else{
@@ -5357,14 +5366,6 @@ async function loadYijiaPayHistoryPage(){
 async function loadYijiaPaySummary(forceNewPayCode=false){
   if(!currentUser) return;
 
-  // 每次讀取錢包前，自動檢查目前會員是否有已到期且尚未處理的隨買商品。
-  try{
-    const {error:expiryError}=await sb.rpc('app_process_expired_anybuy_refunds');
-    if(expiryError) console.warn('逾期退款檢查失敗',expiryError);
-  }catch(err){
-    console.warn('逾期退款檢查尚未接通',err);
-  }
-
   try{
     const {data,error}=await sb.rpc('app_get_yijiapay_summary');
     if(error) throw error;
@@ -7690,6 +7691,100 @@ function redemptionQty(r){
   return 0;
 }
 
+
+let expiryRefundMonitorTimer=null;
+let expiryRefundSnapshot='';
+
+function stopExpiryRefundMonitor(){
+  if(expiryRefundMonitorTimer){
+    clearInterval(expiryRefundMonitorTimer);
+    expiryRefundMonitorTimer=null;
+  }
+}
+
+function expiryRefundRowsSnapshot(rows){
+  return JSON.stringify(
+    (Array.isArray(rows)?rows:[]).map(r=>({
+      id:r.id||r.memberProductId||r.orderId||'',
+      status:r.status||'',
+      amount:r.refundAmount??r.creditedAmount??r.amount??null,
+      refundedAt:r.refundedAt||r.processedAt||r.updatedAt||r.createdAt||''
+    }))
+  );
+}
+
+async function refreshExpiryRefundLive(){
+  if(!currentUser || document.hidden) return;
+
+  const usageActive=document.getElementById('productUsage')?.classList.contains('active');
+  const productsActive=document.getElementById('myProducts')?.classList.contains('active');
+
+  if(!usageActive && !productsActive) return;
+
+  try{
+    const {data,error}=await sb.rpc('app_get_expiry_refund_history');
+    if(error) throw error;
+
+    const rows=Array.isArray(data)?data:[];
+    const next=expiryRefundRowsSnapshot(rows);
+    const changed=expiryRefundSnapshot && expiryRefundSnapshot!==next;
+    expiryRefundSnapshot=next;
+
+    const status=document.getElementById('expiryRefundSyncStatus');
+    if(status){
+      status.textContent=changed
+        ? '到期退款狀態已更新'
+        : '已同步正式到期退款資料';
+    }
+
+    if(usageActive){
+      usageCache.expired=rows;
+      renderProductUsage();
+    }
+
+    if(changed){
+      if(productsActive && typeof loadMyProducts==='function'){
+        try{ await loadMyProducts(); }catch(_){}
+      }
+
+      if(typeof loadWalletLedger==='function'){
+        try{
+          const walletView=document.getElementById('walletLedger');
+          if(walletView?.classList.contains('active')){
+            await loadWalletLedger();
+          }
+        }catch(_){}
+      }
+
+      if(typeof loadNotificationCenter==='function'){
+        try{ await loadNotificationCenter(false); }catch(_){}
+      }
+
+      if(typeof loadYijiaPaySummary==='function'){
+        try{
+          const payView=document.getElementById('pay');
+          if(payView?.classList.contains('active')){
+            await loadYijiaPaySummary(false);
+          }
+        }catch(_){}
+      }
+    }
+  }catch(e){
+    console.warn('到期退款正式同步失敗',e);
+    const status=document.getElementById('expiryRefundSyncStatus');
+    if(status) status.textContent='到期退款資料同步失敗';
+  }
+}
+
+function startExpiryRefundMonitor(){
+  stopExpiryRefundMonitor();
+  refreshExpiryRefundLive();
+  expiryRefundMonitorTimer=setInterval(
+    refreshExpiryRefundLive,
+    10000
+  );
+}
+
 async function loadProductUsage(){
   const box=document.getElementById('productUsageList');
   if(!box||!currentUser) return;
@@ -7716,6 +7811,11 @@ async function loadProductUsage(){
     gifts:Array.isArray(data?.gifts)?data.gifts:[],
     transfers:Array.isArray(data?.transfers)?data.transfers:[]
   };
+  expiryRefundSnapshot=expiryRefundRowsSnapshot(expiryRows);
+
+  const expiryStatus=document.getElementById('expiryRefundSyncStatus');
+  if(expiryStatus) expiryStatus.textContent='已同步正式到期退款資料';
+
   renderProductUsage();
 }
 

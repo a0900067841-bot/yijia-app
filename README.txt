@@ -1,20 +1,26 @@
-億家 App v0.10.13.18 Subscription Reservation Sync
+億家 App v0.10.13.19 Expiry Refund Core Sync
 
-這版把既有「訂閱管理 / 預約管理」正式資料同步接完整，不新增尚未定案的新規則。
+這版把「隨買跨店取 → 到期退款」正式同步收尾。
 
-完成：
-- 訂閱管理讀取 app_get_member_subscriptions()
-- 預約管理讀取 app_get_member_reservations()
-- 進入任一頁後每 10 秒重新同步正式狀態
-- 偵測到狀態變更時即時更新畫面
-- 狀態變更時同步刷新通知中心
-- 離開訂閱 / 預約頁後停止輪詢
-- 修正先前 Anybuy Core Refresh 使用 subscriptions / reservations 錯誤 view id，
-  改為實際 subscriptionManagement / reservationManagement
+重要修正：
+- App 不再在打開億家Pay時主動呼叫 app_process_expired_anybuy_refunds()
+- 到期退款的「處理」應由正式後端 / 排程負責
+- App 只負責讀取與同步結果，避免因使用者是否有開 App 而影響退款是否被執行
 
-目前只同步已存在的正式資料與狀態。
-不自行新增訂閱取消、修改頻率、預約取消等商業規則，
-那些等 SC / TM 正式規則確定後再接。
+App 正式同步：
+- 進入「我的商品」或「商品使用紀錄」時，每 10 秒讀 app_get_expiry_refund_history()
+- 偵測到到期退款狀態改變後：
+  - 更新到期退款使用紀錄
+  - 更新我的商品
+  - 更新通知中心
+  - 若錢包帳本正在開啟，刷新錢包帳本
+  - 若億家Pay正在開啟，刷新正式錢包餘額
+
+正式原則：
+- 到期退款處理由後端排程完成
+- App 不主動建立退款
+- App 不直接修改錢包餘額
+- App 只呈現正式退款結果
 
 此版純前端，不用跑 SQL。
 只需要上傳新的 index.html。
