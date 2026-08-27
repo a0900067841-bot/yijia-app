@@ -1,21 +1,23 @@
-億家 App v0.10.13.10 Anybuy Store Checkout Sync
+億家 App v0.10.13.11 Anybuy Redemption Completion Sync
 
-這版把「隨買跨店取 → 門市付款」完成後的 App 同步流程正式收尾。
+這版把「隨買跨店取 → 商品兌換」完成後的 App 即時同步正式收尾。
 
 完成：
-- App 建立門市待付款訂單後持續監看正式訂單狀態
-- TM 完成門市付款後，App 偵測 paymentStatus=paid / 已付款
-- 停止訂單輪詢
-- 顯示「付款完成，商品已同步到我的商品」
-- 自動同步：
-  - 我的商品
-  - 訂單管理
-  - 商品使用紀錄
-  - 通知中心
-- 新建立下一筆訂單時會清除上一筆完成提示
+- App 產生商品兌換 QR Code 後，每 2.5 秒讀正式 app_get_member_products
+- TM 完成兌換、正式剩餘數量下降後，App 自動判定兌換完成
+- 兌換完成後：
+  - 停止 QR 倒數
+  - 停止兌換輪詢
+  - QR 區改顯示「已完成兌換」
+  - 顯示「兌換完成，商品數量已更新」
+  - 更新我的商品
+  - 更新商品使用 / 兌換紀錄
+  - 更新通知中心
+- 離開 / 取消兌換畫面時停止輪詢
+- 我的商品頁原本的 TM 兌換同步也改成統一刷新正式資料
 
-這版不新增第二套訂單資料。
-仍以既有 app_get_anybuy_order / app_get_anybuy_order_history / app_get_member_products 為正式來源。
+不新增第二套兌換資料。
+正式商品剩餘數量仍以 app_get_member_products 為準。
 
 此版純前端。
 不用跑 SQL，只上傳新的 index.html。

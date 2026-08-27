@@ -1138,6 +1138,9 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
 
 <section id="redeemTicket" class="view">
+  <div id="redeemTicketSuccessNotice" style="display:none;background:#eef8f1;border:1px solid #cfe9d5;color:#176c34;border-radius:14px;padding:12px 14px;margin:10px 0;font-weight:800;text-align:center">
+    兌換完成，商品數量已更新
+  </div>
   <div class="header2"><button class="back" onclick="closeRedeemTicket()">‹</button><h2>商品兌換</h2></div>
 
   <div id="redeemTicketSetup">
@@ -1685,7 +1688,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.10 Anybuy Store Checkout Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.11 Anybuy Redemption Completion Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -5782,8 +5785,18 @@ async function refreshRedemptionSync(){
         }
       },5000);
     }
-    await loadMyProducts();
-    await loadRedemptions();
+    if(typeof refreshAnybuyCoreData==='function'){
+      await refreshAnybuyCoreData({
+        products:true,
+        orders:false,
+        usage:true,
+        gifts:false,
+        notifications:true
+      });
+    }else{
+      await loadMyProducts();
+      await loadRedemptions();
+    }
     return;
   }
 
@@ -5809,6 +5822,116 @@ let selectedRedeemProduct=null;
 let redeemTicketQty=1;
 let redeemTicketCountdownTimer=null;
 let redeemTicketExpiresAt=null;
+let redeemTicketSyncTimer=null;
+let redeemTicketStartRemaining=null;
+let redeemTicketCompleted=false;
+
+
+function stopRedeemTicketSyncMonitor(){
+  if(redeemTicketSyncTimer){
+    clearInterval(redeemTicketSyncTimer);
+    redeemTicketSyncTimer=null;
+  }
+}
+
+async function pollRedeemTicketCompletion(){
+  if(!currentUser || !selectedRedeemProduct || redeemTicketCompleted) return;
+
+  const view=document.getElementById('redeemTicket');
+  if(!view?.classList.contains('active') || document.hidden) return;
+
+  try{
+    const {data,error}=await sb.rpc('app_get_member_products');
+    if(error) throw error;
+
+    const rows=Array.isArray(data)?data:[];
+    const current=rows.find(
+      x=>String(x.id||'')===String(selectedRedeemProduct.id||'')
+    );
+    if(!current) return;
+
+    const currentRemaining=Math.max(
+      0,
+      Number(current.remainingQuantity||0)
+    );
+
+    const startSource =
+      redeemTicketStartRemaining != null
+        ? redeemTicketStartRemaining
+        : (selectedRedeemProduct.remainingQuantity||0);
+
+    const startRemaining=Math.max(
+      0,
+      Number(startSource)
+    );
+
+    const expectedAfter=Math.max(
+      0,
+      startRemaining-Number(redeemTicketQty||1)
+    );
+
+    if(
+      currentRemaining<=expectedAfter &&
+      currentRemaining<startRemaining
+    ){
+      redeemTicketCompleted=true;
+      stopRedeemTicketSyncMonitor();
+      stopRedeemTicketCountdown();
+
+      const notice=document.getElementById('redeemTicketSuccessNotice');
+      if(notice) notice.style.display='block';
+
+      const countdown=document.getElementById('redeemTicketCountdown');
+      if(countdown){
+        countdown.textContent='兌換完成';
+        countdown.style.color='#176c34';
+      }
+
+      const qr=document.getElementById('redeemTicketQr');
+      if(qr){
+        qr.innerHTML=
+          '<div style="font-size:54px;margin:18px 0">✓</div>'+
+          '<div style="font-weight:900;color:#176c34">已完成兌換</div>';
+      }
+
+      if(typeof refreshAnybuyCoreData==='function'){
+        await refreshAnybuyCoreData({
+          products:true,
+          orders:false,
+          usage:true,
+          gifts:false,
+          notifications:true
+        });
+      }else{
+        try{ await loadMyProducts(); }catch(_){}
+        try{ await loadRedemptions(); }catch(_){}
+        try{
+          if(typeof loadNotificationCenter==='function'){
+            await loadNotificationCenter(false);
+          }
+        }catch(_){}
+      }
+    }
+  }catch(e){
+    console.warn('商品兌換完成同步失敗',e);
+  }
+}
+
+function startRedeemTicketSyncMonitor(){
+  stopRedeemTicketSyncMonitor();
+  if(!currentUser || !selectedRedeemProduct) return;
+
+  redeemTicketCompleted=false;
+  redeemTicketStartRemaining=Math.max(
+    0,
+    Number(selectedRedeemProduct.remainingQuantity||0)
+  );
+
+  redeemTicketSyncTimer=setInterval(
+    pollRedeemTicketCompletion,
+    2500
+  );
+}
 
 function stopRedeemTicketCountdown(){
   if(redeemTicketCountdownTimer){
@@ -5854,6 +5977,11 @@ function openRedeemTicket(encoded){
     const image=shopProduct.image_url||'';
     pic.innerHTML=image?`<img src="${safeText(image)}" alt="">`:'☕';
   }
+
+  const successNotice=document.getElementById('redeemTicketSuccessNotice');
+  if(successNotice) successNotice.style.display='none';
+  redeemTicketCompleted=false;
+  redeemTicketStartRemaining=remain;
 
   document.getElementById('redeemTicketSetup').style.display='block';
   document.getElementById('redeemTicketQrWrap').style.display='none';
@@ -5909,6 +6037,7 @@ async function createRedeemTicket(){
     }
 
     startRedeemTicketCountdown();
+    startRedeemTicketSyncMonitor();
   }catch(err){
     console.error(err);
     alert('兌換條碼建立失敗：'+(err?.message||err));
@@ -5944,12 +6073,14 @@ function startRedeemTicketCountdown(){
 
 function closeRedeemTicket(){
   stopRedeemTicketCountdown();
+  stopRedeemTicketSyncMonitor();
   selectedRedeemProduct=null;
   showView('products');
 }
 
 function cancelRedeemTicketView(){
   stopRedeemTicketCountdown();
+  stopRedeemTicketSyncMonitor();
   selectedRedeemProduct=null;
   loadMyProducts();
   loadRedemptions();
