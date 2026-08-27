@@ -1107,6 +1107,9 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
 
 <section id="storeOrder" class="view">
+  <div id="storeOrderPaidNotice" style="display:none;background:#eef8f1;border:1px solid #cfe9d5;color:#176c34;border-radius:14px;padding:12px 14px;margin:10px 0;font-weight:800;text-align:center">
+    付款完成，商品已同步到「我的商品」
+  </div>
   <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>請至店舖櫃檯結帳</h2></div>
 
   <div class="store-order-card">
@@ -1682,7 +1685,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.9 Pay Barcode Scan Fix</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.10 Anybuy Store Checkout Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -5474,6 +5477,8 @@ async function createStoreCheckoutOrder(){
     if(error) throw error;
 
     latestStoreOrder=data;
+    const paidNotice=document.getElementById('storeOrderPaidNotice');
+    if(paidNotice) paidNotice.style.display='none';
     renderStoreOrder(data);
     cartItems=[];
     saveCart();
@@ -5554,7 +5559,32 @@ async function refreshStoreOrderStatus(showError=true){
   const paid=(data.status==='已付款' || data.paymentStatus==='paid');
   if(paid){
     stopStoreOrderMonitor();
-    await loadMyProducts();
+
+    const notice=document.getElementById('storeOrderPaidNotice');
+    if(notice) notice.style.display='block';
+
+    if(typeof refreshAnybuyCoreData==='function'){
+      await refreshAnybuyCoreData({
+        products:true,
+        orders:true,
+        usage:true,
+        gifts:false,
+        notifications:true
+      });
+    }else{
+      try{ await loadMyProducts(); }catch(_){}
+      try{ await loadOrderManagement(); }catch(_){}
+      try{ await loadProductUsage(); }catch(_){}
+      try{
+        if(typeof loadNotificationCenter==='function'){
+          await loadNotificationCenter(false);
+        }
+      }catch(_){}
+    }
+
+    setTimeout(()=>{
+      if(notice) notice.style.display='none';
+    },5000);
   }
 }
 
