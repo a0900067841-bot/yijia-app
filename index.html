@@ -1691,7 +1691,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.25 Production Checkout Guard</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.26 My Products Live Sync Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2084,6 +2084,12 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(id==='products'){
+    setTimeout(()=>startMyProductsLiveMonitor(),0);
+  }else{
+    stopMyProductsLiveMonitor();
+  }
+
   if(id==='payHistory'){
     setTimeout(()=>startPayHistoryLiveMonitor(),0);
   }else{
@@ -2096,7 +2102,7 @@ function showView(id){
     stopOrderManagementMonitor();
   }
 
-  if(id==='myProducts' || id==='productUsage'){
+  if(id==='products' || id==='productUsage'){
     setTimeout(()=>startExpiryRefundMonitor(),0);
   }else{
     stopExpiryRefundMonitor();
@@ -2116,10 +2122,10 @@ function showView(id){
     stopReturnStatusMonitor();
   }
 
-  if(['myProducts','orderManagement','productUsage','giftTransfer','subscriptionManagement','reservationManagement'].includes(id)){
+  if(['products','orderManagement','productUsage','giftTransfer','subscriptionManagement','reservationManagement'].includes(id)){
     setTimeout(()=>{
       refreshAnybuyCoreData({
-        products:id==='myProducts',
+        products:id==='products',
         orders:id==='orderManagement',
         usage:id==='productUsage',
         gifts:id==='giftTransfer',
@@ -6477,6 +6483,73 @@ function productLifecycleState(x){
   return {key:'redeemed',label:status||'不可操作',canOperate:false};
 }
 
+
+let myProductsLiveTimer=null;
+let myProductsLiveSnapshot='';
+
+function stopMyProductsLiveMonitor(){
+  if(myProductsLiveTimer){
+    clearInterval(myProductsLiveTimer);
+    myProductsLiveTimer=null;
+  }
+}
+
+function makeMyProductsLiveSnapshot(rows){
+  return JSON.stringify(
+    (Array.isArray(rows)?rows:[]).map(r=>({
+      id:r.id||r.memberProductId||r.code||'',
+      status:r.status||'',
+      remainingQuantity:r.remainingQuantity??null,
+      returnRequestStatus:r.returnRequestStatus||'',
+      returnCode:r.returnCode||'',
+      refundAmount:r.refundAmount??null,
+      validUntil:r.validUntil||'',
+      updatedAt:r.updatedAt||r.updated_at||''
+    }))
+  );
+}
+
+async function refreshMyProductsLive(){
+  if(!currentUser || document.hidden) return;
+
+  const active=document.getElementById('products')?.classList.contains('active');
+  if(!active) return;
+
+  try{
+    const {data,error}=await sb.rpc('app_get_member_products');
+    if(error) throw error;
+
+    const rows=Array.isArray(data)?data:[];
+    const next=makeMyProductsLiveSnapshot(rows);
+    const changed=myProductsLiveSnapshot && myProductsLiveSnapshot!==next;
+    myProductsLiveSnapshot=next;
+
+    // 直接沿用正式 loader，確保畫面與既有生命週期判斷完全一致。
+    await loadMyProducts();
+
+    if(changed){
+      try{ await loadProductUsage(); }catch(_){}
+      try{ await loadOrderManagement(); }catch(_){}
+      try{
+        if(typeof loadNotificationCenter==='function'){
+          await loadNotificationCenter(false);
+        }
+      }catch(_){}
+    }
+  }catch(e){
+    console.warn('我的商品即時同步失敗',e);
+  }
+}
+
+function startMyProductsLiveMonitor(){
+  stopMyProductsLiveMonitor();
+  refreshMyProductsLive();
+  myProductsLiveTimer=setInterval(
+    refreshMyProductsLive,
+    10000
+  );
+}
+
 async function loadMyProducts(){
   const box=document.getElementById('myProducts');
   if(!box||!currentUser) return;
@@ -6491,6 +6564,7 @@ async function loadMyProducts(){
   }
 
   const rows=Array.isArray(data)?data:[];
+  myProductsLiveSnapshot=makeMyProductsLiveSnapshot(rows);
   redemptionSnapshot=currentProductsSnapshot(rows);
   if(!rows.length){
     box.innerHTML='<div class="empty-box"><div class="big">🛍️</div>目前沒有可兌換商品<br><small>付款完成後會顯示在這裡</small></div>';
@@ -8095,7 +8169,7 @@ async function refreshExpiryRefundLive(){
   if(!currentUser || document.hidden) return;
 
   const usageActive=document.getElementById('productUsage')?.classList.contains('active');
-  const productsActive=document.getElementById('myProducts')?.classList.contains('active');
+  const productsActive=document.getElementById('products')?.classList.contains('active');
 
   if(!usageActive && !productsActive) return;
 

@@ -1,30 +1,35 @@
-億家 App v0.10.13.25 Production Checkout Guard
+億家 App v0.10.13.26 My Products Live Sync Fix
 
-這版把隨買跨店取的結帳流程做正式化保護。
+這版修正一個實際 view id 問題：
 
-調整：
-- 結帳方式明確顯示「億家Pay / 店舖結帳」
-- 移除未正式接通的信用卡分支
-- 移除 dev_app_purchase_anybuy 開發測試結帳函式
-- 億家Pay付款前會再次確認：
-  - 購物車金額 > 0
-  - 正式錢包餘額足夠
-- app_create_yijiapay_order() 只有在後端明確回傳：
-  - paymentStatus = paid
-  或
-  - status = 已付款
-  才會：
-  - 清空購物車
-  - 發放商品
-  - 更新我的商品
-  - 更新訂單 / 使用紀錄 / 通知
-  - 更新億家Pay餘額與錢包帳本
-- 如果後端沒有回傳付款完成：
-  - 不清購物車
-  - 不發商品
-  - 顯示「後端尚未回傳付款完成」
+HTML 正式結構是：
+- section id="products" ＝「我的商品」整頁
+- div id="myProducts" ＝頁面裡面的商品清單容器
 
-店舖結帳仍沿用既有 app_create_store_checkout_order() 正式 QR Code 流程。
+先前部分同步邏輯錯把 myProducts 當成 view id，
+因此在「我的商品」頁有些即時監看其實不會啟動。
+
+本版修正：
+- showView 正式改用 products
+- Anybuy Core Refresh 正式改用 products
+- 到期退款監看正式改判斷 products 頁
+- 新增「我的商品」每 10 秒正式同步 app_get_member_products()
+
+我的商品發生以下變化時會自動更新：
+- 新購買商品加入
+- 兌換後剩餘數量變化
+- 轉贈後所有權 / 數量變化
+- 領取轉贈商品
+- 退貨申請狀態
+- 退款完成
+- 商品到期 / 到期退款
+- 其他正式商品生命週期狀態
+
+偵測到變化後同步更新：
+- 我的商品
+- 商品使用紀錄
+- 訂單管理
+- 通知中心
 
 此版純前端，不用跑 SQL。
 只需要上傳新的 index.html。
