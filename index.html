@@ -1032,7 +1032,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 <main class="content">
 <section id="home" class="view active">
 <div id="appAnnouncement" class="announcement"></div>
-<div class="hero"><div class="hero-head"><div><div class="eyebrow">億家會員</div><div id="memberName" class="member-name">您好</div><div id="memberEmail" class="member-email"></div></div><div class="points" onclick="showView('points')"><span>可用點數</span><b id="homePoints">--</b><span id="homeExpiry">等待點數資料表</span></div></div><div class="barcode" onclick="openBarcode()"><svg id="homeBarcode" class="real-barcode"></svg><small>點一下放大會員條碼</small></div></div>
+<div class="hero"><div class="hero-head"><div><div class="eyebrow">億家會員</div><div id="memberName" class="member-name">您好</div><div id="memberEmail" class="member-email"></div></div><div class="points" onclick="showView('points')"><span>可用點數</span><b id="homePoints">--</b><span id="homeExpiry">等待點數資料表</span></div></div><div class="barcode" onclick="openBarcode()"><svg id="homeBarcode" class="real-barcode"></svg><small>點一下放大會員條碼（與 TM 相同）</small></div></div>
 <div class="quick"><button class="q" onclick="showView('points')"><span class="ico">🪙</span>億家點數</button><button class="q" onclick="showView('redeem');loadShopProducts()"><span class="ico">☕</span>隨買跨店取</button><button class="q" onclick="showView('products')"><span class="ico">🛍️</span>我的商品</button><button class="q" onclick="showView('coupons')"><span class="ico">🎟️</span>優惠券</button></div>
 <div class="section-title"><h3>本期活動</h3><button>更多</button></div><div class="banner"><div><h2>億家會員專屬</h2><p>活動內容將由總部 App 後台設定同步顯示</p></div><div class="cup">🥤</div></div>
 <div class="section-title"><h3>我的服務</h3></div><div class="cards"><div class="card"><span class="badge">跨店取</span><b>待兌換 5 件</b><small>查看已購買商品</small></div><div class="card"><span class="badge">點數</span><b>本月 +320 點</b><small>查看累點明細</small></div><div class="card"><span class="badge">訂單</span><b>我的訂單</b><small>商城／預購紀錄</small></div><div class="card"><span class="badge">會員</span><b>個人資料</b><small>帳號與通知設定</small></div></div>
@@ -1590,7 +1590,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   </div>
 
   <div class="reload-member-card">
-    <div class="label">TM 儲值請掃描會員條碼</div>
+    <div class="label">TM 儲值請掃描會員條碼（與首頁會員條碼相同）</div>
     <svg id="reloadMemberBarcode"></svg>
     <div id="reloadMemberCodeText" class="reload-member-code">--</div>
     <div class="reload-live-status">
@@ -1691,7 +1691,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.12 Anybuy Return Completion Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.13 Member Barcode TM Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2541,7 +2541,20 @@ function phoneToInternalEmail(phone){
   // 僅 Supabase 內部技術識別，會員不會看到，也不是實際 Email。
   return 'tw'+phone+'@auth.yijia.invalid';
 }
-function memberCodeFromPhone(phone){ return 'YJ'+phone; }
+function getOfficialMemberBarcodeCode(member=currentMember){
+  const code =
+    member?.memberNo ||
+    member?.member_no ||
+    member?.memberCode ||
+    member?.member_code ||
+    member?.memberId ||
+    member?.member_id ||
+    member?.phone ||
+    currentUser?.phone ||
+    '';
+
+  return String(code||'').trim();
+}
 
 async function submitAuth(){
   const phone=normalizePhone(document.getElementById('authPhone').value.trim());
@@ -3458,7 +3471,7 @@ function renderPointDiscountMemberCode(){
   host.innerHTML='';
   if(!currentMember) return;
 
-  const code=memberCodeFromPhone(currentMember.phone);
+  const code=getOfficialMemberBarcodeCode(currentMember);
   try{
     if(window.JsBarcode){
       const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -3872,12 +3885,13 @@ function getDisplayName(){
 }
 function renderBarcodes(){
   if(!currentMember||!window.JsBarcode)return;
-  const code=memberCodeFromPhone(currentMember.phone);
+  const code=getOfficialMemberBarcodeCode(currentMember);
   const opts={format:'CODE128',displayValue:false,margin:4,height:58,width:1.35};
   try{
     JsBarcode('#homeBarcode',code,opts);
     JsBarcode('#modalBarcode',code,{...opts,height:92,width:1.25,margin:8});
-    document.getElementById('memberCodeText').textContent='會員編號：'+code;
+    document.getElementById('memberCodeText').textContent=
+      code ? ('會員編號：'+code+'（與 TM 相同）') : '會員編號：--';
   }catch(e){console.warn(e)}
 }
 
@@ -7741,12 +7755,7 @@ function stopReloadLiveMonitor(){
 }
 
 function renderReloadMemberBarcode(){
-  const code =
-    currentMember?.memberNo ||
-    currentMember?.member_no ||
-    currentMember?.phone ||
-    currentUser?.phone ||
-    '';
+  const code = getOfficialMemberBarcodeCode(currentMember);
 
   const text=document.getElementById('reloadMemberCodeText');
   if(text) text.textContent=code||'--';
