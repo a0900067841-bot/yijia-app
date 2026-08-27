@@ -1691,7 +1691,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.19 Expiry Refund Core Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.20 Order Management Live Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1735,6 +1735,9 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
 
 <section id="orderManagement" class="view">
+  <div id="orderManagementSyncStatus" class="small-muted" style="margin:8px 4px 10px">
+    正式訂單資料同步中…
+  </div>
   <div class="header2">
     <button class="back" onclick="showView('anybuyCenter')">‹</button>
     <h2>訂單管理</h2>
@@ -2081,6 +2084,12 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(id==='orderManagement'){
+    setTimeout(()=>startOrderManagementMonitor(),0);
+  }else{
+    stopOrderManagementMonitor();
+  }
+
   if(id==='myProducts' || id==='productUsage'){
     setTimeout(()=>startExpiryRefundMonitor(),0);
   }else{
@@ -7363,6 +7372,118 @@ function renderRefundHistoryForOrder(o){
   </div>`;
 }
 
+
+let orderManagementMonitorTimer=null;
+let orderManagementSnapshot='';
+
+function stopOrderManagementMonitor(){
+  if(orderManagementMonitorTimer){
+    clearInterval(orderManagementMonitorTimer);
+    orderManagementMonitorTimer=null;
+  }
+}
+
+function makeOrderManagementSnapshot(orders,returns,expiry){
+  const pack=(rows,fields)=>(
+    (Array.isArray(rows)?rows:[]).map(r=>{
+      const o={};
+      fields.forEach(k=>o[k]=r?.[k]??null);
+      return o;
+    })
+  );
+
+  return JSON.stringify({
+    orders:pack(orders,[
+      'id','orderId','status','paymentStatus','paidAt',
+      'updatedAt','updated_at','total'
+    ]),
+    returns:pack(returns,[
+      'id','requestId','returnCode','return_code','status',
+      'refundStatus','completedAt','refundedAt','updatedAt','updated_at'
+    ]),
+    expiry:pack(expiry,[
+      'id','memberProductId','orderId','status','refundAmount',
+      'creditedAmount','refundedAt','processedAt','updatedAt','updated_at'
+    ])
+  });
+}
+
+async function refreshOrderManagementLive(){
+  if(!currentUser || document.hidden) return;
+
+  const active=document.getElementById('orderManagement')?.classList.contains('active');
+  if(!active) return;
+
+  try{
+    const {data:orders,error:ordersError}=await sb.rpc('app_get_anybuy_order_history');
+    if(ordersError) throw ordersError;
+
+    let returns=[];
+    let expiry=[];
+
+    try{
+      const rr=await sb
+        .from('yijia_app_state')
+        .select('data')
+        .eq('store_id','HQ')
+        .eq('data_key','yj_app_return_requests')
+        .maybeSingle();
+
+      returns=Array.isArray(rr?.data?.data)?rr.data.data:
+        Array.isArray(rr?.data)?rr.data:
+        Array.isArray(rr?.data?.data?.rows)?rr.data.data.rows:[];
+    }catch(_){}
+
+    try{
+      const {data:expiryData,error:expiryError}=await sb.rpc('app_get_expiry_refund_history');
+      if(!expiryError && Array.isArray(expiryData)){
+        expiry=expiryData;
+      }
+    }catch(_){}
+
+    const normalizedOrders=Array.isArray(orders)?orders:[];
+    const next=makeOrderManagementSnapshot(normalizedOrders,returns,expiry);
+    const changed=orderManagementSnapshot && orderManagementSnapshot!==next;
+
+    orderManagementRows=normalizedOrders;
+    returnRequestRows=returns;
+    expiryRefundRows=expiry;
+    orderManagementSnapshot=next;
+
+    renderOrderManagement();
+
+    const status=document.getElementById('orderManagementSyncStatus');
+    if(status){
+      status.textContent=changed
+        ? '訂單／退款狀態已更新'
+        : '已同步正式訂單資料';
+    }
+
+    if(changed){
+      if(typeof loadNotificationCenter==='function'){
+        try{ await loadNotificationCenter(false); }catch(_){}
+      }
+
+      if(typeof loadMyProducts==='function'){
+        try{ await loadMyProducts(); }catch(_){}
+      }
+    }
+  }catch(e){
+    console.warn('訂單管理即時同步失敗',e);
+    const status=document.getElementById('orderManagementSyncStatus');
+    if(status) status.textContent='訂單資料同步失敗';
+  }
+}
+
+function startOrderManagementMonitor(){
+  stopOrderManagementMonitor();
+  refreshOrderManagementLive();
+  orderManagementMonitorTimer=setInterval(
+    refreshOrderManagementLive,
+    10000
+  );
+}
+
 async function loadOrderManagement(){
   const host=document.getElementById('orderManagementList');
   const detail=document.getElementById('orderDetailHost');
@@ -7395,18 +7516,20 @@ async function loadOrderManagement(){
   }
 
   try{
-    const er=await sb
-      .from('yijia_app_state')
-      .select('data')
-      .eq('store_id','HQ')
-      .eq('data_key','yj_app_expiry_refunds')
-      .maybeSingle();
-    expiryRefundRows=Array.isArray(er?.data?.data)?er.data.data:
-      Array.isArray(er?.data)?er.data:
-      Array.isArray(er?.data?.data?.rows)?er.data.data.rows:[];
+    const {data:expiryData,error:expiryError}=await sb.rpc('app_get_expiry_refund_history');
+    expiryRefundRows=(!expiryError && Array.isArray(expiryData))?expiryData:[];
   }catch(e){
     expiryRefundRows=[];
   }
+
+  orderManagementSnapshot=makeOrderManagementSnapshot(
+    orderManagementRows,
+    returnRequestRows,
+    expiryRefundRows
+  );
+
+  const syncStatus=document.getElementById('orderManagementSyncStatus');
+  if(syncStatus) syncStatus.textContent='已同步正式訂單資料';
 
   renderOrderManagement();
 }

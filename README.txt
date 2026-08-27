@@ -1,26 +1,22 @@
-億家 App v0.10.13.19 Expiry Refund Core Sync
+億家 App v0.10.13.20 Order Management Live Sync
 
-這版把「隨買跨店取 → 到期退款」正式同步收尾。
+這版把「訂單紀錄 / 訂單管理」正式即時同步補完整。
 
-重要修正：
-- App 不再在打開億家Pay時主動呼叫 app_process_expired_anybuy_refunds()
-- 到期退款的「處理」應由正式後端 / 排程負責
-- App 只負責讀取與同步結果，避免因使用者是否有開 App 而影響退款是否被執行
+完成：
+- 進入訂單管理後，每 10 秒同步一次正式資料
+- 訂單本體：app_get_anybuy_order_history()
+- 到期退款：app_get_expiry_refund_history()
+- 退貨申請：沿用既有 HQ yj_app_return_requests
+- 偵測到付款、退貨、退款、到期退款等狀態改變時：
+  - 訂單頁自動更新
+  - 通知中心自動更新
+  - 我的商品同步刷新
+- 離開訂單管理頁後停止輪詢
 
-App 正式同步：
-- 進入「我的商品」或「商品使用紀錄」時，每 10 秒讀 app_get_expiry_refund_history()
-- 偵測到到期退款狀態改變後：
-  - 更新到期退款使用紀錄
-  - 更新我的商品
-  - 更新通知中心
-  - 若錢包帳本正在開啟，刷新錢包帳本
-  - 若億家Pay正在開啟，刷新正式錢包餘額
-
-正式原則：
-- 到期退款處理由後端排程完成
-- App 不主動建立退款
-- App 不直接修改錢包餘額
-- App 只呈現正式退款結果
+另外修正：
+- 訂單頁原本直接讀 yj_app_expiry_refunds raw state
+- 現在改用正式 app_get_expiry_refund_history() RPC
+- 避免同一份到期退款資料在不同 App 畫面走不同來源
 
 此版純前端，不用跑 SQL。
 只需要上傳新的 index.html。
