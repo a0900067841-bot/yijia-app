@@ -1694,7 +1694,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.1 Anybuy Redeem Formal Flow</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.2 Gift Claim Formal Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -7880,13 +7880,173 @@ function updateGiftQtyMax(){
   }
 }
 
+
+async function getFormalGiftData(){
+  const {data,error}=await sb.rpc('app_get_gift_transfer_data');
+  if(error) throw error;
+
+  return {
+    products:Array.isArray(data?.products)?data.products:[],
+    history:Array.isArray(data?.history)?data.history:[]
+  };
+}
+
+function findGiftHistoryByFormalCode(rows,code){
+  const target=String(code||'').trim().toUpperCase();
+  if(!target) return null;
+
+  return (Array.isArray(rows)?rows:[]).find(r=>
+    String(r?.giftCode||r?.gift_code||r?.code||'')
+      .trim()
+      .toUpperCase()===target
+  )||null;
+}
+
+function findGiftProductByFormalId(rows,id){
+  const target=String(id||'').trim();
+  if(!target) return null;
+
+  return (Array.isArray(rows)?rows:[]).find(r=>
+    String(r?.id||r?.memberProductId||'').trim()===target
+  )||null;
+}
+
+async function verifyGiftCreateResult({
+  memberProductId,
+  beforeRemaining,
+  quantity,
+  response
+}){
+  const data=await getFormalGiftData();
+
+  const deliveryMode=String(response?.deliveryMode||'').trim();
+  const giftCode=String(response?.giftCode||'').trim().toUpperCase();
+
+  if(deliveryMode==='social'){
+    if(!giftCode || !/^YG[A-Z0-9]+$/.test(giftCode)){
+      return {ok:false,reason:'後端沒有回傳正式 YG 領取碼'};
+    }
+
+    const historyRow=findGiftHistoryByFormalCode(data.history,giftCode);
+    if(!historyRow){
+      return {ok:false,reason:'YG 已建立，但正式轉贈紀錄尚未寫入'};
+    }
+  }
+
+  if(deliveryMode==='direct'){
+    const historyRow=(data.history||[]).find(r=>{
+      const sameProduct=
+        String(r?.memberProductId||r?.sourceMemberProductId||'')===String(memberProductId);
+      const sameQty=Number(r?.quantity||0)===Number(quantity||0);
+      const status=String(r?.status||'');
+      return sameProduct && sameQty &&
+        ['已轉贈','已完成','完成','delivered','claimed'].includes(status);
+    });
+
+    if(!historyRow && response?.completed!==true){
+      console.warn('直接轉贈正式紀錄尚未能從 history 精準比對，改驗證商品餘量');
+    }
+  }
+
+  const product=findGiftProductByFormalId(data.products,memberProductId);
+  const afterRemaining=product?Number(product.remainingQuantity||0):0;
+  const expected=Math.max(0,Number(beforeRemaining||0)-Number(quantity||0));
+
+  if(afterRemaining>expected){
+    return {
+      ok:false,
+      reason:`轉贈建立後正式商品剩餘數量尚未扣除，現在 ${afterRemaining}，預期 ${expected}`
+    };
+  }
+
+  return {
+    ok:true,
+    giftCode,
+    deliveryMode,
+    afterRemaining,
+    formal:data
+  };
+}
+
+async function verifyGiftClaimResult(code,beforeProductIds=[]){
+  const gift=await getFormalGiftData();
+
+  const historyRow=findGiftHistoryByFormalCode(gift.history,code);
+  if(!historyRow){
+    return {ok:false,reason:'找不到正式 YG 轉贈紀錄'};
+  }
+
+  const status=String(historyRow?.status||'').trim();
+  const claimed=
+    !!(historyRow?.claimedAt||historyRow?.deliveredAt) ||
+    ['已領取','已完成','完成','claimed','delivered'].includes(status);
+
+  if(!claimed){
+    return {ok:false,reason:'YG 尚未被正式標記為已領取'};
+  }
+
+  const {data:products,error}=await sb.rpc('app_get_member_products');
+  if(error) throw error;
+
+  const rows=Array.isArray(products)?products:[];
+  const beforeSet=new Set((Array.isArray(beforeProductIds)?beforeProductIds:[]).map(String));
+
+  const newRows=rows.filter(r=>!beforeSet.has(String(r?.id||r?.memberProductId||'')));
+
+  if(!newRows.length){
+    const expectedName=String(historyRow?.name||'').trim();
+    const expectedQty=Number(historyRow?.quantity||0);
+
+    const matched=rows.some(r=>{
+      const sameName=!expectedName || String(r?.name||'').trim()===expectedName;
+      const enough=Number(r?.remainingQuantity||0)>=expectedQty;
+      return sameName && enough;
+    });
+
+    if(!matched){
+      return {ok:false,reason:'YG 已標記領取，但商品尚未正式出現在「我的商品」'};
+    }
+  }
+
+  return {
+    ok:true,
+    historyRow,
+    products:rows,
+    newProducts:newRows
+  };
+}
+
 async function createGiftTransfer(){
+  if(!ensureCrossStoreOperationAllowed()) return;
+
   const memberProductId=document.getElementById('giftProductSelect')?.value||'';
   const qty=Number(document.getElementById('giftQty')?.value||0);
   const receiverPhone=(document.getElementById('giftReceiverPhone')?.value||'').trim();
 
   if(!memberProductId){alert('請先選擇商品');return;}
   if(!qty || qty<1){alert('轉贈數量至少 1');return;}
+
+  let before;
+  try{
+    before=await getFormalGiftData();
+  }catch(err){
+    alert('無法讀取正式轉贈資料：'+(err?.message||err));
+    return;
+  }
+
+  const sourceProduct=findGiftProductByFormalId(before.products,memberProductId);
+  if(!sourceProduct){
+    alert('這個商品目前已無法轉贈，請重新整理。');
+    await loadGiftTransferData();
+    return;
+  }
+
+  const beforeRemaining=Number(sourceProduct.remainingQuantity||0);
+  if(beforeRemaining<qty){
+    alert(`正式剩餘數量只有 ${beforeRemaining}，無法轉贈 ${qty} 件。`);
+    await loadGiftTransferData();
+    return;
+  }
 
   try{
     const {data,error}=await sb.rpc('app_create_gift_transfer',{
@@ -7895,6 +8055,17 @@ async function createGiftTransfer(){
       p_receiver_phone:receiverPhone||null
     });
     if(error) throw error;
+
+    const verified=await verifyGiftCreateResult({
+      memberProductId,
+      beforeRemaining,
+      quantity:qty,
+      response:data||{}
+    });
+
+    if(!verified.ok){
+      throw new Error(verified.reason);
+    }
 
     const resultBox=document.getElementById('giftCreateResult');
     const codeText=document.getElementById('giftCodeText');
@@ -7912,35 +8083,48 @@ async function createGiftTransfer(){
     const shareLinkEl=document.getElementById('giftShareLink');
     const titleEl=document.getElementById('giftCreateResultTitle');
 
-    if(data.deliveryMode==='direct'){
+    if(verified.deliveryMode==='direct'){
       lastGiftShareCode='';
       lastGiftShareUrl='';
+
       if(titleEl) titleEl.textContent='轉贈完成';
       if(codeText) codeText.textContent='已直接轉贈';
       if(barcodeWrap) barcodeWrap.style.display='none';
       if(socialShareBox) socialShareBox.style.display='none';
-      if(hint) hint.textContent=`商品已直接加入 ${data.receiverPhone||'對方'} 的「我的商品」，不需要領取碼。`;
-      setGiftLiveStatus('已直接轉贈完成','done');
-      alert(`轉贈成功，商品已直接送到 ${data.receiverPhone||'對方會員'} 的 App。`);
+      if(hint){
+        hint.textContent=`商品已正式轉贈給 ${data.receiverPhone||receiverPhone||'對方會員'}。`;
+      }
+
+      setGiftLiveStatus('已正式直接轉贈完成','done');
+      alert('直接轉贈完成，來源商品數量已正式扣除。');
     }else{
-      lastGiftShareCode=String(data.giftCode||'');
-      lastGiftShareUrl=buildGiftShareUrl(lastGiftShareCode);
-      if(titleEl) titleEl.textContent='社群轉贈已建立';
-      if(codeText) codeText.textContent=lastGiftShareCode||'--';
+      const formalGiftCode=verified.giftCode;
+
+      lastGiftShareCode=formalGiftCode;
+      lastGiftShareUrl=buildGiftShareUrl(formalGiftCode);
+
+      if(titleEl) titleEl.textContent='社群轉贈已正式建立';
+      if(codeText) codeText.textContent=formalGiftCode||'--';
       if(barcodeWrap) barcodeWrap.style.display='block';
       if(socialShareBox) socialShareBox.style.display='block';
       if(shareLinkEl) shareLinkEl.textContent=lastGiftShareUrl;
-      if(hint) hint.textContent='可分享領取連結、YG 領取碼或 CODE128 條碼給對方。此領取碼成功領取一次後立即失效。';
+      if(hint){
+        hint.textContent='正式 YG 領取碼已建立；成功領取一次後立即失效。';
+      }
 
-      if(window.JsBarcode && data.giftCode){
+      if(window.JsBarcode && formalGiftCode){
         try{
-          JsBarcode('#giftCodeBarcode',String(data.giftCode),{
-            format:'CODE128',displayValue:false,margin:6,height:80,width:1.3
+          JsBarcode('#giftCodeBarcode',formalGiftCode,{
+            format:'CODE128',
+            displayValue:false,
+            margin:6,
+            height:80,
+            width:1.3
           });
         }catch(e){console.warn(e)}
       }
 
-      startGiftClaimMonitor(lastGiftShareCode);
+      startGiftClaimMonitor(formalGiftCode);
     }
 
     document.getElementById('giftReceiverPhone').value='';
@@ -7953,6 +8137,7 @@ async function createGiftTransfer(){
       gifts:true,
       notifications:true
     });
+
     await loadMyProducts();
   }catch(err){
     console.error(err);
@@ -7961,19 +8146,53 @@ async function createGiftTransfer(){
 }
 
 async function claimGiftTransfer(){
-  const code=(document.getElementById('giftClaimCode')?.value||'').trim().toUpperCase();
-  if(!code){alert('請輸入領取碼');return;}
+  if(!ensureCrossStoreOperationAllowed()) return;
+
+  const code=(document.getElementById('giftClaimCode')?.value||'')
+    .trim()
+    .toUpperCase();
+
+  if(!code){
+    alert('請輸入領取碼');
+    return;
+  }
+
+  if(!/^YG[A-Z0-9]+$/.test(code)){
+    alert('領取碼格式不正確，正式社群轉贈碼應為 YG 開頭。');
+    return;
+  }
+
+  let beforeProducts=[];
+  try{
+    const {data,error}=await sb.rpc('app_get_member_products');
+    if(error) throw error;
+    beforeProducts=Array.isArray(data)?data:[];
+  }catch(err){
+    alert('無法讀取目前「我的商品」：'+(err?.message||err));
+    return;
+  }
+
+  const beforeIds=beforeProducts.map(r=>String(r?.id||r?.memberProductId||''));
 
   try{
-    const {data,error}=await sb.rpc('app_claim_gift_transfer',{p_gift_code:code});
+    const {data,error}=await sb.rpc('app_claim_gift_transfer',{
+      p_gift_code:code
+    });
     if(error) throw error;
-    alert(`領取成功：${data.name||'商品'} × ${Number(data.quantity||0)}`);
+
+    const verified=await verifyGiftClaimResult(code,beforeIds);
+    if(!verified.ok){
+      throw new Error(verified.reason);
+    }
+
     document.getElementById('giftClaimCode').value='';
+
     try{
       const u=new URL(location.href);
       u.searchParams.delete('gift');
       history.replaceState({},'',u.pathname+u.search+u.hash);
     }catch(e){}
+
     await refreshAnybuyCoreData({
       products:true,
       orders:false,
@@ -7981,8 +8200,19 @@ async function claimGiftTransfer(){
       gifts:true,
       notifications:true
     });
+
     await loadMyProducts();
+
     showView('products');
+
+    const name=
+      data?.name ||
+      verified.historyRow?.name ||
+      '商品';
+    const quantity=
+      Number(data?.quantity||verified.historyRow?.quantity||0);
+
+    alert(`領取完成：${name}${quantity?` × ${quantity}`:''}，商品已正式加入「我的商品」。`);
   }catch(err){
     console.error(err);
     alert('領取失敗：'+(err?.message||err));

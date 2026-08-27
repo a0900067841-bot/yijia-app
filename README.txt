@@ -1,42 +1,44 @@
-億家 App v0.10.14.1 Anybuy Redeem Formal Flow
+億家 App v0.10.14.2 Gift Claim Formal Flow
 
-第二個主功能正式接通：
-我的商品 → YD兌換 → TM完成兌換 → 正式扣剩餘數量
+第三個主功能正式接通：
+轉贈 / 社群轉贈 / YG領取
 
-正式流程：
-
-1. 開始兌換前
-- 重新讀 app_get_member_products()
-- 確認商品仍存在
+A. 直接手機轉贈
+- 轉贈前先讀 app_get_gift_transfer_data()
+- 確認來源商品仍存在
 - 確認 remainingQuantity 足夠
-- 不相信畫面上的舊剩餘數量
+- 呼叫 app_create_gift_transfer()
+- 完成後再次讀正式轉贈資料
+- 確認來源商品 remainingQuantity 已正式扣除
+- 才顯示「直接轉贈完成」
 
-2. 建立兌換碼
-- 呼叫 app_create_redeem_ticket()
-- 必須取得 YD 開頭正式兌換碼
-- 沒有正式 YD code 不顯示成功
+B. 社群轉贈
+- 呼叫 app_create_gift_transfer()
+- 必須回傳 YG 開頭正式 giftCode
+- 再從 app_get_gift_transfer_data() 找到相同 YG 正式紀錄
+- 確認來源商品數量已正式扣除
+- 才顯示 / 分享 YG 領取碼
 
-3. TM 掃描完成後
-- App 每 2.5 秒重新讀 app_get_member_products()
-- 正式 remainingQuantity 必須下降到預期值
-- 確認後才顯示「兌換完成」
+C. 領取 YG
+- 領取前先讀目前 app_get_member_products()
+- 呼叫 app_claim_gift_transfer()
+- 再讀 app_get_gift_transfer_data()
+- 該 YG 必須正式標記為已領取 / 已完成
+- 再讀 app_get_member_products()
+- 確認商品已正式出現在領取人的「我的商品」
+- 全部確認後才顯示領取成功
 
-4. 完成後同步
-- 我的商品
-- 商品使用紀錄
-- 通知中心
-- 兌換 QR Code 變成「已完成兌換」
-
-5. 安全原則
-- App 不自行扣 remainingQuantity
-- App 不建立假兌換紀錄
-- 真正扣數量由 TM / 後端正式兌換流程完成
-- App 只驗證正式結果
-
-使用既有正式 RPC：
+正式 RPC：
+- app_get_gift_transfer_data
+- app_create_gift_transfer
+- app_claim_gift_transfer
 - app_get_member_products
-- app_create_redeem_ticket
-- app_get_product_usage_history
+
+安全原則：
+- App 不自己扣轉出人的商品數量
+- App 不自己增加領取人的商品
+- App 不建立假的轉贈紀錄
+- App 只在正式後端結果完成後顯示成功
 
 此版純前端，不用跑 SQL。
 只需要上傳新的 index.html。
