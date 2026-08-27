@@ -1694,7 +1694,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.4 Points Formal Flow</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.5 YijiaPay Formal Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2231,6 +2231,140 @@ function setPayCodeUiBusy(busy){
   }
 }
 
+
+async function verifyFormalPayCodeCreated(payCode){
+  const code=String(payCode||'').trim();
+  if(!code) return {ok:false,reason:'付款碼為空白'};
+
+  try{
+    const {data,error}=await sb.rpc('app_get_yijiapay_pay_code_status',{
+      p_pay_code:code
+    });
+    if(error) throw error;
+
+    if(!data?.found){
+      return {ok:false,reason:'後端找不到剛建立的付款碼'};
+    }
+
+    const status=String(data?.status||'').trim();
+    if(status!=='pending'){
+      return {ok:false,reason:`付款碼建立後狀態不是 pending（${status||'--'}）`};
+    }
+
+    const expiresAt=data?.expiresAt||data?.expires_at||null;
+    if(expiresAt && new Date(expiresAt).getTime()<=Date.now()){
+      return {ok:false,reason:'付款碼建立後已經過期'};
+    }
+
+    return {ok:true,data};
+  }catch(e){
+    return {ok:false,reason:e?.message||String(e)};
+  }
+}
+
+async function verifyYijiaPayPaymentCompleted(statusData){
+  const payCode=String(statusData?.payCode||currentPayCode||'').trim();
+  const tmSaleId=String(statusData?.tmSaleId||'').trim();
+  const amount=Number(statusData?.amount||0);
+
+  const result={
+    ok:false,
+    walletOk:false,
+    historyOk:false,
+    ledgerOk:false,
+    balance:null,
+    reason:''
+  };
+
+  try{
+    const {data,error}=await sb.rpc('app_get_yijiapay_wallet_balance');
+    if(error) throw error;
+
+    result.balance=
+      typeof data==='object'
+        ? Number(data?.walletBalance??data?.balance??0)
+        : Number(data||0);
+
+    result.walletOk=Number.isFinite(result.balance);
+  }catch(e){
+    result.reason='正式錢包餘額讀取失敗';
+  }
+
+  try{
+    const {data,error}=await sb.rpc('app_get_my_yijiapay_pay_history');
+    if(error) throw error;
+
+    const rows=Array.isArray(data)?data:[];
+    result.historyOk=rows.some(r=>{
+      const sameCode=
+        payCode &&
+        String(r?.payCode||r?.pay_code||'').trim()===payCode;
+      const sameSale=
+        tmSaleId &&
+        String(r?.tmSaleId||r?.tm_sale_id||'').trim()===tmSaleId;
+      const sameAmount=
+        amount<=0 ||
+        Number(r?.amount||0)===amount;
+      return (sameCode||sameSale) && sameAmount;
+    });
+  }catch(e){
+    console.warn('正式付款歷史驗證失敗',e);
+  }
+
+  try{
+    const {data,error}=await sb.rpc('app_get_my_yijiapay_wallet_ledger');
+    if(error) throw error;
+
+    const rows=Array.isArray(data)?data:[];
+    result.ledgerOk=rows.some(r=>{
+      const type=String(r?.entryType||r?.entry_type||'').trim();
+      const sourceId=String(r?.sourceId||r?.source_id||'').trim();
+      const sale=String(r?.tmSaleId||r?.tm_sale_id||'').trim();
+
+      const paymentType=type==='payment';
+      const sameCode=payCode && sourceId===payCode;
+      const sameSale=tmSaleId && sale===tmSaleId;
+      const sameAmount=
+        amount<=0 ||
+        Math.abs(Number(r?.amount||0))===amount;
+
+      return paymentType && (sameCode||sameSale) && sameAmount;
+    });
+  }catch(e){
+    console.warn('正式錢包帳本驗證失敗',e);
+  }
+
+  result.ok=result.walletOk && result.historyOk && result.ledgerOk;
+
+  if(!result.ok && !result.reason){
+    const missing=[];
+    if(!result.walletOk) missing.push('錢包餘額');
+    if(!result.historyOk) missing.push('付款歷史');
+    if(!result.ledgerOk) missing.push('錢包帳本');
+    result.reason='正式資料尚未完整寫入：'+missing.join('、');
+  }
+
+  return result;
+}
+
+async function verifyYijiaPayReloadCompleted(beforeBalance){
+  try{
+    const {data,error}=await sb.rpc('app_get_my_yijiapay_reload_summary');
+    if(error) throw error;
+
+    const balance=Number(data?.walletBalance??0);
+    const rows=Array.isArray(data?.recentReloads)?data.recentReloads:[];
+
+    return {
+      ok:balance>Number(beforeBalance||0) && rows.length>0,
+      balance,
+      rows
+    };
+  }catch(e){
+    return {ok:false,balance:Number(beforeBalance||0),rows:[],reason:e?.message||String(e)};
+  }
+}
+
 async function ensurePayCodeState(forceNew=false){
   if(!currentUser) return false;
 
@@ -2242,6 +2376,7 @@ async function ensurePayCodeState(forceNew=false){
   }
 
   if(payCodeCreating) return false;
+
   payCodeCreating=true;
   setPayCodeUiBusy(true);
   setPayCodeCloudStatus('正在取得安全付款碼…',true);
@@ -2250,21 +2385,38 @@ async function ensurePayCodeState(forceNew=false){
     const {data,error}=await sb.rpc('app_create_yijiapay_pay_code');
     if(error) throw error;
 
-    currentPayCode=String(data?.payCode||data?.paymentCode||'');
-    const expiresRaw=data?.expiresAt||data?.expires_at||null;
-    payCodeExpiresAt=expiresRaw ? new Date(expiresRaw).getTime() : Date.now()+60000;
+    const newCode=String(data?.payCode||data?.paymentCode||'').trim();
+    if(!newCode) throw new Error('付款碼建立失敗');
 
-    if(!currentPayCode) throw new Error('付款碼建立失敗');
+    const verified=await verifyFormalPayCodeCreated(newCode);
+    if(!verified.ok){
+      throw new Error('正式付款碼驗證失敗：'+verified.reason);
+    }
 
-    setPayCodeCloudStatus('安全付款碼已同步',true);
+    currentPayCode=newCode;
+
+    const expiresRaw=
+      verified.data?.expiresAt ||
+      verified.data?.expires_at ||
+      data?.expiresAt ||
+      data?.expires_at ||
+      null;
+
+    payCodeExpiresAt=
+      expiresRaw
+        ? new Date(expiresRaw).getTime()
+        : Date.now()+60000;
+
+    setPayCodeCloudStatus('正式付款碼已建立',true);
     updatePayCodeCountdown();
     startPayCodeCountdown();
+
     return true;
   }catch(e){
     console.error('安全付款碼建立失敗',e);
     currentPayCode='';
     payCodeExpiresAt=0;
-    setPayCodeCloudStatus('付款碼同步失敗，請按 🔄 重試',false);
+    setPayCodeCloudStatus('付款碼建立失敗，請按 🔄 重試',false);
     updatePayCodeCountdown();
     return false;
   }finally{
@@ -2657,31 +2809,40 @@ async function checkCurrentPayCodeStatus(){
     }
 
     if(status==='used'){
-      setPayCodeLiveStatus('付款完成', 'ok');
       stopPayCodeStatusMonitor();
+
+      const verified=await verifyYijiaPayPaymentCompleted(data);
+
+      if(!verified.ok){
+        setPayCodeLiveStatus('TM 已付款，正式資料寫入中…');
+        payCodeStatusTimer=setTimeout(
+          checkCurrentPayCodeStatus,
+          1800
+        );
+        return;
+      }
+
+      setPayCodeLiveStatus('付款已正式完成','ok');
 
       if(lastCompletedPayCode!==currentPayCode){
         lastCompletedPayCode=currentPayCode;
         payCodeNeedsRefreshAfterComplete=true;
+
+        if(Number.isFinite(verified.balance)){
+          yijiaPaySummary.walletBalance=verified.balance;
+
+          const payAmount=document.getElementById('payWalletAmount');
+          const payAmountInline=document.getElementById('payWalletAmountInline');
+
+          if(payAmount) payAmount.textContent=money(verified.balance);
+          if(payAmountInline) payAmountInline.textContent=money(verified.balance);
+        }
+
         openPayCompleteSheet(data);
 
-        // 只更新餘額 / 歷史，不重新載入已使用的付款碼。
-        try{
-          const {data:walletData,error:walletError}=await sb.rpc('app_get_yijiapay_wallet_balance');
-          if(!walletError && walletData!=null){
-            const b=typeof walletData==='object'
-              ? Number(walletData.walletBalance??walletData.balance??0)
-              : Number(walletData||0);
-            if(Number.isFinite(b)){
-              yijiaPaySummary.walletBalance=b;
-              const payAmount=document.getElementById('payWalletAmount');
-              const payAmountInline=document.getElementById('payWalletAmountInline');
-              if(payAmount) payAmount.textContent=money(b);
-              if(payAmountInline) payAmountInline.textContent=money(b);
-            }
-          }
-        }catch(e){}
-        try{ await loadYijiaPayHistory(); }catch(e){}
+        try{ await loadYijiaPayHistory(); }catch(_){}
+        try{ await loadWalletLedger(); }catch(_){}
+        try{ await loadNotificationCenter(false); }catch(_){}
       }
       return;
     }
@@ -9733,6 +9894,7 @@ async function loadWalletLedger(){
 
 let reloadHistorySnapshot='';
 let reloadHistoryLastBalance=null;
+let reloadFormalBalanceBefore=null;
 let reloadLiveTimer=null;
 let reloadLastNewestId=null;
 let reloadPageActive=false;
@@ -9774,28 +9936,25 @@ async function refreshReloadLiveData(){
     reloadHistoryLastBalance=balance;
 
     if(changed || balanceChanged){
+      const formal=await verifyYijiaPayReloadCompleted(
+        reloadFormalBalanceBefore??0
+      );
+
+      if(!formal.ok){
+        setReloadLiveStatus('TM 儲值已送出，正式入帳資料同步中…');
+        return;
+      }
+
+      reloadFormalBalanceBefore=formal.balance;
+
       showReloadSuccessNotice();
-      setReloadLiveStatus('儲值完成，已同步最新餘額');
+      setReloadLiveStatus('儲值已正式完成並入帳');
 
       await loadYijiaPayReloadPage(false);
 
-      try{
-        if(typeof loadYijiaPaySummary==='function'){
-          await loadYijiaPaySummary(false);
-        }
-      }catch(_){}
-
-      try{
-        if(typeof loadWalletLedger==='function'){
-          await loadWalletLedger();
-        }
-      }catch(_){}
-
-      try{
-        if(typeof loadNotificationCenter==='function'){
-          await loadNotificationCenter(false);
-        }
-      }catch(_){}
+      try{ await loadYijiaPaySummary(false); }catch(_){}
+      try{ await loadWalletLedger(); }catch(_){}
+      try{ await loadNotificationCenter(false); }catch(_){}
 
       setTimeout(()=>{
         if(reloadPageActive) setReloadLiveStatus('等待 TM 儲值');
@@ -9812,6 +9971,8 @@ function stopReloadLiveMonitor(){
     clearInterval(reloadLiveTimer);
     reloadLiveTimer=null;
   }
+
+  reloadFormalBalanceBefore=null;
 }
 
 function renderReloadMemberBarcode(){
@@ -9903,6 +10064,7 @@ async function loadYijiaPayReloadPage(startMonitor=true){
 
     reloadHistorySnapshot=makeReloadHistorySnapshot(data||{});
     reloadHistoryLastBalance=balance;
+    if(reloadFormalBalanceBefore===null) reloadFormalBalanceBefore=balance;
 
     if(startMonitor && !reloadPageActive){
       startReloadLiveMonitor();
