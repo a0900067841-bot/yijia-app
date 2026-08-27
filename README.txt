@@ -1,35 +1,23 @@
-億家 App v0.10.13.8 Anybuy Core Refresh
+億家 App v0.10.13.9 Pay Barcode Scan Fix
 
-這版開始收尾「隨買跨店取」既有功能的正式同步，不新增新的玩法。
+這版處理實機測試發現的問題：
+- QR Code 可掃描
+- Code128 付款條碼無法被 TM 掃描
 
-完成：
-- 進入「我的商品」時重新讀正式 app_get_member_products
-- 進入「訂單管理」時重新讀正式 app_get_anybuy_order_history
-- 進入「商品使用紀錄」時重新讀正式 app_get_product_usage_history
-- 進入「轉贈 / 領取」時重新讀正式 app_get_gift_transfer_data
-- 訂閱 / 預約頁仍讀正式既有 RPC
-- 商品兌換成功後：
-  - 更新我的商品
-  - 更新使用紀錄
-  - 更新通知中心
-- 退貨申請成功後：
-  - 更新我的商品
-  - 更新訂單
-  - 更新使用紀錄
-  - 更新通知中心
-- 轉贈 / 領取成功後：
-  - 更新我的商品
-  - 更新使用紀錄
-  - 更新轉贈資料
-  - 更新通知中心
-- 訂單完成後統一更新：
-  - 訂單
-  - 我的商品
-  - 使用紀錄
-  - 通知中心
+修正：
+- Code128 module width 改成整數 1px
+- 高度提高到 100px
+- 左右 quiet zone 增加
+- 加入 shape-rendering: crispEdges
+- 不再讓 Safari 對 Code128 SVG 做 max-width 縮放
+- 避免長條碼被縮成小數像素產生反鋸齒
+- QR Code 邏輯完全不動
+- 付款 token / RPC / 60 秒規則完全不動
 
-這版的目的：
-讓隨買跨店取各頁面都以正式後端資料重新同步，避免頁面停留舊資料。
+原因：
+原本 Code128 使用 width 1.5，而且 SVG 受 max-width:95% 縮放。
+長付款碼在 iPhone Safari 上可能再次被比例縮小，造成條紋寬度落在小數像素，
+肉眼看正常，但實體掃描器可能無法穩定辨識。
 
 此版純前端。
 不用跑 SQL，只上傳新的 index.html。

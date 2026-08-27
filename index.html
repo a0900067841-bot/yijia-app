@@ -998,6 +998,26 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   color:#176c34;border-radius:14px;padding:12px 14px;margin-top:12px;
   font-weight:800;text-align:center
 }
+
+/* v0.10.13.9 億家Pay Code128 實機掃描修正 */
+.pay-screen-code-host:not(.qr-mode){
+  min-height:132px;
+  overflow:hidden;
+  padding:4px 0;
+}
+.pay-screen-code-host:not(.qr-mode) svg.pay-code128-svg{
+  display:block;
+  max-width:none!important;
+  width:auto!important;
+  height:100px!important;
+  margin:0 auto;
+  background:#fff;
+  shape-rendering:crispEdges;
+}
+.pay-screen-code-card:not(.qr-active){
+  padding-left:12px;
+  padding-right:12px;
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -1662,7 +1682,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.8 Anybuy Core Refresh</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.9 Pay Barcode Scan Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2286,13 +2306,20 @@ function renderPayCode(){
       });
     }else if(window.JsBarcode){
       const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      svg.classList.add('pay-code128-svg');
+      svg.setAttribute('shape-rendering','crispEdges');
       host.appendChild(svg);
+
+      // Code128 付款碼使用整數 module width，避免 Safari 把長條碼縮放成
+      // 小數像素後產生反鋸齒，造成 TM 掃描器無法辨識。
       JsBarcode(svg,currentPayCode,{
         format:'CODE128',
         displayValue:false,
-        height:72,
-        width:1.5,
-        margin:8
+        height:100,
+        width:1,
+        margin:12,
+        background:'#ffffff',
+        lineColor:'#000000'
       });
     }else{
       host.textContent=currentPayCode;
@@ -2310,7 +2337,7 @@ function renderPayCode(){
 
   if(bottom) bottom.textContent=payCodeMode==='qr'
     ? '結帳時請出示 QR Code。'
-    : '結帳時請出示付款條碼。';
+    : '結帳時請將完整付款條碼置於掃描器前，勿放大或縮小頁面。';
 }
 
 
