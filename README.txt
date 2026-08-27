@@ -1,30 +1,27 @@
-億家 App v0.10.13.22 Wallet Refund Live Sync
+億家 App v0.10.13.23 Reload History Live Sync
 
-這版把「億家Pay退款完成後 App 即時更新」正式接完整。
+這版把億家Pay「現金儲值完成後的 App 即時同步」再補完整。
 
-付款完成明細：
-- 打開一筆已完成付款後，每 3 秒讀 app_get_yijiapay_pay_code_status()
-- TM 執行部分退款 / 全額退款後：
-  - 已退款金額即時更新
-  - 剩餘可退款金額即時更新
-  - 顯示「部分退款」或「已全額退款」
-  - 更新正式錢包餘額
-  - 更新完整交易紀錄
-  - 更新首頁近期交易
-  - 更新錢包帳本
-  - 更新通知中心
-- 關閉付款明細後停止輪詢
+完成：
+- 儲值頁每 2.5 秒讀 app_get_my_yijiapay_reload_summary()
+- 不只看最新一筆儲值 ID，也比較：
+  - walletBalance
+  - monthlyLimit
+  - usedThisMonth
+  - remainingThisMonth
+  - recentReloads
+- TM 完成儲值後，App 自動更新：
+  - 儲值成功提示
+  - 儲值頁錢包餘額
+  - 本月現金儲值額度
+  - 最近儲值紀錄
+  - 億家Pay首頁餘額
+  - 錢包帳本
+  - 通知中心
+- 即使後端 recentReloads 的 id 欄位型態不同，只要正式餘額或歷史資料變動仍可偵測。
 
-完整交易紀錄：
-- 進入億家Pay交易紀錄後，每 10 秒重新讀正式付款歷史
-- 有退款的交易會顯示：
-  - 部分退款 / 已退款
-  - 已退款金額
-  - 剩餘可退款
-- 狀態變更時同步更新錢包與通知
-
-不新增退款邏輯。
-退款仍由 TM 正式 tm_refund_yijiapay_payment() 執行，
+不新增儲值邏輯。
+儲值仍由 TM 正式 tm_reload_yijiapay_wallet() 執行，
 App 只讀正式結果。
 
 此版純前端，不用跑 SQL。

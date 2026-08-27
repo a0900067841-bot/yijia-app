@@ -1691,7 +1691,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.22 Wallet Refund Live Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.23 Reload History Live Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -8527,9 +8527,80 @@ async function loadWalletLedger(){
 }
 
 
+let reloadHistorySnapshot='';
+let reloadHistoryLastBalance=null;
 let reloadLiveTimer=null;
 let reloadLastNewestId=null;
 let reloadPageActive=false;
+
+
+function makeReloadHistorySnapshot(summary){
+  const rows=Array.isArray(summary?.recentReloads)?summary.recentReloads:[];
+  return JSON.stringify({
+    walletBalance:summary?.walletBalance??null,
+    monthlyLimit:summary?.monthlyLimit??null,
+    usedThisMonth:summary?.usedThisMonth??null,
+    remainingThisMonth:summary?.remainingThisMonth??null,
+    recentReloads:rows.map(r=>({
+      id:r.id||r.tmSaleId||r.createdAt||'',
+      amount:r.amount??null,
+      storeCode:r.storeCode||'',
+      tmSaleId:r.tmSaleId||'',
+      createdAt:r.createdAt||''
+    }))
+  });
+}
+
+async function refreshReloadLiveData(){
+  if(!reloadPageActive || !currentUser || document.hidden) return;
+
+  try{
+    const {data,error}=await sb.rpc('app_get_my_yijiapay_reload_summary');
+    if(error) throw error;
+
+    const next=makeReloadHistorySnapshot(data||{});
+    const changed=reloadHistorySnapshot && reloadHistorySnapshot!==next;
+
+    const balance=Number(data?.walletBalance??0);
+    const balanceChanged=
+      reloadHistoryLastBalance!==null &&
+      balance!==reloadHistoryLastBalance;
+
+    reloadHistorySnapshot=next;
+    reloadHistoryLastBalance=balance;
+
+    if(changed || balanceChanged){
+      showReloadSuccessNotice();
+      setReloadLiveStatus('儲值完成，已同步最新餘額');
+
+      await loadYijiaPayReloadPage(false);
+
+      try{
+        if(typeof loadYijiaPaySummary==='function'){
+          await loadYijiaPaySummary(false);
+        }
+      }catch(_){}
+
+      try{
+        if(typeof loadWalletLedger==='function'){
+          await loadWalletLedger();
+        }
+      }catch(_){}
+
+      try{
+        if(typeof loadNotificationCenter==='function'){
+          await loadNotificationCenter(false);
+        }
+      }catch(_){}
+
+      setTimeout(()=>{
+        if(reloadPageActive) setReloadLiveStatus('等待 TM 儲值');
+      },3500);
+    }
+  }catch(e){
+    console.warn('儲值即時同步失敗',e);
+  }
+}
 
 function stopReloadLiveMonitor(){
   reloadPageActive=false;
@@ -8576,41 +8647,7 @@ function showReloadSuccessNotice(){
 }
 
 async function pollReloadResult(){
-  if(!reloadPageActive || !currentUser) return;
-
-  try{
-    const {data,error}=await sb.rpc('app_get_my_yijiapay_reload_summary');
-    if(error) throw error;
-
-    const rows=Array.isArray(data?.recentReloads)?data.recentReloads:[];
-    const newest=rows[0]||null;
-    const newestId=newest?.id||newest?.tmSaleId||newest?.createdAt||null;
-
-    if(reloadLastNewestId===null){
-      reloadLastNewestId=newestId;
-      return;
-    }
-
-    if(newestId && newestId!==reloadLastNewestId){
-      reloadLastNewestId=newestId;
-      showReloadSuccessNotice();
-      setReloadLiveStatus('儲值完成，已同步最新餘額');
-      await loadYijiaPayReloadPage(false);
-
-      // 同步支付頁錢包餘額，方便立刻回億家Pay測試付款。
-      try{
-        if(typeof loadYijiaPaySummary==='function'){
-          await loadYijiaPaySummary(false);
-        }
-      }catch(_){}
-
-      setTimeout(()=>{
-        if(reloadPageActive) setReloadLiveStatus('等待 TM 儲值');
-      },3500);
-    }
-  }catch(e){
-    console.warn('儲值即時同步失敗',e);
-  }
+  await refreshReloadLiveData();
 }
 
 function startReloadLiveMonitor(){
@@ -8659,6 +8696,9 @@ async function loadYijiaPayReloadPage(startMonitor=true){
     const newest=rows[0]||null;
     const newestId=newest?.id||newest?.tmSaleId||newest?.createdAt||null;
     if(reloadLastNewestId===null) reloadLastNewestId=newestId;
+
+    reloadHistorySnapshot=makeReloadHistorySnapshot(data||{});
+    reloadHistoryLastBalance=balance;
 
     if(startMonitor && !reloadPageActive){
       startReloadLiveMonitor();
