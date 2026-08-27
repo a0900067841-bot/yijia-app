@@ -1691,7 +1691,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.17 Gift Claim Live Sync</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.13.18 Subscription Reservation Sync</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1848,11 +1848,13 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
 <section id="subscriptionManagement" class="view">
   <div class="header2"><button class="back" onclick="showView('anybuyCenter')">‹</button><h2>訂閱管理</h2></div>
+  <div id="subscriptionSyncStatus" class="small-muted" style="margin:0 4px 10px">正式訂閱資料同步中…</div>
   <div id="subscriptionList"><div class="empty-panel">訂閱資料載入中…</div></div>
 </section>
 
 <section id="reservationManagement" class="view">
   <div class="header2"><button class="back" onclick="showView('anybuyCenter')">‹</button><h2>預約管理</h2></div>
+  <div id="reservationSyncStatus" class="small-muted" style="margin:0 4px 10px">正式預約資料同步中…</div>
   <div id="reservationList"><div class="empty-panel">預約資料載入中…</div></div>
 </section>
 
@@ -2076,6 +2078,12 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(id==='subscriptionManagement' || id==='reservationManagement'){
+    setTimeout(()=>startSubscriptionReservationMonitor(),0);
+  }else{
+    stopSubscriptionReservationMonitor();
+  }
+
   if(id!=='giftTransfer'){
     stopGiftClaimMonitor();
   }
@@ -2084,15 +2092,15 @@ function showView(id){
     stopReturnStatusMonitor();
   }
 
-  if(['myProducts','orderManagement','productUsage','giftTransfer','subscriptions','reservations'].includes(id)){
+  if(['myProducts','orderManagement','productUsage','giftTransfer','subscriptionManagement','reservationManagement'].includes(id)){
     setTimeout(()=>{
       refreshAnybuyCoreData({
         products:id==='myProducts',
         orders:id==='orderManagement',
         usage:id==='productUsage',
         gifts:id==='giftTransfer',
-        subscriptions:id==='subscriptions',
-        reservations:id==='reservations',
+        subscriptions:id==='subscriptionManagement',
+        reservations:id==='reservationManagement',
         notifications:true
       });
     },0);
@@ -7090,6 +7098,139 @@ function openOrderDetail(encoded){
   showView('orderDetail');
 }
 
+
+let subscriptionReservationTimer=null;
+let subscriptionSnapshot='';
+let reservationSnapshot='';
+
+function stopSubscriptionReservationMonitor(){
+  if(subscriptionReservationTimer){
+    clearInterval(subscriptionReservationTimer);
+    subscriptionReservationTimer=null;
+  }
+}
+
+function normalizeStatusSnapshot(rows){
+  return JSON.stringify(
+    (Array.isArray(rows)?rows:[]).map(x=>({
+      id:x.id||x.subscriptionId||x.reservationId||x.code||'',
+      status:x.status||'',
+      nextDate:x.nextDate||'',
+      reservationDate:x.reservationDate||'',
+      updatedAt:x.updatedAt||x.updated_at||''
+    }))
+  );
+}
+
+async function refreshSubscriptionReservationLive(){
+  if(!currentUser || document.hidden) return;
+
+  const subActive=document.getElementById('subscriptionManagement')?.classList.contains('active');
+  const resActive=document.getElementById('reservationManagement')?.classList.contains('active');
+  if(!subActive && !resActive) return;
+
+  try{
+    if(subActive){
+      const {data,error}=await sb.rpc('app_get_member_subscriptions');
+      if(error) throw error;
+
+      const rows=Array.isArray(data)?data:[];
+      const next=normalizeStatusSnapshot(rows);
+      const changed=subscriptionSnapshot && subscriptionSnapshot!==next;
+      subscriptionSnapshot=next;
+
+      renderSubscriptionRows(rows);
+      const status=document.getElementById('subscriptionSyncStatus');
+      if(status) status.textContent=changed?'訂閱狀態已更新':'已同步正式訂閱資料';
+
+      if(changed && typeof loadNotificationCenter==='function'){
+        try{ await loadNotificationCenter(false); }catch(_){}
+      }
+    }
+
+    if(resActive){
+      const {data,error}=await sb.rpc('app_get_member_reservations');
+      if(error) throw error;
+
+      const rows=Array.isArray(data)?data:[];
+      const next=normalizeStatusSnapshot(rows);
+      const changed=reservationSnapshot && reservationSnapshot!==next;
+      reservationSnapshot=next;
+
+      renderReservationRows(rows);
+      const status=document.getElementById('reservationSyncStatus');
+      if(status) status.textContent=changed?'預約狀態已更新':'已同步正式預約資料';
+
+      if(changed && typeof loadNotificationCenter==='function'){
+        try{ await loadNotificationCenter(false); }catch(_){}
+      }
+    }
+  }catch(e){
+    console.warn('訂閱 / 預約即時同步失敗',e);
+  }
+}
+
+function startSubscriptionReservationMonitor(){
+  stopSubscriptionReservationMonitor();
+  refreshSubscriptionReservationLive();
+  subscriptionReservationTimer=setInterval(
+    refreshSubscriptionReservationLive,
+    10000
+  );
+}
+
+function renderSubscriptionRows(rows){
+  const box=document.getElementById('subscriptionList');
+  if(!box) return;
+
+  if(!rows.length){
+    box.innerHTML='<div class="empty-panel">目前沒有訂閱方案</div>';
+    return;
+  }
+
+  box.innerHTML=rows.map(x=>`
+    <div class="history-card2">
+      <div class="top">
+        <div>
+          <div class="title">${safeText(x.name||'訂閱方案')}</div>
+          <div class="meta">
+            下次日期：${safeText(x.nextDate||'--')}<br>
+            頻率：${safeText(x.frequency||'--')}
+          </div>
+        </div>
+        <span class="status-pill">${safeText(x.status||'啟用')}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderReservationRows(rows){
+  const box=document.getElementById('reservationList');
+  if(!box) return;
+
+  if(!rows.length){
+    box.innerHTML='<div class="empty-panel">目前沒有預約商品</div>';
+    return;
+  }
+
+  box.innerHTML=rows.map(x=>`
+    <div class="history-card2">
+      <div class="top">
+        <div>
+          <div class="title">${safeText(x.name||'預約商品')}</div>
+          <div class="meta">
+            預約日期：${safeText(x.reservationDate||'--')}<br>
+            門市：${safeText(x.storeName||x.storeCode||'--')}
+          </div>
+        </div>
+        <span class="status-pill ${String(x.status||'').includes('取消')?'red':''}">
+          ${safeText(x.status||'預約中')}
+        </span>
+      </div>
+    </div>
+  `).join('');
+}
+
 async function loadSubscriptions(){
   const box=document.getElementById('subscriptionList');
   if(!box||!currentUser)return;
@@ -7101,11 +7242,10 @@ async function loadSubscriptions(){
     return;
   }
   const rows=Array.isArray(data)?data:[];
-  if(!rows.length){box.innerHTML='<div class="empty-panel">目前沒有訂閱方案</div>';return;}
-  box.innerHTML=rows.map(x=>`
-    <div class="history-card2">
-      <div class="top"><div><div class="title">${safeText(x.name||'訂閱方案')}</div><div class="meta">下次日期：${safeText(x.nextDate||'--')}<br>頻率：${safeText(x.frequency||'--')}</div></div><span class="status-pill">${safeText(x.status||'啟用')}</span></div>
-    </div>`).join('');
+  subscriptionSnapshot=normalizeStatusSnapshot(rows);
+  renderSubscriptionRows(rows);
+  const status=document.getElementById('subscriptionSyncStatus');
+  if(status) status.textContent='已同步正式訂閱資料';
 }
 
 async function loadReservations(){
@@ -7119,11 +7259,10 @@ async function loadReservations(){
     return;
   }
   const rows=Array.isArray(data)?data:[];
-  if(!rows.length){box.innerHTML='<div class="empty-panel">目前沒有預約商品</div>';return;}
-  box.innerHTML=rows.map(x=>`
-    <div class="history-card2">
-      <div class="top"><div><div class="title">${safeText(x.name||'預約商品')}</div><div class="meta">預約日期：${safeText(x.reservationDate||'--')}<br>門市：${safeText(x.storeName||x.storeCode||'--')}</div></div><span class="status-pill ${String(x.status||'').includes('取消')?'red':''}">${safeText(x.status||'預約中')}</span></div>
-    </div>`).join('');
+  reservationSnapshot=normalizeStatusSnapshot(rows);
+  renderReservationRows(rows);
+  const status=document.getElementById('reservationSyncStatus');
+  if(status) status.textContent='已同步正式預約資料';
 }
 
 

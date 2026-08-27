@@ -1,23 +1,20 @@
-億家 App v0.10.13.17 Gift Claim Live Sync
+億家 App v0.10.13.18 Subscription Reservation Sync
 
-這版把「隨買跨店取 → 社群轉贈 / 領取」完成狀態即時同步接完整。
+這版把既有「訂閱管理 / 預約管理」正式資料同步接完整，不新增尚未定案的新規則。
 
 完成：
-- 產生 YG 社群領取碼後，每 3 秒讀 app_get_gift_transfer_data()
-- 依 giftCode 找到正式轉贈紀錄
-- 對方完成領取後：
-  - App 自動顯示「對方已完成領取」
-  - 標題改成「轉贈已完成」
-  - 提示此領取碼不能再次使用
-  - 更新我的商品
-  - 更新商品使用紀錄
-  - 更新轉贈紀錄
-  - 更新通知中心
-- 直接轉贈給指定會員時，立即顯示「已直接轉贈完成」
-- 離開轉贈頁後停止輪詢
+- 訂閱管理讀取 app_get_member_subscriptions()
+- 預約管理讀取 app_get_member_reservations()
+- 進入任一頁後每 10 秒重新同步正式狀態
+- 偵測到狀態變更時即時更新畫面
+- 狀態變更時同步刷新通知中心
+- 離開訂閱 / 預約頁後停止輪詢
+- 修正先前 Anybuy Core Refresh 使用 subscriptions / reservations 錯誤 view id，
+  改為實際 subscriptionManagement / reservationManagement
 
-不新增第二套轉贈資料。
-仍以 app_get_gift_transfer_data() 為正式來源。
+目前只同步已存在的正式資料與狀態。
+不自行新增訂閱取消、修改頻率、預約取消等商業規則，
+那些等 SC / TM 正式規則確定後再接。
 
 此版純前端，不用跑 SQL。
 只需要上傳新的 index.html。
