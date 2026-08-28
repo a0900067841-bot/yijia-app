@@ -975,7 +975,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 .wallet-ledger-amount.out{color:#b42318}
 .wallet-ledger-meta{font-size:12px;color:#7a828a;line-height:1.55;margin-top:6px}
 
-/* v0.10.13.6 儲值測試正式接通 */
+/* 億家Pay 現金儲值正式流程 */
 .reload-member-card{
   background:#fff;border:1px solid var(--line);border-radius:18px;
   padding:16px;margin:14px 0;text-align:center
@@ -1094,7 +1094,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div id="cartSummary" class="cart-summary" style="display:none">
     <div class="cart-summary-row"><span>商品組數</span><strong id="cartUnits">0</strong></div>
     <div class="cart-summary-row"><span>商品總額</span><strong id="cartTotal" class="cart-total">$0</strong></div>
-    <div class="dev-flow-note">下一步可選擇可用的付款方式；店舖結帳會建立待付款訂單並產生本次結帳 QR Code。</div>
+    <div class="dev-flow-note">選擇付款方式後完成正式結帳；店舖結帳會建立待付款訂單並產生本次結帳 QR Code。</div>
     <button id="cartCheckoutBtn" class="cart-checkout" onclick="openCheckout()">前往結帳</button>
   </div>
 </section>
@@ -1535,15 +1535,15 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
   <div class="section-title"><h3>付款方式</h3><button onclick="showView('paymentMethods')">管理</button></div>
   <div class="list">
-    <div class="pay-method" onclick="showView('paymentMethods')">
+    <div class="pay-method" style="opacity:.55;cursor:default">
       <div class="method-icon">💳</div>
-      <div class="grow"><strong>信用卡／簽帳金融卡</strong><small id="payCardSummary">尚未接正式金流</small></div>
-      <span>›</span>
+      <div class="grow"><strong>信用卡／簽帳金融卡</strong><small id="payCardSummary">目前未提供</small></div>
+      <span>—</span>
     </div>
-    <div class="pay-method" onclick="showView('paymentMethods')">
+    <div class="pay-method" style="opacity:.55;cursor:default">
       <div class="method-icon">🏦</div>
-      <div class="grow"><strong>銀行帳戶</strong><small>尚未接正式授權流程</small></div>
-      <span>›</span>
+      <div class="grow"><strong>銀行帳戶</strong><small>目前未提供</small></div>
+      <span>—</span>
     </div>
     <div class="pay-method" onclick="showView('pointDiscount');openPointDiscount()">
       <div class="method-icon">🪙</div>
@@ -1577,7 +1577,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div class="section-title"><h3>安全與設定</h3></div>
   <div class="list">
     <div class="row" style="opacity:.6">
-      <div><strong>付款驗證</strong><small>Face ID／Passkey 將於正式 WebAuthn 後端完成後啟用</small></div><span>—</span>
+      <div><strong>付款驗證</strong><small>Face ID／Passkey 裝置驗證目前未開放</small></div><span>—</span>
     </div>
     <div class="row" onclick="showView('yijiaPayLimits')">
       <div><strong>付款限額</strong><small id="payLimitSummary">讀取正式限額中…</small></div><span>›</span>
@@ -1602,7 +1602,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   </div>
 
   <div id="yijiaPayLimitStatus" class="small-muted" style="margin:0 4px 10px">
-    正在讀取正式付款限額…
+    正在讀取付款限額…
   </div>
 
   <div class="profile-card">
@@ -1633,7 +1633,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <label>每日上限（NT$）</label>
       <input id="payLimitDailyInput" type="number" min="1" step="1" inputmode="numeric">
     </div>
-    <button id="payLimitSaveBtn" class="profile-save" onclick="saveYijiaPayLimitsFormal()">儲存正式付款限額</button>
+    <button id="payLimitSaveBtn" class="profile-save" onclick="saveYijiaPayLimitsFormal()">儲存付款限額</button>
     <div id="payLimitMsg" class="auth-msg"></div>
   </div>
 
@@ -1677,7 +1677,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   </div>
 
   <div id="paymentMethodsStatus" class="small-muted" style="margin:0 4px 10px">
-    正式付款方式狀態讀取中…
+    付款方式狀態讀取中…
   </div>
 
   <div class="list">
@@ -1703,7 +1703,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <div class="method-icon">💳</div>
       <div class="grow">
         <strong>信用卡／簽帳金融卡</strong>
-        <small>尚未接正式金流服務商，App 不會假裝已綁卡</small>
+        <small>目前未提供信用卡綁定</small>
       </div>
       <span>—</span>
     </div>
@@ -1712,15 +1712,14 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <div class="method-icon">🏦</div>
       <div class="grow">
         <strong>銀行帳戶</strong>
-        <small>尚未接正式金流／銀行授權流程</small>
+        <small>目前未提供銀行帳戶綁定</small>
       </div>
       <span>—</span>
     </div>
   </div>
 
   <div class="note" style="margin-top:12px">
-    目前正式可使用的付款來源，只顯示後端已接通的方式。
-    信用卡與銀行帳戶在正式金流服務商尚未串接前，不提供假的綁定或付款按鈕。
+    目前只顯示已正式開放的付款方式；尚未開放的方式不提供操作按鈕。
   </div>
 </section>
 
@@ -1872,7 +1871,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.7 Guide Rights Formal Content Flow</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.8 Production Surface Cleanup</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2150,6 +2149,8 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="profile-row"><label>會員資料</label><div class="value">Supabase 正式同步</div></div>
     <div class="profile-row"><label>交易資料</label><div class="value">正式後端 RPC</div></div>
     <div class="profile-row"><label>更新方式</label><div class="value">GitHub Pages</div></div>
+    <div class="profile-row"><label>Face ID／Passkey</label><div class="value">目前未開放</div></div>
+    <div class="profile-row"><label>信用卡／銀行帳戶</label><div class="value">目前未開放</div></div>
   </div>
 </section>
 
@@ -2161,7 +2162,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   </div>
 
   <div id="memberIdentityStatus" class="small-muted" style="margin:0 4px 10px">
-    正在同步總部正式會員資料…
+    正在同步會員資料…
   </div>
 
   <div class="hero center">
@@ -2221,7 +2222,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <div><strong>密碼</strong><small>變更登入密碼</small></div><span class="chev">›</span>
     </div>
     <div class="account-row">
-      <div><strong>裝置生物辨識</strong><small>網頁版不建立假的 Face ID 開關；之後改用正式裝置驗證再啟用</small></div>
+      <div><strong>裝置生物辨識</strong><small>Face ID／Passkey 裝置驗證目前未開放</small></div>
     </div>
   </div>
 
@@ -2254,7 +2255,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   </div>
 
   <div id="memberCancellationStatus" class="small-muted" style="margin:0 4px 10px">
-    正在讀取正式申請狀態…
+    正在讀取申請狀態…
   </div>
 
   <div class="profile-card">
@@ -2360,7 +2361,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div class="auth-box">
     <div class="auth-brand">
       <div class="logo">億</div>
-      <div><h1>億家 App</h1><p>會員登入</p><span class="dev-badge">測試連線版</span></div>
+      <div><h1>億家 App</h1><p>會員登入</p></div>
     </div>
     <div class="auth-tabs">
       <button id="loginTab" class="auth-tab active" onclick="setAuthMode('login')">登入</button>
@@ -5638,7 +5639,7 @@ async function loadMemberIdentityFormal(){
   if(!currentUser) return null;
 
   const status=document.getElementById('memberIdentityStatus');
-  if(status) status.textContent='正在同步總部正式會員資料…';
+  if(status) status.textContent='正在同步會員資料…';
 
   try{
     const {data,error}=await sb.rpc('app_current_member_json');
@@ -5687,7 +5688,7 @@ async function loadMemberIdentityFormal(){
     try{ renderReloadMemberBarcode(); }catch(_){}
     try{ renderPointDiscountMemberCode(); }catch(_){}
 
-    if(status) status.textContent='已同步總部正式會員資料';
+    if(status) status.textContent='會員資料已更新';
     return {ok:true,member,formalCode};
   }catch(e){
     console.error('正式會員身份同步失敗',e);
@@ -5699,7 +5700,7 @@ async function loadMemberIdentityFormal(){
     const codeValue=document.getElementById('memberIdentityCodeValue');
     if(no) no.textContent='尚未同步';
     if(codeValue) codeValue.textContent='--';
-    if(status) status.textContent='正式會員資料同步失敗：'+(e?.message||e);
+    if(status) status.textContent='會員資料同步失敗：'+(e?.message||e);
 
     return {ok:false,error:e};
   }
@@ -5802,7 +5803,7 @@ async function loadMemberCancellationFormal(){
   const submitBtn=document.getElementById('memberCancellationSubmitBtn');
   const withdrawBtn=document.getElementById('memberCancellationWithdrawBtn');
 
-  if(statusEl) statusEl.textContent='正在讀取正式申請狀態…';
+  if(statusEl) statusEl.textContent='正在讀取申請狀態…';
 
   try{
     const [{data:statusData,error:statusError},eligibility]
@@ -5844,7 +5845,7 @@ async function loadMemberCancellationFormal(){
       withdrawBtn.style.display=pending?'block':'none';
     }
 
-    if(statusEl) statusEl.textContent='已同步正式取消會員申請狀態';
+    if(statusEl) statusEl.textContent='申請狀態已更新';
   }catch(e){
     console.error('取消會員申請狀態讀取失敗',e);
     if(statusEl) statusEl.textContent='取消會員申請狀態讀取失敗';
@@ -7681,7 +7682,7 @@ async function loadYijiaPayLimitsFormal(){
 
   const status=document.getElementById('yijiaPayLimitStatus');
 
-  if(status) status.textContent='正在讀取正式付款限額…';
+  if(status) status.textContent='正在讀取付款限額…';
 
   try{
     const {data,error}=await sb.rpc('app_get_yijiapay_payment_limits');
@@ -7712,7 +7713,7 @@ async function loadYijiaPayLimitsFormal(){
       summary.textContent=`單筆 ${money(formalPayLimitPerTxn)} · 每日 ${money(formalPayLimitDaily)}`;
     }
 
-    if(status) status.textContent='已同步正式付款限額';
+    if(status) status.textContent='付款限額已更新';
 
     return {
       perTransactionLimit:formalPayLimitPerTxn,
@@ -7756,7 +7757,7 @@ async function saveYijiaPayLimitsFormal(){
     btn.textContent='儲存中…';
   }
 
-  setMsg('正在儲存正式付款限額…');
+  setMsg('正在儲存付款限額…');
 
   try{
     const {data,error}=await sb.rpc('app_set_yijiapay_payment_limits',{
@@ -7781,7 +7782,7 @@ async function saveYijiaPayLimitsFormal(){
   }finally{
     if(btn){
       btn.disabled=false;
-      btn.textContent='儲存正式付款限額';
+      btn.textContent='儲存付款限額';
     }
   }
 }
@@ -7835,7 +7836,7 @@ async function loadYijiaPaySecuritySettings(){
       btn.disabled=true;
       btn.textContent='安全設定讀取失敗';
     }
-    if(summary) summary.textContent='正式安全設定讀取失敗';
+    if(summary) summary.textContent='安全設定讀取失敗';
     return null;
   }
 }
@@ -7930,7 +7931,7 @@ async function loadPaymentMethodsFormalStatus(){
   const points=document.getElementById('paymentMethodPointsStatus');
   const pointsMark=document.getElementById('paymentMethodPointsMark');
 
-  if(status) status.textContent='正在讀取正式付款方式狀態…';
+  if(status) status.textContent='正在讀取付款方式狀態…';
 
   let ok=true;
 
@@ -7974,7 +7975,7 @@ async function loadPaymentMethodsFormalStatus(){
 
   if(status){
     status.textContent=ok
-      ? '已同步正式付款方式狀態'
+      ? '付款方式狀態已更新'
       : '部分付款方式狀態讀取失敗';
   }
 }
