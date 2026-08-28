@@ -1918,7 +1918,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.1 YijiaPay PIN Security Flow</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.2 Redeem QR Display Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -9435,6 +9435,7 @@ function openRedeemTicket(encoded){
   if(successNotice) successNotice.style.display='none';
   redeemTicketCompleted=false;
   redeemTicketStartRemaining=remain;
+  redeemTicketExpiresAt=null;
 
   document.getElementById('redeemTicketSetup').style.display='block';
   document.getElementById('redeemTicketQrWrap').style.display='none';
@@ -9574,8 +9575,36 @@ async function createRedeemTicket(){
     redeemTicketCompleted=false;
 
     const code=verified.code;
-    const codeText=document.getElementById('redeemTicketCodeText');
+
+    // 建立成功後切換到 QR 顯示區。
+    const setup=document.getElementById('redeemTicketSetup');
+    const qrWrap=document.getElementById('redeemTicketQrWrap');
+    if(setup) setup.style.display='none';
+    if(qrWrap) qrWrap.style.display='block';
+
+    // 畫面實際使用的欄位 id 是 redeemTicketCode。
+    const codeText=document.getElementById('redeemTicketCode');
     if(codeText) codeText.textContent=code;
+
+    const summary=document.getElementById('redeemTicketSummary');
+    if(summary){
+      summary.innerHTML=
+        `商品：<strong>${safeText(formalBefore.row.name||'商品')}</strong><br>`+
+        `本次兌換：<strong>${Number(qty)} 件</strong>`;
+    }
+
+    // 兌換碼固定 600 秒有效；若後端有回 expiresAt 則優先使用後端時間。
+    const expiresRaw=
+      data?.expiresAt ||
+      data?.expires_at ||
+      data?.expiredAt ||
+      null;
+
+    const parsedExpiry=expiresRaw?new Date(expiresRaw):null;
+    redeemTicketExpiresAt=
+      parsedExpiry && !Number.isNaN(parsedExpiry.getTime())
+        ? parsedExpiry
+        : new Date(Date.now()+600000);
 
     const qr=document.getElementById('redeemTicketQr');
     if(qr){
@@ -9593,7 +9622,10 @@ async function createRedeemTicket(){
     }
 
     const status=document.getElementById('redeemTicketCountdown');
-    if(status) status.textContent='等待 TM 掃描兌換';
+    if(status){
+      status.style.color='';
+      status.textContent='條碼有效期限：600秒';
+    }
 
     startRedeemTicketCountdown();
     startRedeemTicketCompletionMonitor(code,qty);
@@ -9705,6 +9737,7 @@ function startRedeemTicketCountdown(){
 
 function closeRedeemTicket(){
   stopRedeemTicketCountdown();
+  redeemTicketExpiresAt=null;
   stopRedeemTicketSyncMonitor();
   selectedRedeemProduct=null;
   showView('products');
@@ -9724,6 +9757,7 @@ function closeRedeemTicket(){
 
 function cancelRedeemTicketView(){
   stopRedeemTicketCountdown();
+  redeemTicketExpiresAt=null;
   stopRedeemTicketSyncMonitor();
   selectedRedeemProduct=null;
   loadMyProducts();

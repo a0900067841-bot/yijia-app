@@ -1,25 +1,28 @@
-億家 App v0.10.16.1 YijiaPay PIN Security Flow
+億家 App v0.10.16.2 Redeem QR Display Fix
 
-正式新增：
-進入億家Pay前必須輸入 4 位數安全密碼。
+修正使用者實機回報：
+YD 兌換碼建立成功，但 QR Code 畫面沒有顯示。
 
-流程：
-- 第一次進入億家Pay：建立 4 位數安全密碼並再次確認
-- 後續每次重新進入億家Pay：先驗證 4 位數安全密碼
-- 在億家Pay內切換錢包、點數折抵、付款紀錄、付款限額等頁面，不重複要求
-- 一旦離開億家Pay區域，就重新鎖定
-- 再次進入時必須重新輸入
-- 登出時強制重新鎖定
+原因：
+1. app_create_redeem_ticket 成功後只建立 QR，
+   但沒有把 redeemTicketSetup 隱藏、redeemTicketQrWrap 顯示。
+2. 程式寫入 redeemTicketCodeText，
+   但 HTML 真正的欄位 id 是 redeemTicketCode。
+3. redeemTicketExpiresAt 沒有在建立成功時設定，
+   倒數計時因此無法正常開始。
 
-後端安全：
-- PIN 只保存 PostgreSQL crypt() 雜湊，不保存明碼
-- 連續輸入錯誤會記錄失敗次數
-- 5 次錯誤後暫時鎖定 5 分鐘
-- 正確驗證後清除失敗次數
+本版修正：
+- 建立成功後立即切換到 QR 畫面
+- 正確顯示 YD 兌換碼文字
+- 正確顯示商品與本次兌換數量
+- 後端有 expiresAt 時使用後端期限
+- 否則依規則使用 600 秒
+- 每次新建兌換碼都重設倒數與狀態
+- 返回我的商品後清除舊的 expiry 狀態
 
-這版需要執行聊天中提供的 SQL。
+此版不用跑 SQL。
 
-PWA 檔案仍需一起上傳：
+PWA 檔案需一起上傳：
 - index.html
 - manifest.webmanifest
 - service-worker.js
