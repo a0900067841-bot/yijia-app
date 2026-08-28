@@ -1715,7 +1715,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.6 Coupon Formal Flow</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.7 Activity History Formal Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2108,6 +2108,9 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(['orderManagement','productUsage','notificationCenter','payHistory','walletLedger','points','coupons'].includes(id)){
+    setTimeout(()=>refreshFormalActivityCenter(),0);
+  }
   if(id==='coupons'){
     setTimeout(()=>loadCouponCenter(),0);
   }
@@ -5022,28 +5025,73 @@ async function syncWalletLedgerNotifications(){
 }
 
 async function loadNotificationCenter(render=true){
-  const walletLedgerNotifications = await syncWalletLedgerNotifications();
-
   if(!currentUser) return;
+
   const host=document.getElementById('notificationCenterList');
-  if(render && host) host.innerHTML='<div class="empty-panel">通知載入中…</div>';
+  if(render && host){
+    host.innerHTML='<div class="empty-panel">正在讀取正式交易通知…</div>';
+  }
+
+  const walletLedgerNotifications=await syncWalletLedgerNotifications();
 
   try{
     notificationRows=await buildNotificationRows();
+
+    // 正式優惠券通知
+    try{
+      const {data,error}=await sb.rpc('app_get_my_coupons');
+      if(error) throw error;
+
+      const coupons=Array.isArray(data)?data:[];
+      coupons.forEach(c=>{
+        const snap=c?.couponSnapshot||c?.coupon_snapshot||{};
+        const status=String(c?.status||'');
+        const when=c?.usedAt||c?.claimedAt||c?.updatedAt||'';
+        const code=String(c?.couponCode||c?.coupon_code||'');
+
+        if(status==='used'){
+          pushNotification(notificationRows,{
+            id:notificationId('coupon-used',c?.id||code,when),
+            icon:'🎟️',
+            title:'優惠券已使用',
+            message:`${snap?.name||code||'優惠券'} 已完成核銷。`,
+            time:when,
+            target:'coupons'
+          });
+        }else if(status==='available'){
+          pushNotification(notificationRows,{
+            id:notificationId('coupon-claimed',c?.id||code,c?.claimedAt||when),
+            icon:'🎫',
+            title:'優惠券已領取',
+            message:`${snap?.name||code||'優惠券'} 已加入「我的優惠券」。`,
+            time:c?.claimedAt||when,
+            target:'coupons'
+          });
+        }
+      });
+    }catch(e){
+      console.warn('通知：優惠券紀錄讀取失敗',e);
+    }
+
+    if(Array.isArray(walletLedgerNotifications)){
+      walletLedgerNotifications.forEach(n=>{
+        if(!notificationRows.some(x=>x?.id===n.id)){
+          notificationRows.push(n);
+        }
+      });
+    }
+
+    notificationRows.sort((a,b)=>
+      new Date(b?.time||b?.createdAt||0)-
+      new Date(a?.time||a?.createdAt||0)
+    );
   }catch(e){
     console.error(e);
     notificationRows=[];
   }
 
   updateNotificationUnreadBadge();
-  if(render) 
-  if(Array.isArray(notifications)){
-    walletLedgerNotifications.forEach(n=>{
-      if(!notifications.some(x=>x?.id===n.id)) notifications.push(n);
-    });
-    notifications.sort((a,b)=>new Date(b?.createdAt||0)-new Date(a?.createdAt||0));
-  }
-renderNotificationCenter();
+  if(render) renderNotificationCenter();
 }
 
 
@@ -5310,6 +5358,9 @@ async function refreshSCAppStateLive(){
       try{ await loadPoints(); }catch(_){}
       try{ await loadPointHistory(); }catch(_){}
     }
+
+    // 正式交易 / 使用 / 通知資料一併比對；不建立也不更新付款碼。
+    try{ await refreshFormalActivityCenter(); }catch(_){}
 
     // 如果目前就在優惠券頁，立即刷新。
     if(document.getElementById('coupons')?.classList.contains('active')){
@@ -6502,7 +6553,7 @@ async function loadYijiaPaySummary(forceNewPayCode=false){
     if(error) throw error;
     if(data && typeof data==='object') yijiaPaySummary=data;
   }catch(err){
-    console.warn('億家Pay摘要尚未接通',err);
+    console.warn('億家Pay摘要同步失敗',err);
     yijiaPaySummary={walletBalance:0,hasCard:false,cardLabel:'尚未綁定'};
   }
 
@@ -6516,7 +6567,7 @@ async function loadYijiaPaySummary(forceNewPayCode=false){
       if(Number.isFinite(b)) yijiaPaySummary.walletBalance=b;
     }
   }catch(err){
-    console.warn('億家錢包餘額尚未接通',err);
+    console.warn('億家錢包餘額同步失敗',err);
   }
 
   const balance=Number(yijiaPaySummary.walletBalance||0);
@@ -9368,6 +9419,106 @@ function startOrderManagementMonitor(){
   );
 }
 
+
+async function loadFormalActivitySources(){
+  const result={
+    orders:[],
+    usage:null,
+    points:[],
+    payHistory:[],
+    walletLedger:[],
+    coupons:[],
+    ok:true,
+    errors:[]
+  };
+
+  const tasks=[
+    ['orders',()=>sb.rpc('app_get_anybuy_order_history')],
+    ['usage',()=>sb.rpc('app_get_product_usage_history')],
+    ['points',()=>sb.rpc('app_get_my_point_history')],
+    ['payHistory',()=>sb.rpc('app_get_my_yijiapay_pay_history')],
+    ['walletLedger',()=>sb.rpc('app_get_my_yijiapay_wallet_ledger')],
+    ['coupons',()=>sb.rpc('app_get_my_coupons')]
+  ];
+
+  for(const [key,fn] of tasks){
+    try{
+      const {data,error}=await fn();
+      if(error) throw error;
+      result[key]=data;
+    }catch(e){
+      result.ok=false;
+      result.errors.push(`${key}: ${e?.message||e}`);
+    }
+  }
+
+  return result;
+}
+
+function makeFormalActivitySnapshot(data){
+  const usage=data?.usage||{};
+  return JSON.stringify({
+    orders:Array.isArray(data?.orders)?data.orders.map(x=>[
+      x?.orderId||x?.id||'',
+      x?.status||'',
+      x?.paymentStatus||'',
+      x?.updatedAt||x?.paidAt||x?.createdAt||''
+    ]):[],
+    purchases:Array.isArray(usage?.purchases)?usage.purchases.length:0,
+    redemptions:Array.isArray(usage?.redemptions)?usage.redemptions.length:0,
+    returns:Array.isArray(usage?.returns)?usage.returns.length:0,
+    gifts:Array.isArray(usage?.gifts)?usage.gifts.length:0,
+    transfers:Array.isArray(usage?.transfers)?usage.transfers.length:0,
+    points:Array.isArray(data?.points)?data.points.map(x=>[
+      x?.sourceId||'',
+      x?.transactionType||'',
+      x?.points||0,
+      x?.createdAt||''
+    ]):[],
+    payHistory:Array.isArray(data?.payHistory)?data.payHistory.map(x=>[
+      x?.payCode||'',
+      x?.amount||0,
+      x?.refundedAmount||0,
+      x?.usedAt||x?.createdAt||''
+    ]):[],
+    walletLedger:Array.isArray(data?.walletLedger)?data.walletLedger.map(x=>[
+      x?.id||x?.sourceId||'',
+      x?.entryType||x?.entry_type||'',
+      x?.amount||0,
+      x?.createdAt||x?.created_at||''
+    ]):[],
+    coupons:Array.isArray(data?.coupons)?data.coupons.map(x=>[
+      x?.id||'',
+      x?.couponCode||'',
+      x?.status||'',
+      x?.usedAt||x?.claimedAt||''
+    ]):[]
+  });
+}
+
+let formalActivitySnapshot='';
+
+async function refreshFormalActivityCenter(){
+  if(!currentUser) return;
+
+  const data=await loadFormalActivitySources();
+  const next=makeFormalActivitySnapshot(data);
+  const changed=formalActivitySnapshot && formalActivitySnapshot!==next;
+  formalActivitySnapshot=next;
+
+  if(changed){
+    try{ await loadOrderManagement(); }catch(_){}
+    try{ await loadProductUsage(); }catch(_){}
+    try{ await loadPointHistory(); }catch(_){}
+    try{ await loadYijiaPayHistoryPage(); }catch(_){}
+    try{ await loadWalletLedger(); }catch(_){}
+    try{ await loadCouponCenter(); }catch(_){}
+    try{ await loadNotificationCenter(true); }catch(_){}
+  }
+
+  return data;
+}
+
 async function loadOrderManagement(){
   const host=document.getElementById('orderManagementList');
   const detail=document.getElementById('orderDetailHost');
@@ -9807,7 +9958,7 @@ async function loadProductUsage(){
     const {data:expiryData,error:expiryError}=await sb.rpc('app_get_expiry_refund_history');
     if(!expiryError && Array.isArray(expiryData)) expiryRows=expiryData;
   }catch(err){
-    console.warn('逾期退款紀錄尚未接通',err);
+    console.warn('正式到期退款紀錄讀取失敗',err);
   }
 
   usageCache={
