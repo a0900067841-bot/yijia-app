@@ -1592,8 +1592,8 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
   <div class="section-title"><h3>安全與設定</h3></div>
   <div class="list">
-    <div class="row" style="opacity:.6">
-      <div><strong>付款驗證</strong><small>Face ID／Passkey 裝置驗證目前未開放</small></div><span>—</span>
+    <div class="row" onclick="showView('yijiaPayPinSettings')">
+      <div><strong>付款驗證</strong><small id="payPinSummary">4 位數億家Pay安全密碼</small></div><span>›</span>
     </div>
     <div class="row" onclick="showView('yijiaPayLimits')">
       <div><strong>付款限額</strong><small id="payLimitSummary">讀取正式限額中…</small></div><span>›</span>
@@ -1610,6 +1610,37 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
 
 
+
+
+<section id="yijiaPayPinSettings" class="view">
+  <div class="header2">
+    <button class="back" onclick="showView('pay',{skipYijiaPayPin:true})">‹</button>
+    <h2>億家Pay安全密碼</h2>
+  </div>
+
+  <div id="payPinSettingsStatus" class="small-muted" style="margin:0 4px 10px">
+    正在讀取安全密碼狀態…
+  </div>
+
+  <div class="profile-card">
+    <div class="profile-row">
+      <label>4 位數安全密碼</label>
+      <div id="payPinConfiguredState" class="value">讀取中…</div>
+    </div>
+    <div class="profile-row">
+      <label>用途</label>
+      <div class="value">每次進入億家Pay前驗證</div>
+    </div>
+  </div>
+
+  <button id="payPinChangeBtn" class="profile-save" style="margin-top:12px" onclick="openYijiaPayPinChangeFlow()">
+    設定 / 變更安全密碼
+  </button>
+
+  <div class="note" style="margin-top:12px">
+    安全密碼只會以雜湊方式保存在伺服器，不會在 App 或資料庫中保存可直接讀取的 4 位數明碼。
+  </div>
+</section>
 
 <section id="yijiaPayLimits" class="view">
   <div class="header2">
@@ -1887,7 +1918,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.0 PWA Update Reliability Flow</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.1 YijiaPay PIN Security Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2421,6 +2452,41 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   </div>
 </div>
 
+
+<div id="yijiaPayPinGate" class="modal" style="display:none;z-index:9999">
+  <div class="modal-card" style="max-width:360px">
+    <div class="modal-title" style="text-align:center">億家Pay 安全密碼</div>
+    <div id="yijiaPayPinGateHint" class="small-muted" style="text-align:center;margin:8px 0 14px">
+      請輸入 4 位數安全密碼
+    </div>
+
+    <div style="display:flex;justify-content:center;gap:12px;margin:18px 0">
+      <span id="pinDot0" style="width:14px;height:14px;border-radius:50%;border:2px solid #999;display:block"></span>
+      <span id="pinDot1" style="width:14px;height:14px;border-radius:50%;border:2px solid #999;display:block"></span>
+      <span id="pinDot2" style="width:14px;height:14px;border-radius:50%;border:2px solid #999;display:block"></span>
+      <span id="pinDot3" style="width:14px;height:14px;border-radius:50%;border:2px solid #999;display:block"></span>
+    </div>
+
+    <input id="yijiaPayPinInput"
+      type="password"
+      inputmode="numeric"
+      pattern="[0-9]*"
+      maxlength="4"
+      autocomplete="off"
+      aria-label="億家Pay四位數安全密碼"
+      style="position:absolute;left:-9999px;opacity:0">
+
+    <div id="yijiaPayPinGateMsg" class="auth-msg" style="text-align:center;min-height:20px"></div>
+
+    <div id="yijiaPayPinSetupRepeatWrap" style="display:none">
+      <div class="small-muted" style="text-align:center;margin:8px 0">請再次輸入相同的 4 位數安全密碼</div>
+    </div>
+
+    <button id="yijiaPayPinCancelBtn" class="secondary-btn" style="width:100%;margin-top:10px" onclick="cancelYijiaPayPinGate()">
+      取消
+    </button>
+  </div>
+</div>
 <div id="authScreen" class="auth-screen">
   <div class="auth-box">
     <div class="auth-brand">
@@ -2702,6 +2768,283 @@ window.addEventListener('load',()=>{
   updateNetworkUi();
 });
 
+
+let yijiaPayPinUnlocked=false;
+let yijiaPayPinGateMode='verify';
+let yijiaPayPinFirstEntry='';
+let yijiaPayPendingView='pay';
+let yijiaPayPinBusy=false;
+
+function isYijiaPayProtectedView(id){
+  return [
+    'pay',
+    'paymentMethods',
+    'walletLedger',
+    'payHistory',
+    'payReload',
+    'yijiaPaySecurity',
+    'yijiaPayLimits',
+    'yijiaPayPinSettings',
+    'pointDiscount'
+  ].includes(String(id||''));
+}
+
+function setPinDots(value=''){
+  const len=String(value||'').length;
+  for(let i=0;i<4;i++){
+    const dot=document.getElementById(`pinDot${i}`);
+    if(dot){
+      dot.style.background=i<len?'#f58220':'transparent';
+      dot.style.borderColor=i<len?'#f58220':'#999';
+    }
+  }
+}
+
+function clearPinInput(){
+  const input=document.getElementById('yijiaPayPinInput');
+  if(input) input.value='';
+  setPinDots('');
+}
+
+function focusPinInput(){
+  setTimeout(()=>{
+    const input=document.getElementById('yijiaPayPinInput');
+    try{ input?.focus({preventScroll:true}); }catch(_){ input?.focus(); }
+  },60);
+}
+
+async function getYijiaPayPinStatus(){
+  if(!currentUser) return {configured:false};
+
+  try{
+    const {data,error}=await sb.rpc('app_get_yijiapay_pin_status');
+    if(error) throw error;
+    return data||{configured:false};
+  }catch(e){
+    console.error('億家Pay安全密碼狀態讀取失敗',e);
+    return {configured:false,error:e};
+  }
+}
+
+async function refreshYijiaPayPinSettings(){
+  const state=document.getElementById('payPinConfiguredState');
+  const status=document.getElementById('payPinSettingsStatus');
+  const summary=document.getElementById('payPinSummary');
+
+  if(status) status.textContent='正在讀取安全密碼狀態…';
+
+  const info=await getYijiaPayPinStatus();
+
+  if(info?.error){
+    if(state) state.textContent='讀取失敗';
+    if(status) status.textContent='安全密碼狀態讀取失敗';
+    return;
+  }
+
+  if(state) state.textContent=info?.configured?'已設定':'尚未設定';
+  if(summary) summary.textContent=info?.configured
+    ? '已啟用 4 位數安全密碼'
+    : '尚未設定，首次進入需建立';
+  if(status) status.textContent='安全密碼狀態已更新';
+}
+
+async function requestYijiaPayAccess(targetView='pay'){
+  if(!currentUser) return false;
+
+  if(yijiaPayPinUnlocked){
+    return true;
+  }
+
+  yijiaPayPendingView=targetView||'pay';
+
+  const info=await getYijiaPayPinStatus();
+
+  if(info?.error){
+    alert('目前無法確認億家Pay安全密碼狀態，請稍後再試。');
+    return false;
+  }
+
+  if(info?.lockedUntil){
+    const until=new Date(info.lockedUntil);
+    if(!Number.isNaN(until.getTime()) && until>new Date()){
+      alert('安全密碼輸入錯誤次數過多，請稍後再試。');
+      return false;
+    }
+  }
+
+  yijiaPayPinGateMode=info?.configured?'verify':'setup_first';
+  yijiaPayPinFirstEntry='';
+
+  const gate=document.getElementById('yijiaPayPinGate');
+  const hint=document.getElementById('yijiaPayPinGateHint');
+  const msg=document.getElementById('yijiaPayPinGateMsg');
+
+  if(gate) gate.style.display='flex';
+  if(hint) hint.textContent=info?.configured
+    ? '請輸入 4 位數安全密碼'
+    : '首次使用億家Pay，請先設定 4 位數安全密碼';
+  if(msg){
+    msg.textContent='';
+    msg.className='auth-msg';
+  }
+
+  clearPinInput();
+  focusPinInput();
+  return false;
+}
+
+function cancelYijiaPayPinGate(){
+  const gate=document.getElementById('yijiaPayPinGate');
+  if(gate) gate.style.display='none';
+  yijiaPayPendingView='pay';
+  yijiaPayPinFirstEntry='';
+  clearPinInput();
+}
+
+async function verifyYijiaPayPin(pin){
+  const {data,error}=await sb.rpc('app_verify_yijiapay_pin',{p_pin:pin});
+  if(error) throw error;
+  return data||{};
+}
+
+async function setYijiaPayPin(pin){
+  const {data,error}=await sb.rpc('app_set_yijiapay_pin',{p_pin:pin});
+  if(error) throw error;
+  return data||{};
+}
+
+async function handleYijiaPayPinCompleted(pin){
+  if(yijiaPayPinBusy) return;
+  if(!/^\d{4}$/.test(pin)) return;
+
+  yijiaPayPinBusy=true;
+  const msg=document.getElementById('yijiaPayPinGateMsg');
+  const hint=document.getElementById('yijiaPayPinGateHint');
+
+  try{
+    if(yijiaPayPinGateMode==='setup_first'){
+      yijiaPayPinFirstEntry=pin;
+      yijiaPayPinGateMode='setup_repeat';
+      if(hint) hint.textContent='請再次輸入相同的 4 位數安全密碼';
+      clearPinInput();
+      focusPinInput();
+      return;
+    }
+
+    if(yijiaPayPinGateMode==='setup_repeat'){
+      if(pin!==yijiaPayPinFirstEntry){
+        yijiaPayPinFirstEntry='';
+        yijiaPayPinGateMode='setup_first';
+        if(hint) hint.textContent='兩次輸入不同，請重新設定 4 位數安全密碼';
+        if(msg){
+          msg.textContent='兩次輸入的安全密碼不一致。';
+          msg.className='auth-msg error';
+        }
+        clearPinInput();
+        focusPinInput();
+        return;
+      }
+
+      const result=await setYijiaPayPin(pin);
+      if(result?.configured!==true){
+        throw new Error('安全密碼設定未完成');
+      }
+
+      yijiaPayPinUnlocked=true;
+      const target=yijiaPayPendingView||'pay';
+      cancelYijiaPayPinGate();
+      showView(target,{skipYijiaPayPin:true});
+      return;
+    }
+
+    const result=await verifyYijiaPayPin(pin);
+
+    if(result?.verified===true){
+      yijiaPayPinUnlocked=true;
+      const target=yijiaPayPendingView||'pay';
+      cancelYijiaPayPinGate();
+      showView(target,{skipYijiaPayPin:true});
+      return;
+    }
+
+    if(result?.lockedUntil){
+      if(msg){
+        msg.textContent='輸入錯誤次數過多，安全密碼已暫時鎖定。';
+        msg.className='auth-msg error';
+      }
+      clearPinInput();
+      return;
+    }
+
+    if(msg){
+      msg.textContent=`安全密碼錯誤${result?.remainingAttempts!=null?`，剩餘 ${result.remainingAttempts} 次`:''}`;
+      msg.className='auth-msg error';
+    }
+
+    clearPinInput();
+    focusPinInput();
+  }catch(e){
+    console.error('億家Pay安全密碼驗證失敗',e);
+    if(msg){
+      msg.textContent='安全密碼驗證失敗：'+(e?.message||e);
+      msg.className='auth-msg error';
+    }
+    clearPinInput();
+    focusPinInput();
+  }finally{
+    yijiaPayPinBusy=false;
+  }
+}
+
+function openYijiaPayPinChangeFlow(){
+  yijiaPayPendingView='yijiaPayPinSettings';
+  yijiaPayPinGateMode='setup_first';
+  yijiaPayPinFirstEntry='';
+
+  const gate=document.getElementById('yijiaPayPinGate');
+  const hint=document.getElementById('yijiaPayPinGateHint');
+  const msg=document.getElementById('yijiaPayPinGateMsg');
+
+  if(gate) gate.style.display='flex';
+  if(hint) hint.textContent='請設定新的 4 位數安全密碼';
+  if(msg){
+    msg.textContent='';
+    msg.className='auth-msg';
+  }
+
+  clearPinInput();
+  focusPinInput();
+}
+
+document.addEventListener('input',event=>{
+  if(event.target?.id!=='yijiaPayPinInput') return;
+
+  const clean=String(event.target.value||'')
+    .replace(/\D/g,'')
+    .slice(0,4);
+
+  if(event.target.value!==clean){
+    event.target.value=clean;
+  }
+
+  setPinDots(clean);
+
+  if(clean.length===4){
+    setTimeout(()=>handleYijiaPayPinCompleted(clean),70);
+  }
+});
+
+document.addEventListener('click',event=>{
+  const gate=document.getElementById('yijiaPayPinGate');
+  if(gate?.style.display==='flex' && gate.contains(event.target)){
+    focusPinInput();
+  }
+});
+
+function lockYijiaPayPinSession(){
+  yijiaPayPinUnlocked=false;
+}
+
 function resolveAppViewId(id){
   const requested=String(id||'').trim();
 
@@ -2722,7 +3065,24 @@ function resolveAppViewId(id){
   return 'home';
 }
 
-function showView(id){
+function showView(id,options={}){
+  if(isYijiaPayProtectedView(id) && !options?.skipYijiaPayPin && !yijiaPayPinUnlocked){
+    requestYijiaPayAccess(id);
+    return;
+  }
+
+  const leavingYijiaPay=
+    !isYijiaPayProtectedView(id) &&
+    document.querySelector('.view.active') &&
+    isYijiaPayProtectedView(document.querySelector('.view.active')?.id);
+
+  if(leavingYijiaPay){
+    lockYijiaPayPinSession();
+  }
+
+  if(id==='yijiaPayPinSettings'){
+    setTimeout(()=>refreshYijiaPayPinSettings(),0);
+  }
   if(id==='installApp'){
     setTimeout(()=>updatePwaInstallUi(),0);
   }
@@ -2892,7 +3252,7 @@ function showView(id){
   if(target) target.classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>{
     const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','subscriptionDetail','reservationDetail','productUsage','giftDetail','transferDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
-    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':((id==='notificationCenter'||id==='appInfo'||id==='memberIdentity'||id==='memberCancellation'||id==='installApp')?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger'||id==='paymentMethods'||id==='yijiaPaySecurity'||id==='yijiaPayLimits')?'pay':id)));
+    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':((id==='notificationCenter'||id==='appInfo'||id==='memberIdentity'||id==='memberCancellation'||id==='installApp')?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger'||id==='paymentMethods'||id==='yijiaPaySecurity'||id==='yijiaPayLimits'||id==='yijiaPayPinSettings')?'pay':id)));
     b.classList.toggle('active',b.dataset.view===activeView);
   });
   window.scrollTo({top:0,behavior:'smooth'});

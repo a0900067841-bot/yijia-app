@@ -1,21 +1,26 @@
-億家 App v0.10.16.0 PWA Update Reliability Flow
+億家 App v0.10.16.1 YijiaPay PIN Security Flow
 
-本版完成：
-- App 有新版本時顯示更新提示
-- 「App 資訊」可手動檢查更新
-- 新版 service worker 不再自動搶接手
-- 使用者點「立即更新」後才切換新版並重新載入
-- 避免付款、兌換、退貨流程中途被 service worker 自動刷新
-- 網路離線時顯示「目前離線」
-- 恢復連線後重新同步一般正式資料
-- 恢復連線不會建立 / 更新億家Pay付款碼
-- Service Worker cache 更新到 v0.10.16.0
-- API / Supabase 仍不離線快取
+正式新增：
+進入億家Pay前必須輸入 4 位數安全密碼。
 
-這版不用跑 SQL。
+流程：
+- 第一次進入億家Pay：建立 4 位數安全密碼並再次確認
+- 後續每次重新進入億家Pay：先驗證 4 位數安全密碼
+- 在億家Pay內切換錢包、點數折抵、付款紀錄、付款限額等頁面，不重複要求
+- 一旦離開億家Pay區域，就重新鎖定
+- 再次進入時必須重新輸入
+- 登出時強制重新鎖定
 
-需一起上傳：
+後端安全：
+- PIN 只保存 PostgreSQL crypt() 雜湊，不保存明碼
+- 連續輸入錯誤會記錄失敗次數
+- 5 次錯誤後暫時鎖定 5 分鐘
+- 正確驗證後清除失敗次數
+
+這版需要執行聊天中提供的 SQL。
+
+PWA 檔案仍需一起上傳：
 - index.html
 - manifest.webmanifest
 - service-worker.js
-- icons 資料夾
+- icons/
