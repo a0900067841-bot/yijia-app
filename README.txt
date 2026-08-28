@@ -1,27 +1,20 @@
-億家 App v0.10.15.0 App Entry Formal Flow
+億家 App v0.10.15.1 Payment Methods Formal Status
 
-第十一個主功能接通：
-首頁入口 / 本期活動 / 我的服務
+第十二個主功能接通：
+付款方式管理
 
-本期活動：
-- 「更多」正式可點
-- 新增本期活動頁
-- 直接讀 SC/HQ 正式資料：
-  yj_app_coupons
-  yj_app_anybuy_products
-- 優惠券活動可直接進優惠券
-- 隨買活動可直接進正式商品詳情
+原本億家Pay頁面的「管理」按鈕沒有功能，
+信用卡與銀行帳戶也只是靜態文字。
 
-首頁「我的服務」不再顯示寫死假數字：
-- 待兌換數量 → app_get_member_products
-- 本月點數 → app_get_my_point_history
-- 訂單摘要 → app_get_anybuy_order_history
-- 會員資料 → 正式 profile
-
-並修正舊版抽屜裡已過時的錯誤 view：
-- anybuyOrders → orderManagement
-- subscriptions → subscriptionManagement
-- reservations → reservationManagement
+本版完成：
+- 新增正式「付款方式管理」頁
+- 億家Pay錢包狀態讀 app_get_yijiapay_wallet_balance
+- 點數折抵狀態讀 app_get_point_feature_config
+- 億家Pay錢包正式顯示可用
+- 點數折抵依正式後端設定顯示開放 / 未開放
+- 信用卡 / 簽帳金融卡在沒有合法金流串接前明確標示未接通
+- 銀行帳戶在沒有正式授權流程前明確標示未接通
+- 不建立假的綁卡或銀行帳戶資料
 
 此版純前端，不用跑 SQL。
 只需要上傳新的 index.html。

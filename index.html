@@ -1533,16 +1533,16 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="reload-rule">現金儲值以曆月累計；每月上限由總部 SC 設定，次月自動重新計算額度。</div>
   </div>
 
-  <div class="section-title"><h3>付款方式</h3><button>管理</button></div>
+  <div class="section-title"><h3>付款方式</h3><button onclick="showView('paymentMethods')">管理</button></div>
   <div class="list">
-    <div class="pay-method">
+    <div class="pay-method" onclick="showView('paymentMethods')">
       <div class="method-icon">💳</div>
-      <div class="grow"><strong>信用卡／簽帳金融卡</strong><small id="payCardSummary">尚未綁定</small></div>
+      <div class="grow"><strong>信用卡／簽帳金融卡</strong><small id="payCardSummary">尚未接正式金流</small></div>
       <span>›</span>
     </div>
-    <div class="pay-method">
+    <div class="pay-method" onclick="showView('paymentMethods')">
       <div class="method-icon">🏦</div>
-      <div class="grow"><strong>銀行帳戶</strong><small>預留串接</small></div>
+      <div class="grow"><strong>銀行帳戶</strong><small>尚未接正式授權流程</small></div>
       <span>›</span>
     </div>
     <div class="pay-method" onclick="showView('pointDiscount');openPointDiscount()">
@@ -1585,6 +1585,61 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
 
 
+
+
+<section id="paymentMethods" class="view">
+  <div class="header2">
+    <button class="back" onclick="showView('pay')">‹</button>
+    <h2>付款方式管理</h2>
+  </div>
+
+  <div id="paymentMethodsStatus" class="small-muted" style="margin:0 4px 10px">
+    正式付款方式狀態讀取中…
+  </div>
+
+  <div class="list">
+    <div class="pay-method">
+      <div class="method-icon">👛</div>
+      <div class="grow">
+        <strong>億家Pay錢包</strong>
+        <small id="paymentMethodWalletStatus">讀取中…</small>
+      </div>
+      <span>✓</span>
+    </div>
+
+    <div class="pay-method">
+      <div class="method-icon">🪙</div>
+      <div class="grow">
+        <strong>點數折抵</strong>
+        <small id="paymentMethodPointsStatus">讀取中…</small>
+      </div>
+      <span id="paymentMethodPointsMark">…</span>
+    </div>
+
+    <div class="pay-method" style="opacity:.55;cursor:default">
+      <div class="method-icon">💳</div>
+      <div class="grow">
+        <strong>信用卡／簽帳金融卡</strong>
+        <small>尚未接正式金流服務商，App 不會假裝已綁卡</small>
+      </div>
+      <span>—</span>
+    </div>
+
+    <div class="pay-method" style="opacity:.55;cursor:default">
+      <div class="method-icon">🏦</div>
+      <div class="grow">
+        <strong>銀行帳戶</strong>
+        <small>尚未接正式金流／銀行授權流程</small>
+      </div>
+      <span>—</span>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:12px">
+    目前正式可使用的付款來源，只顯示後端已接通的方式。
+    信用卡與銀行帳戶在正式金流服務商尚未串接前，不提供假的綁定或付款按鈕。
+  </div>
+</section>
 
 <section id="walletLedger" class="view">
   <div class="header2">
@@ -1731,7 +1786,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.15.0 App Entry Formal Flow</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.15.1 Payment Methods Formal Status</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2156,6 +2211,9 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(id==='paymentMethods'){
+    setTimeout(()=>loadPaymentMethodsFormalStatus(),0);
+  }
   if(id==='home'){
     setTimeout(()=>{
       renderHomeFormalSummary();
@@ -2288,7 +2346,7 @@ function showView(id){
   if(target) target.classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>{
     const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','subscriptionDetail','reservationDetail','productUsage','giftDetail','transferDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
-    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':(id==='notificationCenter'?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger')?'pay':id)));
+    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':(id==='notificationCenter'?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger'||id==='paymentMethods')?'pay':id)));
     b.classList.toggle('active',b.dataset.view===activeView);
   });
   window.scrollTo({top:0,behavior:'smooth'});
@@ -6982,6 +7040,64 @@ async function loadYijiaPayHistoryPage(){
   }catch(e){
     console.warn('億家Pay完整交易紀錄讀取失敗',e);
     host.innerHTML='<div class="pay-history-empty">交易紀錄讀取失敗</div>';
+  }
+}
+
+
+async function loadPaymentMethodsFormalStatus(){
+  if(!currentUser) return;
+
+  const status=document.getElementById('paymentMethodsStatus');
+  const wallet=document.getElementById('paymentMethodWalletStatus');
+  const points=document.getElementById('paymentMethodPointsStatus');
+  const pointsMark=document.getElementById('paymentMethodPointsMark');
+
+  if(status) status.textContent='正在讀取正式付款方式狀態…';
+
+  let ok=true;
+
+  try{
+    const {data,error}=await sb.rpc('app_get_yijiapay_wallet_balance');
+    if(error) throw error;
+
+    const balance=
+      typeof data==='object'
+        ? Number(data?.walletBalance??data?.balance??0)
+        : Number(data||0);
+
+    if(wallet){
+      wallet.textContent=`已啟用 · 目前餘額 ${money(Number.isFinite(balance)?balance:0)}`;
+    }
+  }catch(e){
+    ok=false;
+    if(wallet) wallet.textContent='億家Pay錢包狀態讀取失敗';
+  }
+
+  try{
+    const {data,error}=await sb.rpc('app_get_point_feature_config');
+    if(error) throw error;
+
+    const enabled=
+      data?.pointDiscountEnabled ??
+      data?.discountEnabled ??
+      false;
+
+    if(points){
+      points.textContent=enabled
+        ? '已開放 · 由 App 建立 YPD 折抵碼'
+        : '目前未開放';
+    }
+    if(pointsMark) pointsMark.textContent=enabled?'✓':'—';
+  }catch(e){
+    ok=false;
+    if(points) points.textContent='點數折抵狀態讀取失敗';
+    if(pointsMark) pointsMark.textContent='!';
+  }
+
+  if(status){
+    status.textContent=ok
+      ? '已同步正式付款方式狀態'
+      : '部分付款方式狀態讀取失敗';
   }
 }
 
