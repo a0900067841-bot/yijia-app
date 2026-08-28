@@ -1025,6 +1025,14 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#f58220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="億家">
+<link rel="apple-touch-icon" href="./icons/icon-180.png">
+
 </head>
 <body>
 <div class="phone">
@@ -1871,7 +1879,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.8 Production Surface Cleanup</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.9 PWA Install Formal Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2151,9 +2159,54 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="profile-row"><label>更新方式</label><div class="value">GitHub Pages</div></div>
     <div class="profile-row"><label>Face ID／Passkey</label><div class="value">目前未開放</div></div>
     <div class="profile-row"><label>信用卡／銀行帳戶</label><div class="value">目前未開放</div></div>
+    <div class="profile-row"><label>安裝方式</label><div id="appInstallModeText" class="value">檢查中…</div></div>
+    <button class="profile-edit-btn" style="margin-top:12px" onclick="showView('installApp')">加入主畫面</button>
   </div>
 </section>
 
+
+
+<section id="installApp" class="view">
+  <div class="header2">
+    <button class="back" onclick="showView('appInfo')">‹</button>
+    <h2>加入主畫面</h2>
+  </div>
+
+  <div class="profile-card">
+    <div class="profile-row">
+      <label>目前模式</label>
+      <div id="installCurrentMode" class="value">檢查中…</div>
+    </div>
+    <div class="profile-row">
+      <label>離線啟動畫面</label>
+      <div id="installOfflineStatus" class="value">準備中…</div>
+    </div>
+  </div>
+
+  <div id="iosInstallGuide" class="help-card-v1070" style="display:none;margin-top:12px">
+    <h3>iPhone / iPad</h3>
+    <p>使用 Safari 開啟億家 App 後：</p>
+    <div class="help-step-v1070"><div class="num">1</div><div class="text">點 Safari 下方的「分享」按鈕。</div></div>
+    <div class="help-step-v1070"><div class="num">2</div><div class="text">往下找到「加入主畫面」。</div></div>
+    <div class="help-step-v1070"><div class="num">3</div><div class="text">確認名稱為「億家」，再按「加入」。</div></div>
+    <p style="margin-top:12px">加入後從主畫面開啟，會以獨立 App 視窗顯示。</p>
+  </div>
+
+  <div id="browserInstallGuide" class="help-card-v1070" style="display:none;margin-top:12px">
+    <h3>安裝億家 App</h3>
+    <p>此瀏覽器支援直接安裝。</p>
+    <button id="pwaInstallButton" class="profile-save" onclick="triggerPwaInstall()" disabled>安裝到裝置</button>
+  </div>
+
+  <div id="alreadyInstalledGuide" class="help-card-v1070" style="display:none;margin-top:12px">
+    <h3>已從主畫面開啟</h3>
+    <p>目前已是獨立 App 模式，不需要再次加入主畫面。</p>
+  </div>
+
+  <div class="note" style="margin-top:12px">
+    離線功能只保留 App 外框與啟動畫面；會員、點數、付款、隨買、優惠券等交易資料仍必須連線到伺服器，避免離線顯示過期的交易狀態。
+  </div>
+</section>
 
 <section id="memberIdentity" class="view">
   <div class="header2">
@@ -2392,6 +2445,111 @@ let currentUser=null;
 let currentMember=null;
 
 
+
+let deferredPwaInstallPrompt=null;
+
+function isStandaloneApp(){
+  return window.matchMedia?.('(display-mode: standalone)')?.matches === true
+    || window.navigator.standalone === true;
+}
+
+function isIosSafariDevice(){
+  const ua=navigator.userAgent||'';
+  const ios=/iPhone|iPad|iPod/i.test(ua);
+  const webkit=/WebKit/i.test(ua);
+  const otherIosBrowser=/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua);
+  return ios && webkit && !otherIosBrowser;
+}
+
+function updatePwaInstallUi(){
+  const standalone=isStandaloneApp();
+  const mode=document.getElementById('installCurrentMode');
+  const appInfoMode=document.getElementById('appInstallModeText');
+  const ios=document.getElementById('iosInstallGuide');
+  const browser=document.getElementById('browserInstallGuide');
+  const installed=document.getElementById('alreadyInstalledGuide');
+  const installBtn=document.getElementById('pwaInstallButton');
+  const offline=document.getElementById('installOfflineStatus');
+
+  if(mode) mode.textContent=standalone?'主畫面 App 模式':'瀏覽器模式';
+  if(appInfoMode) appInfoMode.textContent=standalone?'已加入主畫面':'可加入主畫面';
+
+  if(installed) installed.style.display=standalone?'block':'none';
+
+  if(ios){
+    ios.style.display=(!standalone && isIosSafariDevice())?'block':'none';
+  }
+
+  if(browser){
+    browser.style.display=(!standalone && !isIosSafariDevice())?'block':'none';
+  }
+
+  if(installBtn){
+    installBtn.disabled=!deferredPwaInstallPrompt;
+    installBtn.textContent=deferredPwaInstallPrompt?'安裝到裝置':'請使用瀏覽器的安裝功能';
+  }
+
+  if(offline){
+    offline.textContent=('serviceWorker' in navigator)
+      ? 'App 外框快取已啟用'
+      : '此瀏覽器不支援離線啟動畫面';
+  }
+}
+
+async function triggerPwaInstall(){
+  if(!deferredPwaInstallPrompt){
+    updatePwaInstallUi();
+    return;
+  }
+
+  try{
+    deferredPwaInstallPrompt.prompt();
+    await deferredPwaInstallPrompt.userChoice;
+  }catch(e){
+    console.warn('PWA 安裝提示失敗',e);
+  }finally{
+    deferredPwaInstallPrompt=null;
+    updatePwaInstallUi();
+  }
+}
+
+window.addEventListener('beforeinstallprompt',event=>{
+  event.preventDefault();
+  deferredPwaInstallPrompt=event;
+  updatePwaInstallUi();
+});
+
+window.addEventListener('appinstalled',()=>{
+  deferredPwaInstallPrompt=null;
+  updatePwaInstallUi();
+});
+
+async function registerYijiaServiceWorker(){
+  if(!('serviceWorker' in navigator)) return;
+
+  try{
+    const reg=await navigator.serviceWorker.register('./service-worker.js',{
+      scope:'./'
+    });
+
+    await navigator.serviceWorker.ready;
+
+    // 新版 service worker 安裝後立即接手，避免 GitHub Pages 更新後還卡舊版本。
+    if(reg.waiting){
+      reg.waiting.postMessage({type:'SKIP_WAITING'});
+    }
+  }catch(e){
+    console.warn('億家 App Service Worker 註冊失敗',e);
+  }finally{
+    updatePwaInstallUi();
+  }
+}
+
+window.addEventListener('load',()=>{
+  registerYijiaServiceWorker();
+  updatePwaInstallUi();
+});
+
 function resolveAppViewId(id){
   const requested=String(id||'').trim();
 
@@ -2413,6 +2571,9 @@ function resolveAppViewId(id){
 }
 
 function showView(id){
+  if(id==='installApp'){
+    setTimeout(()=>updatePwaInstallUi(),0);
+  }
   if(id==='anybuyGuide'){
     setTimeout(()=>{
       renderFormalAnybuyGuide();
@@ -2579,7 +2740,7 @@ function showView(id){
   if(target) target.classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>{
     const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','subscriptionDetail','reservationDetail','productUsage','giftDetail','transferDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
-    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':((id==='notificationCenter'||id==='appInfo'||id==='memberIdentity'||id==='memberCancellation')?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger'||id==='paymentMethods'||id==='yijiaPaySecurity'||id==='yijiaPayLimits')?'pay':id)));
+    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':((id==='notificationCenter'||id==='appInfo'||id==='memberIdentity'||id==='memberCancellation'||id==='installApp')?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger'||id==='paymentMethods'||id==='yijiaPaySecurity'||id==='yijiaPayLimits')?'pay':id)));
     b.classList.toggle('active',b.dataset.view===activeView);
   });
   window.scrollTo({top:0,behavior:'smooth'});
