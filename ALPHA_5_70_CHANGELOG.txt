@@ -1,4 +1,0 @@
-SC Alpha 5.70
-- 商品管理 2.0 新增自助模式分類設定：新增／修改／刪除。
-- 商品管理 2.0 新增隨買跨店取商品管理：新增／修改／刪除。
-- 設定同步 HQ 共用 yj_self_anybuy_categories / yj_self_anybuy_products。
