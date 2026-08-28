@@ -1872,7 +1872,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.6 Account Cancellation Formal Flow</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.7 Guide Rights Formal Content Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2056,13 +2056,14 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
 
 
+
 <section id="anybuyGuide" class="view">
   <div class="header2">
     <button class="back" onclick="showView('anybuyCenter')">‹</button>
     <h2>操作教學</h2>
   </div>
-
-  <div class="help-card-v1070">
+  <div id="anybuyGuideSyncStatus" class="small-muted" style="margin:0 4px 10px">正在同步總部操作教學…</div>
+  <div id="anybuyGuideFormalHost"><div class="help-card-v1070">
     <h3>購買隨買商品</h3>
     <p>在「隨買」選擇商品與購買組數，確認內容後建立訂單。</p>
     <div class="help-step-v1070"><div class="num">1</div><div class="text">進入「隨買」並選擇商品。</div></div>
@@ -2096,8 +2097,9 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
   <div class="help-note-v1070">
     商品若已到期、已兌完、已完成退款或已轉贈完畢，App 會自動限制後續操作。
-  </div>
+  </div></div>
 </section>
+
 
 
 
@@ -2106,8 +2108,8 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <button class="back" onclick="showView('anybuyCenter')">‹</button>
     <h2>權益公告</h2>
   </div>
-
-  <div class="rights-box-v1070">
+  <div id="anybuyRightsSyncStatus" class="small-muted" style="margin:0 4px 10px">正在同步總部權益公告…</div>
+  <div id="anybuyRightsFormalHost"><div class="rights-box-v1070">
     <h4>商品效期</h4>
     <p>商品效期依購買時商品設定計算。依目前規則，到期日當天凌晨 00:00 起即視為到期，商品不可再兌換、轉贈或領取。</p>
   </div>
@@ -2135,7 +2137,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div class="rights-box-v1070">
     <h4>點數與營收</h4>
     <p>購買隨買商品可依規則累積點數；兌換本身不再累積點數。營收於實際兌換時依購買當時實付金額比例認列。</p>
-  </div>
+  </div></div>
 </section>
 
 
@@ -2410,6 +2412,18 @@ function resolveAppViewId(id){
 }
 
 function showView(id){
+  if(id==='anybuyGuide'){
+    setTimeout(()=>{
+      renderFormalAnybuyGuide();
+      refreshSCAppStateLive();
+    },0);
+  }
+  if(id==='anybuyRights'){
+    setTimeout(()=>{
+      renderFormalAnybuyRights();
+      refreshSCAppStateLive();
+    },0);
+  }
   if(id==='memberCancellation'){
     setTimeout(()=>loadMemberCancellationFormal(),0);
   }
@@ -6158,12 +6172,17 @@ let shopProductsCache=[];
 
 const HQ_STORE_ID='001';
 const SC_KEY_SETTINGS='yj_hq_app_settings';
+const SC_KEY_GUIDE='yj_app_anybuy_guide';
+const SC_KEY_RIGHTS='yj_app_anybuy_rights';
 const SC_KEY_COUPONS='yj_app_coupons';
 const SC_KEY_ANYBUY='yj_app_anybuy_products';
 
 let scAppSettings={enabled:true,maintenance:false,pointsSync:true,crossStoreRedeem:true,announcement:'',yijiaPayMonthlyCashTopupLimit:5000};
 let scCoupons=[];
 let scAnybuyProducts=[];
+let scAnybuyGuide=[];
+let scAnybuyRights=[];
+
 let scAppStateLiveTimer=null;
 let scAppStateSnapshot='';
 let scAppStateLiveRunning=false;
@@ -6195,7 +6214,9 @@ function makeSCAppStateSnapshot(){
       value:c?.value??null,
       updatedAt:c?.updatedAt||''
     })),
-    anybuy:(Array.isArray(scAnybuyProducts)?scAnybuyProducts:[]).map(p=>({
+    anybuy:(Array.isArray(scAnybuyProducts,
+    scAnybuyGuide,
+    scAnybuyRights)?scAnybuyProducts:[]).map(p=>({
       id:p?.id||p?.code||'',
       code:p?.code||'',
       name:p?.name||'',
@@ -6245,6 +6266,8 @@ async function refreshSCAppStateLive(){
     // 如果目前就在優惠券頁，立即刷新。
     if(document.getElementById('coupons')?.classList.contains('active')){
       renderCoupons();
+  renderFormalAnybuyGuide();
+  renderFormalAnybuyRights();
     }
 
     // 如果目前就在隨買頁 / 商品詳情 / 購物車，重新套用最新商品主檔。
@@ -6296,11 +6319,67 @@ function startSCAppStateLiveMonitor(){
   );
 }
 
+
+function renderFormalAnybuyGuide(){
+  const host=document.getElementById('anybuyGuideFormalHost');
+  const status=document.getElementById('anybuyGuideSyncStatus');
+  if(!host) return;
+
+  const rows=(Array.isArray(scAnybuyGuide)?scAnybuyGuide:[])
+    .filter(x=>x && x.active!==false);
+
+  if(!rows.length){
+    if(status) status.textContent='使用 App 內建正式操作流程說明';
+    return;
+  }
+
+  host.innerHTML=rows.map((item,index)=>{
+    const steps=Array.isArray(item.steps)?item.steps:[];
+    return `
+      <div class="help-card-v1070">
+        <h3>${safeText(item.title||`操作教學 ${index+1}`)}</h3>
+        ${item.description?`<p>${safeText(item.description)}</p>`:''}
+        ${steps.map((s,i)=>`
+          <div class="help-step-v1070">
+            <div class="num">${i+1}</div>
+            <div class="text">${safeText(typeof s==='string'?s:(s?.text||''))}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }).join('');
+
+  if(status) status.textContent=`已同步總部操作教學 · ${rows.length} 個主題`;
+}
+
+function renderFormalAnybuyRights(){
+  const host=document.getElementById('anybuyRightsFormalHost');
+  const status=document.getElementById('anybuyRightsSyncStatus');
+  if(!host) return;
+
+  const rows=(Array.isArray(scAnybuyRights)?scAnybuyRights:[])
+    .filter(x=>x && x.active!==false);
+
+  if(!rows.length){
+    if(status) status.textContent='使用 App 目前正式權益規則';
+    return;
+  }
+
+  host.innerHTML=rows.map((item,index)=>`
+    <div class="rights-box-v1070">
+      <h4>${safeText(item.title||`權益公告 ${index+1}`)}</h4>
+      <p>${safeText(item.content||item.description||'')}</p>
+    </div>
+  `).join('');
+
+  if(status) status.textContent=`已同步總部權益公告 · ${rows.length} 項`;
+}
+
 async function loadSCAppState(){
   const {data,error}=await sb.from('yijia_app_state')
     .select('data_key,data,updated_at')
     .eq('store_id',HQ_STORE_ID)
-    .in('data_key',[SC_KEY_SETTINGS,SC_KEY_COUPONS,SC_KEY_ANYBUY]);
+    .in('data_key',[SC_KEY_SETTINGS,SC_KEY_COUPONS,SC_KEY_ANYBUY,SC_KEY_GUIDE,SC_KEY_RIGHTS]);
 
   if(error){console.error('SC app state load failed',error);return}
 
@@ -6319,6 +6398,8 @@ async function loadSCAppState(){
 
   scCoupons=Array.isArray(byKey[SC_KEY_COUPONS])?byKey[SC_KEY_COUPONS]:[];
   scAnybuyProducts=Array.isArray(byKey[SC_KEY_ANYBUY])?byKey[SC_KEY_ANYBUY]:[];
+  scAnybuyGuide=Array.isArray(byKey[SC_KEY_GUIDE])?byKey[SC_KEY_GUIDE]:[];
+  scAnybuyRights=Array.isArray(byKey[SC_KEY_RIGHTS])?byKey[SC_KEY_RIGHTS]:[];
 
   applySCAppSettings();
   renderCoupons();
