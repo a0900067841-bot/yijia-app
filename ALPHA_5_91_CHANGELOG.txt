@@ -1,7 +1,0 @@
-SC Alpha 5.91
-- 修正 5.90 仍可能被舊橫條登入 CSS / cache 影響。
-- 登入卡改成 absolute 小型直式卡，固定在上方天空區中央。
-- 不擋億家招牌、不擋店面。
-- 使用全新 style-5.91.css 與 sc-login-background-5.91.png。
-- 首次載入會清舊 Cache / Service Worker，避免舊 5.86~5.90 樣式殘留。
-- 保留 5.87/5.89 的雲端帳密同步登入功能。
