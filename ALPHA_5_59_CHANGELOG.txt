@@ -1,0 +1,10 @@
+億家 SC v5.5.0 SC Alpha 5.59
+
+貨單合併修正：
+- 找到 Alpha 5.58 未合併的原因：前端把 routeCode / shipmentBatch / deliveryBatch 等供應鏈識別碼誤當成「配次」。
+- 不同供應商常有不同 routeCode / shipmentBatch，因此即使同一天同溫層仍會被拆單。
+- Alpha 5.59 改成只有明確 deliveryRun / deliveryRunCode / distributionRun / tripNo 才會視為不同配次。
+- 供應商、路線代碼、來源批號、活動來源都不再造成拆單。
+- 同門市 + 同到貨日 + 同溫層 + 同明確配次 = 同一張貨單。
+- TM/POS 物流簽到與驗收維持分離，既有功能不刪除。
+- Alpha 5.58 SQL 已執行者，不需要再跑 SQL。

@@ -1,0 +1,6 @@
+SC Alpha 5.67
+- App設定將「App 預做功能隱藏設定」升級為可新增／修改／刪除的「App 功能管理」。
+- 每筆功能含：功能代碼、功能名稱、隱藏、排序、備註。
+- 既有 yijiaPay / coupons / shop / orders / notifications / storeFinder / campaigns 自動轉入。
+- 設定儲存在 appBackend.featureManagement，並保留 appBackend.prebuiltHidden 相容舊 App。
+- 後續新增 App 功能不需再修改 SC 隱藏設定 UI；只要新增功能代碼即可。

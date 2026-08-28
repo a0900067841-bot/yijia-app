@@ -1,0 +1,6 @@
+SC Alpha 5.61
+
+- 移除「貨單合併測試」按鍵、測試視窗與測試用 JS。
+- 正式貨單合併分組邏輯完整保留，不回退 Alpha 5.60 已驗證功能。
+- POS過刷顯示改為只讀 logistics_batches.arrived_at，移除不存在欄位 received_at / pos_swiped_at 的相容猜測。
+- 不修改物流簽到 RPC、不修改進貨驗收流程；簽到與驗收維持分離。
