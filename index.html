@@ -1034,10 +1034,26 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 <div id="appAnnouncement" class="announcement"></div>
 <div class="hero"><div class="hero-head"><div><div class="eyebrow">億家會員</div><div id="memberName" class="member-name">您好</div><div id="memberEmail" class="member-email"></div></div><div class="points" onclick="showView('points')"><span>可用點數</span><b id="homePoints">--</b><span id="homeExpiry">等待點數資料表</span></div></div><div class="barcode" onclick="openBarcode()"><svg id="homeBarcode" class="real-barcode"></svg><small>點一下放大會員條碼（與 TM 相同）</small><div id="homeSyncHint" style="font-size:10px;color:#9ca3af;margin-top:4px">回到 App 時自動同步會員資料</div></div></div>
 <div class="quick"><button class="q" onclick="showView('points')"><span class="ico">🪙</span>億家點數</button><button class="q" onclick="showView('redeem');loadShopProducts()"><span class="ico">☕</span>隨買跨店取</button><button class="q" onclick="showView('products')"><span class="ico">🛍️</span>我的商品</button><button class="q" onclick="showView('coupons')"><span class="ico">🎟️</span>優惠券</button></div>
-<div class="section-title"><h3>本期活動</h3><button>更多</button></div><div class="banner"><div><h2>億家會員專屬</h2><p>活動內容將由總部 App 後台設定同步顯示</p></div><div class="cup">🥤</div></div>
-<div class="section-title"><h3>我的服務</h3></div><div class="cards"><div class="card"><span class="badge">跨店取</span><b>待兌換 5 件</b><small>查看已購買商品</small></div><div class="card"><span class="badge">點數</span><b>本月 +320 點</b><small>查看累點明細</small></div><div class="card"><span class="badge">訂單</span><b>我的訂單</b><small>商城／預購紀錄</small></div><div class="card"><span class="badge">會員</span><b>個人資料</b><small>帳號與通知設定</small></div></div>
+<div class="section-title"><h3>本期活動</h3><button onclick="showView('activityCenter')">更多</button></div>
+<div id="homeActivityBanner" class="banner" onclick="showView('activityCenter')">
+  <div><h2 id="homeActivityTitle">億家會員專屬</h2><p id="homeActivityText">活動資料同步中…</p></div><div class="cup">🥤</div>
+</div>
+<div class="section-title"><h3>我的服務</h3></div>
+<div class="cards">
+  <div class="card" onclick="showView('products')"><span class="badge">跨店取</span><b id="homePendingProducts">待兌換 -- 件</b><small>查看已購買商品</small></div>
+  <div class="card" onclick="showView('points')"><span class="badge">點數</span><b id="homeMonthlyPoints">本月 -- 點</b><small>查看正式點數明細</small></div>
+  <div class="card" onclick="showView('orderManagement')"><span class="badge">訂單</span><b id="homeOrderSummary">我的訂單</b><small>查看正式訂單紀錄</small></div>
+  <div class="card" onclick="showView('profile')"><span class="badge">會員</span><b>個人資料</b><small>會員資料與密碼設定</small></div>
+</div>
 </section>
 
+
+
+<section id="activityCenter" class="view">
+  <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>本期活動</h2></div>
+  <div id="activityCenterStatus" class="small-muted" style="margin:0 4px 10px">活動資料同步中…</div>
+  <div id="activityCenterList" class="coupon-list"></div>
+</section>
 
 <section id="coupons" class="view">
   <div class="header2"><button class="back" onclick="showView('home')">‹</button><h2>優惠券</h2></div>
@@ -1715,7 +1731,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.9 Subscription Reservation Formal Flow</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.15.0 App Entry Formal Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2140,6 +2156,15 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(id==='home'){
+    setTimeout(()=>{
+      renderHomeFormalSummary();
+      refreshHomeServiceSummary();
+    },0);
+  }
+  if(id==='activityCenter'){
+    setTimeout(()=>loadActivityCenter(),0);
+  }
   if(id==='profile'){
     setTimeout(()=>reloadFormalMemberProfile(),0);
   }
@@ -2263,7 +2288,7 @@ function showView(id){
   if(target) target.classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>{
     const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','subscriptionDetail','reservationDetail','productUsage','giftDetail','transferDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
-    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : (id==='coupons'?'home':(id==='notificationCenter'?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger')?'pay':id)));
+    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':(id==='notificationCenter'?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger')?'pay':id)));
     b.classList.toggle('active',b.dataset.view===activeView);
   });
   window.scrollTo({top:0,behavior:'smooth'});
@@ -5821,6 +5846,7 @@ function applySCAppSettings(){
   renderCashReloadQuota(window.currentCashReloadUsed||0);
 
   applyLiveFeatureAccessState();
+  renderHomeFormalSummary();
 }
 
 function couponValueText(c){
@@ -5884,6 +5910,167 @@ function myCouponByCode(code){
   return formalMyCoupons.find(c=>
     String(c?.couponCode||c?.coupon_code||'').trim().toUpperCase()===target
   )||null;
+}
+
+
+function activeAnybuyCampaigns(){
+  return (Array.isArray(scAnybuyProducts)?scAnybuyProducts:[])
+    .filter(p=>{
+      if(!p || p.active===false || p.enabled===false) return false;
+      const state=getAnybuyProductSaleState(p);
+      return state.enabled;
+    });
+}
+
+function activeCouponCampaigns(){
+  return (Array.isArray(scCoupons)?scCoupons:[])
+    .filter(c=>c && c.active!==false && couponDateValid(c));
+}
+
+function renderHomeFormalSummary(){
+  // 本期活動
+  const coupons=activeCouponCampaigns();
+  const products=activeAnybuyCampaigns();
+  const title=document.getElementById('homeActivityTitle');
+  const text=document.getElementById('homeActivityText');
+
+  if(coupons.length){
+    const c=coupons[0];
+    if(title) title.textContent=c.name||'會員優惠活動';
+    if(text) text.textContent=
+      `${couponValueText(c)}${c.endDate?` · 至 ${c.endDate}`:''}`;
+  }else if(products.length){
+    const p=products[0];
+    if(title) title.textContent=p.name||'隨買跨店取活動';
+    if(text) text.textContent=
+      `${money(Number(p.price||0))}${p.activityEndDate?` · 至 ${p.activityEndDate}`:''}`;
+  }else{
+    if(title) title.textContent='億家會員專屬';
+    if(text) text.textContent='目前沒有進行中的活動';
+  }
+}
+
+async function refreshHomeServiceSummary(){
+  if(!currentUser) return;
+
+  // 我的商品待兌換
+  try{
+    const {data,error}=await sb.rpc('app_get_member_products');
+    if(!error && Array.isArray(data)){
+      const qty=data.reduce((sum,x)=>{
+        const lifecycle=productLifecycleState(x);
+        return sum+(lifecycle.canOperate?Number(x.remainingQuantity||0):0);
+      },0);
+      const el=document.getElementById('homePendingProducts');
+      if(el) el.textContent=`待兌換 ${qty.toLocaleString('zh-TW')} 件`;
+    }
+  }catch(e){}
+
+  // 本月點數淨異動
+  try{
+    const {data,error}=await sb.rpc('app_get_my_point_history');
+    if(!error && Array.isArray(data)){
+      const now=new Date();
+      const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+      const pts=data
+        .filter(x=>String(x?.createdAt||'').slice(0,7)===ym)
+        .reduce((sum,x)=>sum+Number(x?.points||0),0);
+      const el=document.getElementById('homeMonthlyPoints');
+      if(el) el.textContent=`本月 ${pts>=0?'+':''}${pts.toLocaleString('zh-TW')} 點`;
+    }
+  }catch(e){}
+
+  // 訂單摘要
+  try{
+    const {data,error}=await sb.rpc('app_get_anybuy_order_history');
+    if(!error && Array.isArray(data)){
+      const pending=data.filter(x=>
+        !(x?.status==='已付款' || x?.paymentStatus==='paid')
+      ).length;
+      const el=document.getElementById('homeOrderSummary');
+      if(el) el.textContent=pending?`待處理 ${pending} 筆訂單`:`共 ${data.length} 筆訂單`;
+    }
+  }catch(e){}
+}
+
+async function loadActivityCenter(){
+  const host=document.getElementById('activityCenterList');
+  const status=document.getElementById('activityCenterStatus');
+  if(!host) return;
+
+  if(status) status.textContent='正在同步總部正式活動資料…';
+
+  try{ await loadSCAppState(); }catch(_){}
+
+  const coupons=activeCouponCampaigns();
+  const products=activeAnybuyCampaigns();
+
+  const rows=[];
+
+  coupons.forEach(c=>{
+    rows.push({
+      type:'coupon',
+      title:c.name||'優惠券活動',
+      value:couponValueText(c),
+      period:(c.startDate||c.endDate)
+        ? `${c.startDate||'即日起'} ～ ${c.endDate||'無期限'}`
+        : '活動期間依總部公告',
+      note:c.note||'',
+      data:c
+    });
+  });
+
+  products.forEach(p=>{
+    rows.push({
+      type:'anybuy',
+      title:p.name||'隨買跨店取活動',
+      value:money(Number(p.price||0)),
+      period:(p.activityStartDate||p.activityEndDate)
+        ? `${p.activityStartDate||'即日起'} ～ ${p.activityEndDate||'無期限'}`
+        : '活動期間依總部公告',
+      note:p.activityContent||p.note||'',
+      data:p
+    });
+  });
+
+  if(!rows.length){
+    host.innerHTML='<div class="empty-box"><div class="big">📣</div>目前沒有進行中的活動</div>';
+    if(status) status.textContent='已同步總部活動資料';
+    renderHomeFormalSummary();
+    return;
+  }
+
+  host.innerHTML=rows.map((r,index)=>`
+    <div class="coupon-card">
+      <div class="coupon-body">
+        <div class="coupon-top">
+          <div class="coupon-name">${safeText(r.title)}</div>
+          <div class="coupon-type">${r.type==='coupon'?'優惠券':'隨買'}</div>
+        </div>
+        <div class="coupon-value">${safeText(r.value)}</div>
+        <div class="coupon-meta">
+          ${safeText(r.period)}
+          ${r.note?'<br>'+safeText(r.note):''}
+        </div>
+        <button class="redeem-btn" style="width:100%;margin-top:12px"
+          onclick="${r.type==='coupon'
+            ? `showView('coupons')`
+            : `openActivityAnybuyProduct(${index})`}">
+          ${r.type==='coupon'?'查看優惠券':'查看活動商品'}
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  window.currentActivityCenterRows=rows;
+  if(status) status.textContent=`共 ${rows.length} 個進行中活動`;
+  renderHomeFormalSummary();
+}
+
+function openActivityAnybuyProduct(index){
+  const row=(window.currentActivityCenterRows||[])[index];
+  if(!row || row.type!=='anybuy') return;
+  openAnybuyProductDetail(row.data);
 }
 
 function renderCoupons(){
@@ -11236,9 +11423,9 @@ function toggleAnybuySubmenu(id){document.getElementById(id)?.classList.toggle('
       <span class="icon">🧾</span><span>訂單紀錄</span><span class="arr">⌄</span>
     </div>
     <div id="orderSub" class="anybuy-submenu">
-      <button onclick="showView('anybuyOrders');closeAnybuyDrawer()">訂單管理</button>
-      <button onclick="showView('subscriptions');closeAnybuyDrawer()">訂閱管理</button>
-      <button onclick="showView('reservations');closeAnybuyDrawer()">預約管理</button>
+      <button onclick="showView('orderManagement');closeAnybuyDrawer()">訂單管理</button>
+      <button onclick="showView('subscriptionManagement');closeAnybuyDrawer()">訂閱管理</button>
+      <button onclick="showView('reservationManagement');closeAnybuyDrawer()">預約管理</button>
       <button onclick="showView('productUsage');closeAnybuyDrawer()">商品使用紀錄</button>
     </div>
 

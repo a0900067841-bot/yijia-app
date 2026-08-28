@@ -1,25 +1,27 @@
-億家 App v0.10.14.9 Subscription Reservation Formal Flow
+億家 App v0.10.15.0 App Entry Formal Flow
 
-第十個主功能正式接通：
-訂閱管理 / 預約管理
+第十一個主功能接通：
+首頁入口 / 本期活動 / 我的服務
 
-正式資料來源：
-- app_get_member_subscriptions
-- app_get_member_reservations
+本期活動：
+- 「更多」正式可點
+- 新增本期活動頁
+- 直接讀 SC/HQ 正式資料：
+  yj_app_coupons
+  yj_app_anybuy_products
+- 優惠券活動可直接進優惠券
+- 隨買活動可直接進正式商品詳情
 
-本版完成：
-- 訂閱管理正式列表
-- 預約管理正式列表
-- 點擊可查看正式明細
-- 10 秒正式狀態同步
-- 訂閱 / 預約狀態加入通知中心
-- 資料更新後會自動刷新狀態
+首頁「我的服務」不再顯示寫死假數字：
+- 待兌換數量 → app_get_member_products
+- 本月點數 → app_get_my_point_history
+- 訂單摘要 → app_get_anybuy_order_history
+- 會員資料 → 正式 profile
 
-重要：
-目前只接「正式查看與狀態同步」。
-沒有新增取消訂閱、修改訂閱、取消預約、修改預約按鈕，
-因為這些業務規則尚未由 SC / TM 正式定義。
-App 不自行猜規則，也不建立假操作。
+並修正舊版抽屜裡已過時的錯誤 view：
+- anybuyOrders → orderManagement
+- subscriptions → subscriptionManagement
+- reservations → reservationManagement
 
 此版純前端，不用跑 SQL。
 只需要上傳新的 index.html。
