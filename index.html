@@ -1,4 +1,17 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#087942"><title>億家 SC v5.5.0 SC Alpha 5.90</title><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png?v=5.1.1"><link rel="icon" href="icon-192.png?v=5.1.1"><link rel="stylesheet" href="./style-5.90.css?v=5.90"></head><body data-mode="back"><script>
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#087942"><title>億家 SC v5.5.0 SC Alpha 5.91</title><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png?v=5.1.1"><link rel="icon" href="icon-192.png?v=5.1.1"><link rel="stylesheet" href="./style-5.91.css?v=591"><script>
+(async()=>{
+  try{
+    if('caches' in window){
+      const ks=await caches.keys();
+      await Promise.all(ks.filter(k=>!String(k).includes('5.91')).map(k=>caches.delete(k)));
+    }
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      for(const r of regs){ try{ await r.unregister(); }catch(e){} }
+    }
+  }catch(e){}
+})();
+</script></head><body data-mode="back"><script>
 (function(){
   window.__YJ_BOOT_STARTED=Date.now();
   window.__YJ_BOOT_OK=false;
@@ -100,4 +113,4 @@
   </section>
   <div id="scLoginClock" class="sc583-clock" aria-live="polite"></div>
 </form>
-</dialog><dialog id="genericDialog"><div class="dialog-card"><div class="dialog-head"><h2 id="dialogTitle"></h2><button data-action="close-dialog">✕</button></div><div id="dialogBody"></div></div></dialog><div id="updateOverlay"><div class="update-card"><div class="spinner"></div><h2 id="updateTitle">主檔更新中</h2><p id="updateDetail">準備中…</p><div class="track"><div id="updateBar"></div></div><strong id="updatePct">0%</strong></div></div><script src="version.js?v=v5.5.0-sc-alpha.5.90"></script><script async src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script><script async src="https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js"></script><script type="module" src="app.js?v=v5.5.0-sc-alpha.5.90"></script></body></html>
+</dialog><dialog id="genericDialog"><div class="dialog-card"><div class="dialog-head"><h2 id="dialogTitle"></h2><button data-action="close-dialog">✕</button></div><div id="dialogBody"></div></div></dialog><div id="updateOverlay"><div class="update-card"><div class="spinner"></div><h2 id="updateTitle">主檔更新中</h2><p id="updateDetail">準備中…</p><div class="track"><div id="updateBar"></div></div><strong id="updatePct">0%</strong></div></div><script src="version.js?v=v5.5.0-sc-alpha.5.91"></script><script async src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script><script async src="https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js"></script><script type="module" src="app.js?v=v5.5.0-sc-alpha.5.91"></script></body></html>
