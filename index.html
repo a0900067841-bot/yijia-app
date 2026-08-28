@@ -1576,9 +1576,15 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
   <div class="section-title"><h3>安全與設定</h3></div>
   <div class="list">
-    <div class="row"><div><strong>付款驗證</strong><small>Face ID／裝置驗證</small></div><span>›</span></div>
-    <div class="row"><div><strong>付款限額</strong><small>單筆與每日上限</small></div><span>›</span></div>
-    <div class="row"><div><strong>停用億家Pay</strong><small>遺失手機時可立即停用</small></div><span>›</span></div>
+    <div class="row" style="opacity:.6">
+      <div><strong>付款驗證</strong><small>Face ID／Passkey 將於正式 WebAuthn 後端完成後啟用</small></div><span>—</span>
+    </div>
+    <div class="row" style="opacity:.6">
+      <div><strong>付款限額</strong><small>需 TM 正式扣款 RPC 一併強制驗證後才開放設定</small></div><span>—</span>
+    </div>
+    <div class="row" onclick="showView('yijiaPaySecurity')">
+      <div><strong id="payEnabledTitle">停用億家Pay</strong><small id="payEnabledSummary">讀取正式狀態中…</small></div><span>›</span>
+    </div>
   </div>
   <p class="note">億家Pay的信用卡資料不會直接存放在 App 或 Supabase；正式扣款需由合法金流服務商以 Token／付款憑證處理。</p>
 </section>
@@ -1586,6 +1592,35 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
 
 
+
+
+<section id="yijiaPaySecurity" class="view">
+  <div class="header2">
+    <button class="back" onclick="showView('pay')">‹</button>
+    <h2>億家Pay安全設定</h2>
+  </div>
+
+  <div class="profile-card">
+    <div class="profile-row">
+      <label>億家Pay狀態</label>
+      <div id="yijiaPayEnabledState" class="value">讀取中…</div>
+    </div>
+    <div class="profile-row">
+      <label>目前錢包餘額</label>
+      <div id="yijiaPaySecurityBalance" class="value">--</div>
+    </div>
+  </div>
+
+  <div id="yijiaPayDisableNotice" class="note" style="margin-top:12px">
+    停用後會立即取消目前尚未使用的付款碼；錢包餘額與交易紀錄不會刪除。
+  </div>
+
+  <button id="yijiaPayToggleBtn" class="danger-wide" onclick="toggleYijiaPayFormal()">
+    讀取狀態中…
+  </button>
+
+  <div id="yijiaPaySecurityMsg" class="auth-msg"></div>
+</section>
 
 <section id="paymentMethods" class="view">
   <div class="header2">
@@ -1786,7 +1821,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.2 Navigation Integrity Formal Flow</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.3 YijiaPay Disable Formal Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2244,6 +2279,12 @@ function resolveAppViewId(id){
 }
 
 function showView(id){
+  if(id==='yijiaPaySecurity'){
+    setTimeout(()=>loadYijiaPaySecuritySettings(),0);
+  }
+  if(id==='pay'){
+    setTimeout(()=>loadYijiaPaySecuritySettings(),0);
+  }
   id=resolveAppViewId(id);
   if(id==='paymentMethods'){
     setTimeout(()=>loadPaymentMethodsFormalStatus(),0);
@@ -2380,7 +2421,7 @@ function showView(id){
   if(target) target.classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>{
     const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','subscriptionDetail','reservationDetail','productUsage','giftDetail','transferDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
-    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':((id==='notificationCenter'||id==='appInfo')?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger'||id==='paymentMethods')?'pay':id)));
+    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':((id==='notificationCenter'||id==='appInfo')?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger'||id==='paymentMethods'||id==='yijiaPaySecurity')?'pay':id)));
     b.classList.toggle('active',b.dataset.view===activeView);
   });
   window.scrollTo({top:0,behavior:'smooth'});
@@ -2550,6 +2591,13 @@ async function verifyYijiaPayReloadCompleted(beforeBalance){
 
 async function ensurePayCodeState(forceNew=false){
   if(!currentUser) return false;
+
+  if(!(await ensureYijiaPayEnabledBeforePayCode())){
+    currentPayCode='';
+    payCodeExpiresAt=0;
+    renderPayCode();
+    return false;
+  }
 
   const now=Date.now();
   if(!forceNew && currentPayCode && payCodeExpiresAt && now<payCodeExpiresAt){
@@ -7077,6 +7125,145 @@ async function loadYijiaPayHistoryPage(){
   }
 }
 
+
+
+let formalYijiaPayEnabled=true;
+
+async function loadYijiaPaySecuritySettings(){
+  if(!currentUser) return;
+
+  const state=document.getElementById('yijiaPayEnabledState');
+  const balanceEl=document.getElementById('yijiaPaySecurityBalance');
+  const btn=document.getElementById('yijiaPayToggleBtn');
+  const summary=document.getElementById('payEnabledSummary');
+  const title=document.getElementById('payEnabledTitle');
+
+  try{
+    const [{data:settings,error:settingsError},{data:wallet,error:walletError}]
+      = await Promise.all([
+        sb.rpc('app_get_yijiapay_security_settings'),
+        sb.rpc('app_get_yijiapay_wallet_balance')
+      ]);
+
+    if(settingsError) throw settingsError;
+
+    formalYijiaPayEnabled=settings?.enabled!==false;
+
+    const balance=!walletError
+      ? Number(wallet?.walletBalance??wallet?.balance??wallet??0)
+      : null;
+
+    if(state) state.textContent=formalYijiaPayEnabled?'使用中':'已停用';
+    if(balanceEl) balanceEl.textContent=Number.isFinite(balance)?money(balance):'讀取失敗';
+
+    if(btn){
+      btn.disabled=false;
+      btn.textContent=formalYijiaPayEnabled?'停用億家Pay':'重新啟用億家Pay';
+      btn.classList.toggle('profile-save',!formalYijiaPayEnabled);
+      btn.classList.toggle('danger-wide',formalYijiaPayEnabled);
+    }
+
+    if(summary){
+      summary.textContent=formalYijiaPayEnabled
+        ? '目前可使用付款碼'
+        : '目前已停用，不可建立付款碼';
+    }
+    if(title) title.textContent=formalYijiaPayEnabled?'停用億家Pay':'重新啟用億家Pay';
+
+    return settings;
+  }catch(e){
+    console.error('億家Pay安全設定讀取失敗',e);
+    if(state) state.textContent='讀取失敗';
+    if(btn){
+      btn.disabled=true;
+      btn.textContent='安全設定讀取失敗';
+    }
+    if(summary) summary.textContent='正式安全設定讀取失敗';
+    return null;
+  }
+}
+
+async function toggleYijiaPayFormal(){
+  if(!currentUser) return;
+
+  const next=!formalYijiaPayEnabled;
+  const msg=document.getElementById('yijiaPaySecurityMsg');
+  const btn=document.getElementById('yijiaPayToggleBtn');
+
+  if(formalYijiaPayEnabled){
+    const ok=confirm(
+      '確定要停用億家Pay嗎？\n\n停用後會立即取消目前尚未使用的付款碼，但不會刪除錢包餘額與交易紀錄。'
+    );
+    if(!ok) return;
+  }else{
+    const ok=confirm('確定要重新啟用億家Pay嗎？');
+    if(!ok) return;
+  }
+
+  if(btn) btn.disabled=true;
+  if(msg){
+    msg.textContent=next?'正在正式啟用億家Pay…':'正在正式停用億家Pay…';
+    msg.className='auth-msg';
+  }
+
+  try{
+    const {data,error}=await sb.rpc('app_set_yijiapay_enabled',{
+      p_enabled:next
+    });
+    if(error) throw error;
+
+    if(data?.enabled!==next){
+      throw new Error('後端回傳狀態與設定不一致');
+    }
+
+    formalYijiaPayEnabled=next;
+
+    if(!next){
+      stopPayCodeStatusMonitor();
+      currentPayCode='';
+      payCodeExpiresAt=0;
+      try{ renderPayCode(); }catch(_){}
+    }
+
+    await loadYijiaPaySecuritySettings();
+
+    if(msg){
+      msg.textContent=next
+        ? '億家Pay已正式重新啟用。'
+        : '億家Pay已正式停用，未使用付款碼已取消。';
+      msg.className='auth-msg ok';
+    }
+  }catch(e){
+    console.error('億家Pay狀態變更失敗',e);
+    if(msg){
+      msg.textContent='設定失敗：'+(e?.message||e);
+      msg.className='auth-msg error';
+    }
+  }finally{
+    if(btn) btn.disabled=false;
+  }
+}
+
+async function ensureYijiaPayEnabledBeforePayCode(){
+  try{
+    const {data,error}=await sb.rpc('app_get_yijiapay_security_settings');
+    if(error) throw error;
+
+    formalYijiaPayEnabled=data?.enabled!==false;
+
+    if(!formalYijiaPayEnabled){
+      setPayCodeCloudStatus('億家Pay目前已停用',false);
+      setPayCodeLiveStatus('請先到安全設定重新啟用億家Pay','error');
+      return false;
+    }
+
+    return true;
+  }catch(e){
+    console.error('億家Pay啟用狀態驗證失敗',e);
+    setPayCodeCloudStatus('無法確認億家Pay安全狀態',false);
+    return false;
+  }
+}
 
 async function loadPaymentMethodsFormalStatus(){
   if(!currentUser) return;

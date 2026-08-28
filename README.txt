@@ -1,26 +1,26 @@
-億家 App v0.10.15.2 Navigation Integrity Formal Flow
+億家 App v0.10.15.3 YijiaPay Disable Formal Flow
 
-第十三個主功能接通：
-App 導覽 / 入口完整性
+第十四個主功能 / 安全功能正式接通：
+停用 / 重新啟用億家Pay
 
-本版完成：
-- 首頁右上角通知鈴鐺正式接到通知中心
-- 商品詳情返回鍵修正：
-  anybuyHome → redeem
-- 清除舊版失效 view：
-  anybuyHome
-  anybuyOrders
-  subscriptions
-  reservations
-- 新增 resolveAppViewId()
-  若未來仍有舊版入口指向不存在頁面，不會出現空白頁，會安全返回首頁
-- 「我的 → App版本」正式可點
-- 新增 App資訊頁
+本版：
+- 新增億家Pay安全設定頁
+- 正式讀取 app_get_yijiapay_security_settings
+- 正式設定 app_set_yijiapay_enabled
+- 停用億家Pay：
+  - 後端記錄 enabled=false
+  - 取消此會員所有 pending 付款碼
+  - App 清除目前付款碼
+  - 後續禁止建立新付款碼
+- 重新啟用後才可再次建立付款碼
+- 錢包餘額、交易歷史不會因停用而刪除
 
-此版特別檢查所有 showView() 入口與實際 view id，
-避免畫面上有按鈕但按下去沒有頁面。
+Face ID / Passkey：
+- 仍不做假的前端開關
+- 等正式 WebAuthn 驗證後端再接
 
-此版純前端，不用跑 SQL。
-只需要上傳新的 index.html。
+付款限額：
+- 仍不提供假的前端設定
+- 必須與 TM 正式扣款 RPC 同步強制驗證後才可開放
 
-- 修正 YPD 建立後錯誤導向不存在的 pointDiscountTicket；正式回到 pointDiscount 內的 QR 區塊。
+此版需要執行聊天中提供的 SQL。
