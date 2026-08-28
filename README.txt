@@ -1,20 +1,26 @@
-億家 App v0.10.15.1 Payment Methods Formal Status
+億家 App v0.10.15.2 Navigation Integrity Formal Flow
 
-第十二個主功能接通：
-付款方式管理
-
-原本億家Pay頁面的「管理」按鈕沒有功能，
-信用卡與銀行帳戶也只是靜態文字。
+第十三個主功能接通：
+App 導覽 / 入口完整性
 
 本版完成：
-- 新增正式「付款方式管理」頁
-- 億家Pay錢包狀態讀 app_get_yijiapay_wallet_balance
-- 點數折抵狀態讀 app_get_point_feature_config
-- 億家Pay錢包正式顯示可用
-- 點數折抵依正式後端設定顯示開放 / 未開放
-- 信用卡 / 簽帳金融卡在沒有合法金流串接前明確標示未接通
-- 銀行帳戶在沒有正式授權流程前明確標示未接通
-- 不建立假的綁卡或銀行帳戶資料
+- 首頁右上角通知鈴鐺正式接到通知中心
+- 商品詳情返回鍵修正：
+  anybuyHome → redeem
+- 清除舊版失效 view：
+  anybuyHome
+  anybuyOrders
+  subscriptions
+  reservations
+- 新增 resolveAppViewId()
+  若未來仍有舊版入口指向不存在頁面，不會出現空白頁，會安全返回首頁
+- 「我的 → App版本」正式可點
+- 新增 App資訊頁
+
+此版特別檢查所有 showView() 入口與實際 view id，
+避免畫面上有按鈕但按下去沒有頁面。
 
 此版純前端，不用跑 SQL。
 只需要上傳新的 index.html。
+
+- 修正 YPD 建立後錯誤導向不存在的 pointDiscountTicket；正式回到 pointDiscount 內的 QR 區塊。

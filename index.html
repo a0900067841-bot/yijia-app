@@ -1028,7 +1028,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 </head>
 <body>
 <div class="phone">
-<header class="topbar"><div class="brand"><div class="logo">億</div><span>億家</span></div><button class="iconbtn">🔔</button></header>
+<header class="topbar"><div class="brand"><div class="logo">億</div><span>億家</span></div><button class="iconbtn" onclick="showView('notificationCenter')" title="通知中心">🔔</button></header>
 <main class="content">
 <section id="home" class="view active">
 <div id="appAnnouncement" class="announcement"></div>
@@ -1786,7 +1786,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.15.1 Payment Methods Formal Status</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.2 Navigation Integrity Formal Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2053,6 +2053,18 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 </section>
 
 
+
+<section id="appInfo" class="view">
+  <div class="header2"><button class="back" onclick="showView('me')">‹</button><h2>App 資訊</h2></div>
+  <div class="profile-card">
+    <div class="profile-row"><label>版本</label><div class="value">v0.10.15.2</div></div>
+    <div class="profile-row"><label>版本名稱</label><div class="value">Navigation Integrity Formal Flow</div></div>
+    <div class="profile-row"><label>會員資料</label><div class="value">Supabase 正式同步</div></div>
+    <div class="profile-row"><label>交易資料</label><div class="value">正式後端 RPC</div></div>
+    <div class="profile-row"><label>更新方式</label><div class="value">GitHub Pages</div></div>
+  </div>
+</section>
+
 <section id="profile" class="view">
   <div class="header2"><button class="back" onclick="showView('me')">‹</button><h2>會員資料</h2></div>
 
@@ -2117,7 +2129,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 </section>
 
 <section id="anybuyProductDetail" class="view">
-  <div class="header2"><button class="back" onclick="showView('anybuyHome')">‹</button><h2>商品詳情</h2></div>
+  <div class="header2"><button class="back" onclick="showView('redeem')">‹</button><h2>商品詳情</h2></div>
   <div id="anybuyProductDetailBody"></div>
   <div class="anybuy-buybar">
     <div class="anybuy-qty-control">
@@ -2210,7 +2222,29 @@ let authMode='login';
 let currentUser=null;
 let currentMember=null;
 
+
+function resolveAppViewId(id){
+  const requested=String(id||'').trim();
+
+  const aliases={
+    anybuyHome:'redeem',
+    anybuyOrders:'orderManagement',
+    subscriptions:'subscriptionManagement',
+    reservations:'reservationManagement'
+  };
+
+  const resolved=aliases[requested]||requested;
+
+  if(document.getElementById(resolved)?.classList.contains('view')){
+    return resolved;
+  }
+
+  console.warn('找不到 App 頁面，返回首頁：',requested);
+  return 'home';
+}
+
 function showView(id){
+  id=resolveAppViewId(id);
   if(id==='paymentMethods'){
     setTimeout(()=>loadPaymentMethodsFormalStatus(),0);
   }
@@ -2346,7 +2380,7 @@ function showView(id){
   if(target) target.classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>{
     const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','subscriptionDetail','reservationDetail','productUsage','giftDetail','transferDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
-    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':(id==='notificationCenter'?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger'||id==='paymentMethods')?'pay':id)));
+    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':((id==='notificationCenter'||id==='appInfo')?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger'||id==='paymentMethods')?'pay':id)));
     b.classList.toggle('active',b.dataset.view===activeView);
   });
   window.scrollTo({top:0,behavior:'smooth'});
@@ -4488,7 +4522,7 @@ async function createPointDiscountTicket(){
       }
     }
 
-    showView('pointDiscountTicket');
+    showView('pointDiscount');
     startPointDiscountCountdown();
     startPointDiscountStatusMonitor(
       verified.code,
