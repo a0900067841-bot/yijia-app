@@ -1579,8 +1579,8 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" style="opacity:.6">
       <div><strong>付款驗證</strong><small>Face ID／Passkey 將於正式 WebAuthn 後端完成後啟用</small></div><span>—</span>
     </div>
-    <div class="row" style="opacity:.6">
-      <div><strong>付款限額</strong><small>需 TM 正式扣款 RPC 一併強制驗證後才開放設定</small></div><span>—</span>
+    <div class="row" onclick="showView('yijiaPayLimits')">
+      <div><strong>付款限額</strong><small id="payLimitSummary">讀取正式限額中…</small></div><span>›</span>
     </div>
     <div class="row" onclick="showView('yijiaPaySecurity')">
       <div><strong id="payEnabledTitle">停用億家Pay</strong><small id="payEnabledSummary">讀取正式狀態中…</small></div><span>›</span>
@@ -1593,6 +1593,54 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
 
 
+
+
+<section id="yijiaPayLimits" class="view">
+  <div class="header2">
+    <button class="back" onclick="showView('pay')">‹</button>
+    <h2>億家Pay付款限額</h2>
+  </div>
+
+  <div id="yijiaPayLimitStatus" class="small-muted" style="margin:0 4px 10px">
+    正在讀取正式付款限額…
+  </div>
+
+  <div class="profile-card">
+    <div class="profile-row">
+      <label>單筆付款上限</label>
+      <div id="payLimitPerTxnText" class="value">--</div>
+    </div>
+    <div class="profile-row">
+      <label>每日付款上限</label>
+      <div id="payLimitDailyText" class="value">--</div>
+    </div>
+    <div class="profile-row">
+      <label>今日已付款</label>
+      <div id="payLimitUsedTodayText" class="value">--</div>
+    </div>
+    <div class="profile-row">
+      <label>今日剩餘可付款</label>
+      <div id="payLimitRemainTodayText" class="value">--</div>
+    </div>
+  </div>
+
+  <div id="payLimitForm" class="profile-form show">
+    <div class="auth-field">
+      <label>單筆上限（NT$）</label>
+      <input id="payLimitPerTxnInput" type="number" min="1" step="1" inputmode="numeric">
+    </div>
+    <div class="auth-field">
+      <label>每日上限（NT$）</label>
+      <input id="payLimitDailyInput" type="number" min="1" step="1" inputmode="numeric">
+    </div>
+    <button id="payLimitSaveBtn" class="profile-save" onclick="saveYijiaPayLimitsFormal()">儲存正式付款限額</button>
+    <div id="payLimitMsg" class="auth-msg"></div>
+  </div>
+
+  <div class="note" style="margin-top:12px">
+    付款限額不是只做畫面提示。TM 完成億家Pay扣款前，後端也會再次檢查單筆與每日上限；超過限額時整筆扣款交易會被拒絕。
+  </div>
+</section>
 
 <section id="yijiaPaySecurity" class="view">
   <div class="header2">
@@ -1824,7 +1872,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.4 Member Identity Formal Flow</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.5 Payment Limit Formal Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2312,6 +2360,12 @@ function resolveAppViewId(id){
 }
 
 function showView(id){
+  if(id==='yijiaPayLimits'){
+    setTimeout(()=>loadYijiaPayLimitsFormal(),0);
+  }
+  if(id==='pay'){
+    setTimeout(()=>loadYijiaPayLimitsFormal(),0);
+  }
   if(id==='memberIdentity'){
     setTimeout(()=>loadMemberIdentityFormal(),0);
   }
@@ -2457,7 +2511,7 @@ function showView(id){
   if(target) target.classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>{
     const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','subscriptionDetail','reservationDetail','productUsage','giftDetail','transferDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
-    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':((id==='notificationCenter'||id==='appInfo'||id==='memberIdentity')?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger'||id==='paymentMethods'||id==='yijiaPaySecurity')?'pay':id)));
+    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':((id==='notificationCenter'||id==='appInfo'||id==='memberIdentity')?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger'||id==='paymentMethods'||id==='yijiaPaySecurity'||id==='yijiaPayLimits')?'pay':id)));
     b.classList.toggle('active',b.dataset.view===activeView);
   });
   window.scrollTo({top:0,behavior:'smooth'});
@@ -7242,6 +7296,120 @@ async function loadYijiaPayHistoryPage(){
 
 
 let formalYijiaPayEnabled=true;
+
+
+let formalPayLimitPerTxn=5000;
+let formalPayLimitDaily=10000;
+
+async function loadYijiaPayLimitsFormal(){
+  if(!currentUser) return null;
+
+  const status=document.getElementById('yijiaPayLimitStatus');
+
+  if(status) status.textContent='正在讀取正式付款限額…';
+
+  try{
+    const {data,error}=await sb.rpc('app_get_yijiapay_payment_limits');
+    if(error) throw error;
+
+    formalPayLimitPerTxn=Math.max(1,Number(data?.perTransactionLimit||5000));
+    formalPayLimitDaily=Math.max(1,Number(data?.dailyLimit||10000));
+
+    const usedToday=Math.max(0,Number(data?.usedToday||0));
+    const remainToday=Math.max(0,Number(data?.remainingToday??(formalPayLimitDaily-usedToday)));
+
+    const perText=document.getElementById('payLimitPerTxnText');
+    const dailyText=document.getElementById('payLimitDailyText');
+    const usedText=document.getElementById('payLimitUsedTodayText');
+    const remainText=document.getElementById('payLimitRemainTodayText');
+    const perInput=document.getElementById('payLimitPerTxnInput');
+    const dailyInput=document.getElementById('payLimitDailyInput');
+    const summary=document.getElementById('payLimitSummary');
+
+    if(perText) perText.textContent=money(formalPayLimitPerTxn);
+    if(dailyText) dailyText.textContent=money(formalPayLimitDaily);
+    if(usedText) usedText.textContent=money(usedToday);
+    if(remainText) remainText.textContent=money(remainToday);
+    if(perInput) perInput.value=String(formalPayLimitPerTxn);
+    if(dailyInput) dailyInput.value=String(formalPayLimitDaily);
+
+    if(summary){
+      summary.textContent=`單筆 ${money(formalPayLimitPerTxn)} · 每日 ${money(formalPayLimitDaily)}`;
+    }
+
+    if(status) status.textContent='已同步正式付款限額';
+
+    return {
+      perTransactionLimit:formalPayLimitPerTxn,
+      dailyLimit:formalPayLimitDaily,
+      usedToday,
+      remainingToday:remainToday
+    };
+  }catch(e){
+    console.error('正式付款限額讀取失敗',e);
+    if(status) status.textContent='付款限額讀取失敗';
+    return null;
+  }
+}
+
+async function saveYijiaPayLimitsFormal(){
+  if(!currentUser) return;
+
+  const perTxn=Math.floor(Number(document.getElementById('payLimitPerTxnInput')?.value||0));
+  const daily=Math.floor(Number(document.getElementById('payLimitDailyInput')?.value||0));
+  const msg=document.getElementById('payLimitMsg');
+  const btn=document.getElementById('payLimitSaveBtn');
+
+  const setMsg=(text,type='')=>{
+    if(!msg) return;
+    msg.textContent=text;
+    msg.className='auth-msg'+(type?' '+type:'');
+  };
+
+  if(!(perTxn>0) || !(daily>0)){
+    setMsg('單筆與每日上限都必須大於 0。','error');
+    return;
+  }
+
+  if(perTxn>daily){
+    setMsg('單筆上限不可高於每日上限。','error');
+    return;
+  }
+
+  if(btn){
+    btn.disabled=true;
+    btn.textContent='儲存中…';
+  }
+
+  setMsg('正在儲存正式付款限額…');
+
+  try{
+    const {data,error}=await sb.rpc('app_set_yijiapay_payment_limits',{
+      p_per_transaction_limit:perTxn,
+      p_daily_limit:daily
+    });
+    if(error) throw error;
+
+    if(
+      Number(data?.perTransactionLimit)!==perTxn ||
+      Number(data?.dailyLimit)!==daily
+    ){
+      throw new Error('後端回傳限額與設定不一致');
+    }
+
+    await loadYijiaPayLimitsFormal();
+
+    setMsg('付款限額已正式更新。','ok');
+  }catch(e){
+    console.error('付款限額更新失敗',e);
+    setMsg('設定失敗：'+(e?.message||e),'error');
+  }finally{
+    if(btn){
+      btn.disabled=false;
+      btn.textContent='儲存正式付款限額';
+    }
+  }
+}
 
 async function loadYijiaPaySecuritySettings(){
   if(!currentUser) return;

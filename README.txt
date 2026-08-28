@@ -1,25 +1,26 @@
-億家 App v0.10.15.4 Member Identity Formal Flow
+億家 App v0.10.15.5 Payment Limit Formal Flow
 
-第十五個主功能正式接通：
-會員身份 / 會員條碼
-
-正式來源：
-- app_current_member_json()
-- HQ yj4_members
-
-規則：
-- 第一優先 tmMemberNo
-- 第二優先 memberNo
-- 禁止手機號碼當會員條碼
-- 禁止 YJ + 手機號碼當會員條碼
+正式接通：億家Pay付款限額
 
 本版完成：
-- 我的 → 會員條碼
-- 顯示正式會員姓名 / 會員編號 / CODE128
-- 顯示手機登入帳號
-- 可重新同步正式會員資料
-- 同步後重繪首頁 / 放大會員條碼 / 儲值條碼 / 點數折抵會員碼
-- 會員條碼只做會員識別 / 累點，不能當億家Pay付款碼
+- 億家Pay → 安全與設定 → 付款限額 正式可點
+- 可設定：
+  - 單筆付款上限
+  - 每日付款上限
+- 顯示：
+  - 今日已付款
+  - 今日剩餘可付款
+- App 讀取 app_get_yijiapay_payment_limits()
+- App 設定 app_set_yijiapay_payment_limits()
 
-此版純前端，不用跑 SQL。
-只需要上傳新的 index.html。
+後端 SQL 另在聊天提供：
+- app_yijiapay_payment_limits
+- app_get_yijiapay_payment_limits()
+- app_set_yijiapay_payment_limits(...)
+- BEFORE UPDATE trigger on app_yijiapay_pay_codes
+- 當付款碼由 pending → used 時：
+  - 強制檢查單筆限額
+  - 強制檢查 Asia/Taipei 當日已付款總額
+  - 超過限額直接 exception，整個 TM 扣款 transaction rollback
+
+此版需要跑 SQL。
