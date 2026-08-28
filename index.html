@@ -1715,7 +1715,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.8 Account Profile Formal Flow</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.9 Subscription Reservation Formal Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -1887,6 +1887,16 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div id="reservationSyncStatus" class="small-muted" style="margin:0 4px 10px">正式預約資料同步中…</div>
   <div id="reservationList"><div class="empty-panel">預約資料載入中…</div></div>
 </section>
+<section id="subscriptionDetail" class="view">
+  <div class="header2"><button class="back" onclick="showView('subscriptionManagement')">‹</button><h2>訂閱明細</h2></div>
+  <div id="subscriptionDetailHost" class="profile-card"></div>
+</section>
+
+<section id="reservationDetail" class="view">
+  <div class="header2"><button class="back" onclick="showView('reservationManagement')">‹</button><h2>預約明細</h2></div>
+  <div id="reservationDetailHost" class="profile-card"></div>
+</section>
+
 
 
 <section id="anybuyGuide" class="view">
@@ -2171,7 +2181,7 @@ function showView(id){
     stopExpiryRefundMonitor();
   }
 
-  if(id==='subscriptionManagement' || id==='reservationManagement'){
+  if(['subscriptionManagement','reservationManagement','subscriptionDetail','reservationDetail'].includes(id)){
     setTimeout(()=>startSubscriptionReservationMonitor(),0);
   }else{
     stopSubscriptionReservationMonitor();
@@ -2252,7 +2262,7 @@ function showView(id){
   const target=document.getElementById(id);
   if(target) target.classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>{
-    const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','productUsage','giftDetail','transferDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
+    const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','subscriptionDetail','reservationDetail','productUsage','giftDetail','transferDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
     const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : (id==='coupons'?'home':(id==='notificationCenter'?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger')?'pay':id)));
     b.classList.toggle('active',b.dataset.view===activeView);
   });
@@ -4705,7 +4715,48 @@ async function buildNotificationRows(){
     }
   }catch(e){console.warn('通知：點數紀錄讀取失敗',e)}
 
-  // 4. 億家Pay付款完成通知
+  
+  // 4. 訂閱 / 預約狀態通知
+  try{
+    const [{data:subs,error:subsError},{data:reservations,error:resError}]
+      = await Promise.all([
+        sb.rpc('app_get_member_subscriptions'),
+        sb.rpc('app_get_member_reservations')
+      ]);
+
+    if(!subsError && Array.isArray(subs)){
+      subs.forEach(s=>{
+        const when=s?.updatedAt||s?.createdAt||s?.nextDate;
+        pushNotification(rows,{
+          id:notificationId('subscription',s?.id||s?.name,when),
+          icon:'🔁',
+          title:'訂閱狀態',
+          message:`${s?.name||'訂閱方案'}：${s?.status||'啟用'}${s?.nextDate?`，下次日期 ${s.nextDate}`:''}`,
+          time:when,
+          target:'subscriptionManagement'
+        });
+      });
+    }
+
+    if(!resError && Array.isArray(reservations)){
+      reservations.forEach(r=>{
+        const when=r?.updatedAt||r?.createdAt||r?.reservationDate;
+        pushNotification(rows,{
+          id:notificationId('reservation',r?.id||r?.reservationCode||r?.name,when),
+          icon:'📅',
+          title:'預約狀態',
+          message:`${r?.name||'預約商品'}：${r?.status||'預約中'}${r?.reservationDate?`，日期 ${r.reservationDate}`:''}`,
+          time:when,
+          target:'reservationManagement'
+        });
+      });
+    }
+  }catch(e){
+    console.warn('通知：訂閱 / 預約正式資料讀取失敗',e);
+  }
+
+  // 5. 億家Pay付款完成通知
+
   try{
     const {data,error}=await sb.rpc('app_get_my_yijiapay_pay_history');
     if(!error && Array.isArray(data)){
@@ -9326,17 +9377,76 @@ function startSubscriptionReservationMonitor(){
   );
 }
 
+
+let formalSubscriptionRows=[];
+let formalReservationRows=[];
+
+function renderFormalKeyValueRows(data,fields){
+  return fields.map(([label,key,formatter])=>{
+    const raw=data?.[key];
+    const value=formatter?formatter(raw,data):raw;
+    if(value===undefined || value===null || String(value)==='') return '';
+    return `<div class="profile-row"><label>${safeText(label)}</label><div class="value">${safeText(value)}</div></div>`;
+  }).join('');
+}
+
+function openSubscriptionDetail(index){
+  const row=formalSubscriptionRows[index];
+  if(!row) return;
+
+  const host=document.getElementById('subscriptionDetailHost');
+  if(host){
+    host.innerHTML=renderFormalKeyValueRows(row,[
+      ['方案名稱','name'],
+      ['狀態','status'],
+      ['頻率','frequency'],
+      ['下次日期','nextDate'],
+      ['開始日期','startDate'],
+      ['結束日期','endDate'],
+      ['門市','storeName',(_,x)=>x?.storeName||x?.storeCode||''],
+      ['建立時間','createdAt',v=>v?new Date(v).toLocaleString('zh-TW'):''],
+      ['更新時間','updatedAt',v=>v?new Date(v).toLocaleString('zh-TW'):'']
+    ]) || '<div class="empty-panel">沒有更多正式訂閱明細</div>';
+  }
+
+  showView('subscriptionDetail');
+}
+
+function openReservationDetail(index){
+  const row=formalReservationRows[index];
+  if(!row) return;
+
+  const host=document.getElementById('reservationDetailHost');
+  if(host){
+    host.innerHTML=renderFormalKeyValueRows(row,[
+      ['商品','name'],
+      ['狀態','status'],
+      ['預約日期','reservationDate'],
+      ['預約時間','reservationTime'],
+      ['門市','storeName',(_,x)=>x?.storeName||x?.storeCode||''],
+      ['數量','quantity'],
+      ['預約編號','reservationCode',(_,x)=>x?.reservationCode||x?.code||''],
+      ['建立時間','createdAt',v=>v?new Date(v).toLocaleString('zh-TW'):''],
+      ['更新時間','updatedAt',v=>v?new Date(v).toLocaleString('zh-TW'):'']
+    ]) || '<div class="empty-panel">沒有更多正式預約明細</div>';
+  }
+
+  showView('reservationDetail');
+}
+
 function renderSubscriptionRows(rows){
   const box=document.getElementById('subscriptionList');
   if(!box) return;
 
-  if(!rows.length){
+  formalSubscriptionRows=Array.isArray(rows)?rows:[];
+
+  if(!formalSubscriptionRows.length){
     box.innerHTML='<div class="empty-panel">目前沒有訂閱方案</div>';
     return;
   }
 
-  box.innerHTML=rows.map(x=>`
-    <div class="history-card2">
+  box.innerHTML=formalSubscriptionRows.map((x,index)=>`
+    <div class="history-card2" onclick="openSubscriptionDetail(${index})">
       <div class="top">
         <div>
           <div class="title">${safeText(x.name||'訂閱方案')}</div>
@@ -9347,6 +9457,7 @@ function renderSubscriptionRows(rows){
         </div>
         <span class="status-pill">${safeText(x.status||'啟用')}</span>
       </div>
+      <div class="small-muted" style="margin-top:8px">點擊查看正式訂閱明細</div>
     </div>
   `).join('');
 }
@@ -9355,13 +9466,15 @@ function renderReservationRows(rows){
   const box=document.getElementById('reservationList');
   if(!box) return;
 
-  if(!rows.length){
+  formalReservationRows=Array.isArray(rows)?rows:[];
+
+  if(!formalReservationRows.length){
     box.innerHTML='<div class="empty-panel">目前沒有預約商品</div>';
     return;
   }
 
-  box.innerHTML=rows.map(x=>`
-    <div class="history-card2">
+  box.innerHTML=formalReservationRows.map((x,index)=>`
+    <div class="history-card2" onclick="openReservationDetail(${index})">
       <div class="top">
         <div>
           <div class="title">${safeText(x.name||'預約商品')}</div>
@@ -9374,6 +9487,7 @@ function renderReservationRows(rows){
           ${safeText(x.status||'預約中')}
         </span>
       </div>
+      <div class="small-muted" style="margin-top:8px">點擊查看正式預約明細</div>
     </div>
   `).join('');
 }
