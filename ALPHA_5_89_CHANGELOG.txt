@@ -1,7 +1,0 @@
-SC Alpha 5.89
-- 修正 5.88 index.html 仍錯誤引用 style-5.87.css 的問題。
-- index.html 現在固定引用 style-5.89.css。
-- 登入背景改用全新檔名 sc-login-background-5.89.png。
-- 保留 5.87 的雲端帳密同步登入功能。
-- Service Worker 改為導覽頁 network-first，並清除舊 cache。
-- 舊 style-5.8x.css 從部署包移除，避免再次誤讀。
