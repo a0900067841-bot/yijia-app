@@ -1,24 +1,21 @@
-億家 App v0.10.15.9 PWA Install Formal Flow
+億家 App v0.10.16.0 PWA Update Reliability Flow
 
-本版完成 Web App → 可加入主畫面的正式 PWA 外殼：
+本版完成：
+- App 有新版本時顯示更新提示
+- 「App 資訊」可手動檢查更新
+- 新版 service worker 不再自動搶接手
+- 使用者點「立即更新」後才切換新版並重新載入
+- 避免付款、兌換、退貨流程中途被 service worker 自動刷新
+- 網路離線時顯示「目前離線」
+- 恢復連線後重新同步一般正式資料
+- 恢復連線不會建立 / 更新億家Pay付款碼
+- Service Worker cache 更新到 v0.10.16.0
+- API / Supabase 仍不離線快取
 
-- manifest.webmanifest
-- service-worker.js
-- 180 / 192 / 512 App icon
-- iPhone / iPad Safari「加入主畫面」教學
-- 支援 beforeinstallprompt 的瀏覽器可直接安裝
-- App Info 新增加入主畫面入口
-- 從主畫面開啟時使用 standalone App 模式
+這版不用跑 SQL。
 
-離線原則：
-- 只快取 App 外框 / 啟動資源
-- Supabase、會員、點數、付款、訂單、優惠券、隨買等資料不做離線快取
-- 避免顯示過期交易狀態
-
-重要：
-這版除了 index.html，還要一起上傳：
+需一起上傳：
+- index.html
 - manifest.webmanifest
 - service-worker.js
 - icons 資料夾
-
-不用跑 SQL。

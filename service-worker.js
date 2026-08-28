@@ -1,5 +1,5 @@
 
-const CACHE_NAME='yijia-app-shell-v0.10.15.9';
+const CACHE_NAME='yijia-app-shell-v0.10.16.0';
 const SHELL=[
   './',
   './index.html',
@@ -13,7 +13,6 @@ self.addEventListener('install',event=>{
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache=>cache.addAll(SHELL))
-      .then(()=>self.skipWaiting())
   );
 });
 

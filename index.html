@@ -1036,6 +1036,14 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 </head>
 <body>
 <div class="phone">
+<div id="networkStatusBanner" style="display:none;background:#fff3cd;color:#7a5400;padding:8px 12px;font-size:12px;font-weight:800;text-align:center">
+  目前離線，交易資料暫時無法更新
+</div>
+<div id="appUpdateBanner" style="display:none;background:#eaf4ff;color:#145b96;padding:9px 12px;font-size:12px;font-weight:800;text-align:center">
+  億家 App 有新版本
+  <button onclick="applyPwaUpdateNow()" style="margin-left:8px;border:0;border-radius:10px;padding:5px 9px;font-weight:900">立即更新</button>
+</div>
+
 <header class="topbar"><div class="brand"><div class="logo">億</div><span>億家</span></div><button class="iconbtn" onclick="showView('notificationCenter')" title="通知中心">🔔</button></header>
 <main class="content">
 <section id="home" class="view active">
@@ -1879,7 +1887,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.9 PWA Install Formal Flow</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.0 PWA Update Reliability Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2160,7 +2168,10 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="profile-row"><label>Face ID／Passkey</label><div class="value">目前未開放</div></div>
     <div class="profile-row"><label>信用卡／銀行帳戶</label><div class="value">目前未開放</div></div>
     <div class="profile-row"><label>安裝方式</label><div id="appInstallModeText" class="value">檢查中…</div></div>
+    <div class="profile-row"><label>網路狀態</label><div id="appNetworkStateText" class="value">檢查中…</div></div>
+    <div class="profile-row"><label>更新狀態</label><div id="appUpdateStateText" class="value">檢查中…</div></div>
     <button class="profile-edit-btn" style="margin-top:12px" onclick="showView('installApp')">加入主畫面</button>
+    <button class="profile-edit-btn" style="margin-top:8px" onclick="checkPwaUpdateNow(true)">檢查 App 更新</button>
   </div>
 </section>
 
@@ -2446,6 +2457,141 @@ let currentMember=null;
 
 
 
+
+let yijiaServiceWorkerRegistration=null;
+let yijiaWaitingWorker=null;
+let pwaUpdateCheckRunning=false;
+let pwaControllerReloadPending=false;
+
+function updateNetworkUi(){
+  const online=navigator.onLine!==false;
+  const banner=document.getElementById('networkStatusBanner');
+  const text=document.getElementById('appNetworkStateText');
+
+  if(banner) banner.style.display=online?'none':'block';
+  if(text) text.textContent=online?'已連線':'目前離線';
+}
+
+function updatePwaUpdateUi(state='latest'){
+  const banner=document.getElementById('appUpdateBanner');
+  const text=document.getElementById('appUpdateStateText');
+
+  if(state==='available'){
+    if(banner) banner.style.display='block';
+    if(text) text.textContent='有新版本可更新';
+    return;
+  }
+
+  if(state==='checking'){
+    if(text) text.textContent='正在檢查更新…';
+    return;
+  }
+
+  if(banner) banner.style.display='none';
+  if(text) text.textContent='目前已是最新版';
+}
+
+function watchServiceWorkerRegistration(reg){
+  if(!reg) return;
+
+  yijiaServiceWorkerRegistration=reg;
+
+  if(reg.waiting && navigator.serviceWorker.controller){
+    yijiaWaitingWorker=reg.waiting;
+    updatePwaUpdateUi('available');
+  }
+
+  reg.addEventListener('updatefound',()=>{
+    const worker=reg.installing;
+    if(!worker) return;
+
+    worker.addEventListener('statechange',()=>{
+      if(
+        worker.state==='installed' &&
+        navigator.serviceWorker.controller
+      ){
+        yijiaWaitingWorker=worker;
+        updatePwaUpdateUi('available');
+      }
+    });
+  });
+}
+
+async function checkPwaUpdateNow(showResult=false){
+  if(pwaUpdateCheckRunning) return;
+  pwaUpdateCheckRunning=true;
+
+  updatePwaUpdateUi('checking');
+
+  try{
+    let reg=yijiaServiceWorkerRegistration;
+
+    if(!reg && 'serviceWorker' in navigator){
+      reg=await navigator.serviceWorker.getRegistration('./');
+    }
+
+    if(!reg){
+      if(showResult) alert('目前尚未啟用 App 更新服務。');
+      updatePwaUpdateUi('latest');
+      return;
+    }
+
+    watchServiceWorkerRegistration(reg);
+    await reg.update();
+
+    // update() 完成後，稍等 browser 將新 worker 放入 waiting。
+    await new Promise(resolve=>setTimeout(resolve,500));
+
+    if(reg.waiting && navigator.serviceWorker.controller){
+      yijiaWaitingWorker=reg.waiting;
+      updatePwaUpdateUi('available');
+      if(showResult) alert('找到新版本，可以立即更新。');
+    }else{
+      updatePwaUpdateUi('latest');
+      if(showResult) alert('目前已是最新版。');
+    }
+  }catch(e){
+    console.warn('檢查 App 更新失敗',e);
+    const text=document.getElementById('appUpdateStateText');
+    if(text) text.textContent='更新檢查失敗';
+    if(showResult) alert('更新檢查失敗，請確認網路後再試。');
+  }finally{
+    pwaUpdateCheckRunning=false;
+  }
+}
+
+function applyPwaUpdateNow(){
+  const worker=
+    yijiaWaitingWorker ||
+    yijiaServiceWorkerRegistration?.waiting;
+
+  if(!worker){
+    checkPwaUpdateNow(true);
+    return;
+  }
+
+  pwaControllerReloadPending=true;
+  worker.postMessage({type:'SKIP_WAITING'});
+}
+
+window.addEventListener('online',()=>{
+  updateNetworkUi();
+  // 恢復連線只重新同步一般資料，不建立/更新億家Pay付款碼。
+  try{ syncAppForegroundData(); }catch(_){}
+});
+
+window.addEventListener('offline',()=>{
+  updateNetworkUi();
+});
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(!pwaControllerReloadPending) return;
+    pwaControllerReloadPending=false;
+    window.location.reload();
+  });
+}
+
 let deferredPwaInstallPrompt=null;
 
 function isStandaloneApp(){
@@ -2525,7 +2671,11 @@ window.addEventListener('appinstalled',()=>{
 });
 
 async function registerYijiaServiceWorker(){
-  if(!('serviceWorker' in navigator)) return;
+  if(!('serviceWorker' in navigator)){
+    updatePwaInstallUi();
+    updateNetworkUi();
+    return;
+  }
 
   try{
     const reg=await navigator.serviceWorker.register('./service-worker.js',{
@@ -2533,21 +2683,23 @@ async function registerYijiaServiceWorker(){
     });
 
     await navigator.serviceWorker.ready;
+    watchServiceWorkerRegistration(reg);
 
-    // 新版 service worker 安裝後立即接手，避免 GitHub Pages 更新後還卡舊版本。
-    if(reg.waiting){
-      reg.waiting.postMessage({type:'SKIP_WAITING'});
-    }
+    // 啟動時只檢查是否有新版本，不自動重整畫面。
+    // 避免使用者正在付款 / 兌換時被強制重新整理。
+    setTimeout(()=>checkPwaUpdateNow(false),1200);
   }catch(e){
     console.warn('億家 App Service Worker 註冊失敗',e);
   }finally{
     updatePwaInstallUi();
+    updateNetworkUi();
   }
 }
 
 window.addEventListener('load',()=>{
   registerYijiaServiceWorker();
   updatePwaInstallUi();
+  updateNetworkUi();
 });
 
 function resolveAppViewId(id){
