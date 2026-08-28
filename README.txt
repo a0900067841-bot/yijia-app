@@ -1,26 +1,27 @@
-億家 App v0.10.15.5 Payment Limit Formal Flow
+億家 App v0.10.15.6 Account Cancellation Formal Flow
 
-正式接通：億家Pay付款限額
+正式接通：取消會員申請
 
-本版完成：
-- 億家Pay → 安全與設定 → 付款限額 正式可點
-- 可設定：
-  - 單筆付款上限
-  - 每日付款上限
-- 顯示：
-  - 今日已付款
-  - 今日剩餘可付款
-- App 讀取 app_get_yijiapay_payment_limits()
-- App 設定 app_set_yijiapay_payment_limits()
+App：
+- 會員資料 → 取消會員 正式可點
+- 先檢查正式資料：
+  - 億家Pay餘額必須為 0
+  - 不可有可兌換商品
+  - 不可有待付款 / 待處理訂單
+- 送出前重新驗證目前密碼
+- 正式建立 pending 取消會員申請
+- pending 狀態可撤回
+- 顯示正式申請時間與狀態
 
-後端 SQL 另在聊天提供：
-- app_yijiapay_payment_limits
-- app_get_yijiapay_payment_limits()
-- app_set_yijiapay_payment_limits(...)
-- BEFORE UPDATE trigger on app_yijiapay_pay_codes
-- 當付款碼由 pending → used 時：
-  - 強制檢查單筆限額
-  - 強制檢查 Asia/Taipei 當日已付款總額
-  - 超過限額直接 exception，整個 TM 扣款 transaction rollback
+後端：
+- app_member_cancellation_requests
+- app_get_member_cancellation_status()
+- app_request_member_cancellation(text)
+- app_withdraw_member_cancellation()
 
-此版需要跑 SQL。
+設計原則：
+- App 前端不直接 DELETE auth.users
+- 不直接刪交易、錢包、發票/存根或依法需保留的資料
+- 正式申請完成後的最終註銷由後台流程處理
+
+此版需要執行聊天中提供的 SQL。

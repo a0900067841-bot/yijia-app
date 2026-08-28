@@ -1872,7 +1872,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.5 Payment Limit Formal Flow</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.6 Account Cancellation Formal Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2241,7 +2241,57 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div id="passwordMsg" class="auth-msg"></div>
   </div>
 
-  <button class="danger-wide" disabled style="opacity:.45">取消會員（待正式後端帳號註銷流程）</button>
+  <button class="danger-wide" onclick="showView('memberCancellation')">取消會員</button>
+</section>
+
+
+<section id="memberCancellation" class="view">
+  <div class="header2">
+    <button class="back" onclick="showView('profile')">‹</button>
+    <h2>取消會員</h2>
+  </div>
+
+  <div id="memberCancellationStatus" class="small-muted" style="margin:0 4px 10px">
+    正在讀取正式申請狀態…
+  </div>
+
+  <div class="profile-card">
+    <div class="profile-row">
+      <label>目前狀態</label>
+      <div id="memberCancellationState" class="value">讀取中…</div>
+    </div>
+    <div class="profile-row">
+      <label>申請時間</label>
+      <div id="memberCancellationRequestedAt" class="value">--</div>
+    </div>
+  </div>
+
+  <div id="memberCancellationEligibility" class="note" style="margin-top:12px">
+    正在檢查錢包、商品與待付款訂單…
+  </div>
+
+  <div id="memberCancellationForm" class="profile-form show">
+    <div class="auth-field">
+      <label>目前密碼</label>
+      <input id="memberCancellationPassword" type="password" autocomplete="current-password" placeholder="請輸入目前登入密碼">
+    </div>
+    <div class="auth-field">
+      <label>取消原因（選填）</label>
+      <input id="memberCancellationReason" maxlength="200" placeholder="最多 200 字">
+    </div>
+    <button id="memberCancellationSubmitBtn" class="danger-wide" onclick="submitMemberCancellationFormal()">
+      送出取消會員申請
+    </button>
+    <button id="memberCancellationWithdrawBtn" class="profile-edit-btn" style="display:none;margin-top:8px" onclick="withdrawMemberCancellationFormal()">
+      撤回取消會員申請
+    </button>
+    <div id="memberCancellationMsg" class="auth-msg"></div>
+  </div>
+
+  <div class="note" style="margin-top:12px">
+    為避免尚有錢包餘額、未兌換商品或待付款訂單時誤刪會員，本功能先建立正式取消會員申請。
+    會員資料、交易憑證與依法必須保存的紀錄不會由 App 前端直接刪除。
+  </div>
 </section>
 
 <section id="anybuyProductDetail" class="view">
@@ -2360,6 +2410,9 @@ function resolveAppViewId(id){
 }
 
 function showView(id){
+  if(id==='memberCancellation'){
+    setTimeout(()=>loadMemberCancellationFormal(),0);
+  }
   if(id==='yijiaPayLimits'){
     setTimeout(()=>loadYijiaPayLimitsFormal(),0);
   }
@@ -2511,7 +2564,7 @@ function showView(id){
   if(target) target.classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>{
     const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','subscriptionDetail','reservationDetail','productUsage','giftDetail','transferDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
-    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':((id==='notificationCenter'||id==='appInfo'||id==='memberIdentity')?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger'||id==='paymentMethods'||id==='yijiaPaySecurity'||id==='yijiaPayLimits')?'pay':id)));
+    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':((id==='notificationCenter'||id==='appInfo'||id==='memberIdentity'||id==='memberCancellation')?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger'||id==='paymentMethods'||id==='yijiaPaySecurity'||id==='yijiaPayLimits')?'pay':id)));
     b.classList.toggle('active',b.dataset.view===activeView);
   });
   window.scrollTo({top:0,behavior:'smooth'});
@@ -5651,6 +5704,247 @@ function toggleProfileForm(open){
   const form=document.getElementById('profileForm');
   if(form)form.classList.toggle('open',!!open);
   if(open)renderProfile();
+}
+
+
+let memberCancellationFormalStatus=null;
+let memberCancellationEligible=false;
+
+function cancellationStatusText(status){
+  const s=String(status||'none').toLowerCase();
+  if(s==='pending') return '取消會員申請處理中';
+  if(s==='approved') return '取消會員申請已核准';
+  if(s==='completed') return '會員已取消';
+  if(s==='rejected') return '取消會員申請未通過';
+  if(s==='withdrawn') return '申請已撤回';
+  return '尚未申請';
+}
+
+async function checkMemberCancellationEligibility(){
+  if(!currentUser) return {ok:false,reasons:['尚未登入']};
+
+  const reasons=[];
+  let walletBalance=0;
+  let activeQty=0;
+  let pendingOrders=0;
+
+  try{
+    const {data,error}=await sb.rpc('app_get_yijiapay_wallet_balance');
+    if(error) throw error;
+    walletBalance=Number(data?.walletBalance??data?.balance??data??0);
+    if(walletBalance>0){
+      reasons.push(`億家Pay仍有餘額 ${money(walletBalance)}`);
+    }
+  }catch(e){
+    reasons.push('無法確認億家Pay錢包餘額');
+  }
+
+  try{
+    const {data,error}=await sb.rpc('app_get_member_products');
+    if(error) throw error;
+    const rows=Array.isArray(data)?data:[];
+    activeQty=rows.reduce((sum,x)=>{
+      const lifecycle=productLifecycleState(x);
+      return sum+(lifecycle.canOperate?Math.max(0,Number(x.remainingQuantity||0)):0);
+    },0);
+    if(activeQty>0){
+      reasons.push(`仍有 ${activeQty} 件可兌換商品`);
+    }
+  }catch(e){
+    reasons.push('無法確認我的商品');
+  }
+
+  try{
+    const {data,error}=await sb.rpc('app_get_anybuy_order_history');
+    if(error) throw error;
+    const rows=Array.isArray(data)?data:[];
+    pendingOrders=rows.filter(x=>{
+      const s=String(x?.status||x?.paymentStatus||'').toLowerCase();
+      return s==='pending' || s.includes('待付款') || s.includes('處理中');
+    }).length;
+    if(pendingOrders>0){
+      reasons.push(`仍有 ${pendingOrders} 筆待處理／待付款訂單`);
+    }
+  }catch(e){
+    reasons.push('無法確認訂單狀態');
+  }
+
+  return {
+    ok:reasons.length===0,
+    reasons,
+    walletBalance,
+    activeQty,
+    pendingOrders
+  };
+}
+
+async function loadMemberCancellationFormal(){
+  if(!currentUser) return;
+
+  const statusEl=document.getElementById('memberCancellationStatus');
+  const stateEl=document.getElementById('memberCancellationState');
+  const atEl=document.getElementById('memberCancellationRequestedAt');
+  const eligibilityEl=document.getElementById('memberCancellationEligibility');
+  const submitBtn=document.getElementById('memberCancellationSubmitBtn');
+  const withdrawBtn=document.getElementById('memberCancellationWithdrawBtn');
+
+  if(statusEl) statusEl.textContent='正在讀取正式申請狀態…';
+
+  try{
+    const [{data:statusData,error:statusError},eligibility]
+      = await Promise.all([
+        sb.rpc('app_get_member_cancellation_status'),
+        checkMemberCancellationEligibility()
+      ]);
+
+    if(statusError) throw statusError;
+
+    memberCancellationFormalStatus=statusData||{status:'none'};
+    memberCancellationEligible=eligibility.ok;
+
+    const status=String(memberCancellationFormalStatus?.status||'none').toLowerCase();
+    const pending=status==='pending';
+
+    if(stateEl) stateEl.textContent=cancellationStatusText(status);
+    if(atEl){
+      const raw=memberCancellationFormalStatus?.requestedAt;
+      atEl.textContent=raw?new Date(raw).toLocaleString('zh-TW'):'--';
+    }
+
+    if(eligibilityEl){
+      if(eligibility.ok){
+        eligibilityEl.innerHTML='<strong>目前符合送出申請條件</strong><br>錢包餘額為 0、沒有可兌換商品，也沒有待付款／待處理訂單。';
+      }else{
+        eligibilityEl.innerHTML=
+          '<strong>目前不能送出取消會員申請：</strong><br>'+
+          eligibility.reasons.map(x=>'• '+safeText(x)).join('<br>');
+      }
+    }
+
+    if(submitBtn){
+      submitBtn.style.display=pending?'none':'block';
+      submitBtn.disabled=!eligibility.ok;
+    }
+
+    if(withdrawBtn){
+      withdrawBtn.style.display=pending?'block':'none';
+    }
+
+    if(statusEl) statusEl.textContent='已同步正式取消會員申請狀態';
+  }catch(e){
+    console.error('取消會員申請狀態讀取失敗',e);
+    if(statusEl) statusEl.textContent='取消會員申請狀態讀取失敗';
+    if(submitBtn) submitBtn.disabled=true;
+  }
+}
+
+async function submitMemberCancellationFormal(){
+  if(!currentUser || !currentMember) return;
+
+  const password=document.getElementById('memberCancellationPassword')?.value||'';
+  const reason=document.getElementById('memberCancellationReason')?.value.trim()||'';
+  const msg=document.getElementById('memberCancellationMsg');
+  const btn=document.getElementById('memberCancellationSubmitBtn');
+
+  const setMsg=(text,type='')=>{
+    if(!msg) return;
+    msg.textContent=text;
+    msg.className='auth-msg'+(type?' '+type:'');
+  };
+
+  const eligibility=await checkMemberCancellationEligibility();
+  if(!eligibility.ok){
+    setMsg('目前仍有未完成的會員資產或交易，不能送出申請。','error');
+    await loadMemberCancellationFormal();
+    return;
+  }
+
+  if(!password){
+    setMsg('請輸入目前登入密碼。','error');
+    return;
+  }
+
+  const ok=confirm(
+    '確定要送出取消會員申請嗎？\n\n送出後不會立即刪除交易紀錄；申請處理完成前仍可撤回。'
+  );
+  if(!ok) return;
+
+  if(btn){
+    btn.disabled=true;
+    btn.textContent='驗證中…';
+  }
+
+  try{
+    const phone=normalizePhone(currentMember.phone||currentMember.memberPhone||'');
+    if(!phone) throw new Error('找不到登入手機號碼');
+
+    const {error:reauthError}=await sb.auth.signInWithPassword({
+      email:phoneToInternalEmail(phone),
+      password
+    });
+
+    if(reauthError){
+      throw new Error('目前密碼不正確');
+    }
+
+    if(btn) btn.textContent='送出正式申請中…';
+
+    const {data,error}=await sb.rpc('app_request_member_cancellation',{
+      p_reason:reason||null
+    });
+    if(error) throw error;
+
+    if(String(data?.status||'').toLowerCase()!=='pending'){
+      throw new Error('後端沒有建立正式 pending 申請');
+    }
+
+    document.getElementById('memberCancellationPassword').value='';
+    setMsg('取消會員申請已正式送出。','ok');
+    await loadMemberCancellationFormal();
+  }catch(e){
+    console.error('取消會員申請失敗',e);
+    setMsg('申請失敗：'+(e?.message||e),'error');
+  }finally{
+    if(btn){
+      btn.disabled=false;
+      btn.textContent='送出取消會員申請';
+    }
+  }
+}
+
+async function withdrawMemberCancellationFormal(){
+  if(!currentUser) return;
+
+  const ok=confirm('確定要撤回取消會員申請嗎？');
+  if(!ok) return;
+
+  const msg=document.getElementById('memberCancellationMsg');
+  const btn=document.getElementById('memberCancellationWithdrawBtn');
+
+  if(btn) btn.disabled=true;
+
+  try{
+    const {data,error}=await sb.rpc('app_withdraw_member_cancellation');
+    if(error) throw error;
+
+    if(String(data?.status||'').toLowerCase()!=='withdrawn'){
+      throw new Error('後端沒有確認撤回');
+    }
+
+    if(msg){
+      msg.textContent='取消會員申請已撤回。';
+      msg.className='auth-msg ok';
+    }
+
+    await loadMemberCancellationFormal();
+  }catch(e){
+    if(msg){
+      msg.textContent='撤回失敗：'+(e?.message||e);
+      msg.className='auth-msg error';
+    }
+  }finally{
+    if(btn) btn.disabled=false;
+  }
 }
 
 function validFormalPassword(password){
