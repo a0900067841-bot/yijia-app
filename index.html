@@ -1918,7 +1918,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.2 Redeem QR Display Fix</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.4 YijiaPay PIN iOS Input Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2468,14 +2468,33 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     </div>
 
     <input id="yijiaPayPinInput"
-      type="password"
+      type="tel"
       inputmode="numeric"
       pattern="[0-9]*"
       maxlength="4"
-      autocomplete="off"
+      autocomplete="one-time-code"
       aria-label="億家Pay四位數安全密碼"
-      style="position:absolute;left:-9999px;opacity:0">
+      placeholder="請輸入 4 位數"
+      style="
+        display:block;
+        width:100%;
+        box-sizing:border-box;
+        margin:8px 0 4px;
+        padding:14px 16px;
+        border:1.5px solid #d9dde2;
+        border-radius:14px;
+        background:#fff;
+        color:#111;
+        text-align:center;
+        font-size:24px;
+        font-weight:800;
+        letter-spacing:12px;
+        -webkit-text-security:disc;
+      ">
 
+    <div style="font-size:12px;color:#7a828a;text-align:center;margin-top:6px">
+      點一下輸入框即可叫出數字鍵盤
+    </div>
     <div id="yijiaPayPinGateMsg" class="auth-msg" style="text-align:center;min-height:20px"></div>
 
     <div id="yijiaPayPinSetupRepeatWrap" style="display:none">
@@ -2809,8 +2828,16 @@ function clearPinInput(){
 function focusPinInput(){
   setTimeout(()=>{
     const input=document.getElementById('yijiaPayPinInput');
-    try{ input?.focus({preventScroll:true}); }catch(_){ input?.focus(); }
-  },60);
+    if(!input) return;
+    try{
+      input.scrollIntoView({block:'center',behavior:'smooth'});
+    }catch(_){}
+    try{
+      input.focus();
+      const len=String(input.value||'').length;
+      input.setSelectionRange?.(len,len);
+    }catch(_){}
+  },80);
 }
 
 async function getYijiaPayPinStatus(){
@@ -2889,7 +2916,7 @@ async function requestYijiaPayAccess(targetView='pay'){
   }
 
   clearPinInput();
-  focusPinInput();
+  requestAnimationFrame(()=>focusPinInput());
   return false;
 }
 
@@ -3013,7 +3040,7 @@ function openYijiaPayPinChangeFlow(){
   }
 
   clearPinInput();
-  focusPinInput();
+  requestAnimationFrame(()=>focusPinInput());
 }
 
 document.addEventListener('input',event=>{
@@ -3031,6 +3058,17 @@ document.addEventListener('input',event=>{
 
   if(clean.length===4){
     setTimeout(()=>handleYijiaPayPinCompleted(clean),70);
+  }
+});
+
+
+document.addEventListener('keydown',event=>{
+  if(event.target?.id!=='yijiaPayPinInput') return;
+  if(event.key==='Enter'){
+    const clean=String(event.target.value||'').replace(/\D/g,'').slice(0,4);
+    if(clean.length===4){
+      handleYijiaPayPinCompleted(clean);
+    }
   }
 });
 
@@ -4981,6 +5019,11 @@ function renderPointDiscountHub(){
 }
 
 async function openPointDiscount(){
+  const setup=document.getElementById('pointDiscountSetup');
+  const qrWrap=document.getElementById('pointDiscountQrWrap');
+  if(setup) setup.style.display='block';
+  if(qrWrap) qrWrap.style.display='none';
+  pointDiscountExpiresAt=null;
   pointDiscountEnabledByUser=false;
   stopPointDiscountCountdown();
   document.getElementById('pointDiscountSetup').style.display='block';
@@ -5389,8 +5432,36 @@ async function createPointDiscountTicket(){
     pointDiscountRequestedPoints=points;
     pointDiscountCompleted=false;
 
-    const codeEl=document.getElementById('pointDiscountCodeText');
+    // 建立成功後切換到 QR 顯示區。
+    const setup=document.getElementById('pointDiscountSetup');
+    const qrWrap=document.getElementById('pointDiscountQrWrap');
+    if(setup) setup.style.display='none';
+    if(qrWrap) qrWrap.style.display='block';
+
+    // HTML 實際欄位 id 是 pointDiscountCode。
+    const codeEl=document.getElementById('pointDiscountCode');
     if(codeEl) codeEl.textContent=verified.code;
+
+    const summary=document.getElementById('pointDiscountSummary');
+    const discountAmount=Math.floor(Number(points||0)/300);
+    if(summary){
+      summary.innerHTML=
+        `使用 <strong>${Number(points||0).toLocaleString()} 點</strong><br>`+
+        `折抵 <strong>${money(discountAmount)}</strong>`;
+    }
+
+    // 優先使用後端有效期限；沒有時依目前規則使用 600 秒。
+    const expiresRaw=
+      data?.expiresAt ||
+      data?.expires_at ||
+      data?.expiredAt ||
+      null;
+
+    const parsedExpiry=expiresRaw?new Date(expiresRaw):null;
+    pointDiscountExpiresAt=
+      parsedExpiry && !Number.isNaN(parsedExpiry.getTime())
+        ? parsedExpiry
+        : new Date(Date.now()+600000);
 
     const qr=document.getElementById('pointDiscountQr');
     if(qr){
@@ -5405,6 +5476,12 @@ async function createPointDiscountTicket(){
       }else{
         qr.textContent=verified.code;
       }
+    }
+
+    const countdown=document.getElementById('pointDiscountCountdown');
+    if(countdown){
+      countdown.style.color='';
+      countdown.textContent='條碼有效期限：600秒';
     }
 
     showView('pointDiscount');
@@ -5444,6 +5521,11 @@ function startPointDiscountCountdown(){
 }
 
 function closePointDiscount(){
+  pointDiscountExpiresAt=null;
+  const setup=document.getElementById('pointDiscountSetup');
+  const qrWrap=document.getElementById('pointDiscountQrWrap');
+  if(setup) setup.style.display='block';
+  if(qrWrap) qrWrap.style.display='none';
   stopPointDiscountCountdown();
   stopPointDiscountStatusMonitor();
   activePointDiscountCode='';
