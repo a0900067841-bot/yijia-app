@@ -1821,7 +1821,10 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.3 YijiaPay Disable Formal Flow</small></div><span>›</span></div>
+    <div class="row" onclick="showView('memberIdentity')">
+      <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
+    </div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.15.4 Member Identity Formal Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2100,6 +2103,36 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   </div>
 </section>
 
+
+<section id="memberIdentity" class="view">
+  <div class="header2">
+    <button class="back" onclick="showView('me')">‹</button>
+    <h2>會員條碼</h2>
+  </div>
+
+  <div id="memberIdentityStatus" class="small-muted" style="margin:0 4px 10px">
+    正在同步總部正式會員資料…
+  </div>
+
+  <div class="hero center">
+    <div style="font-size:14px;color:var(--muted)">億家會員</div>
+    <div id="memberIdentityName" style="font-size:22px;font-weight:900;margin-top:5px">--</div>
+    <div id="memberIdentityNo" style="font-size:16px;font-weight:900;margin:8px 0 12px">--</div>
+    <svg id="memberIdentityBarcode" class="real-barcode-large"></svg>
+    <div class="note" style="margin-top:12px">
+      此條碼使用總部正式會員編號。TM 掃描後只用於會員識別／累點，不會直接從億家Pay扣款。
+    </div>
+  </div>
+
+  <div class="profile-card" style="margin-top:12px">
+    <div class="profile-row"><label>手機帳號</label><div id="memberIdentityPhone" class="value">--</div></div>
+    <div class="profile-row"><label>會員編號來源</label><div class="value">HQ / yj4_members</div></div>
+    <div class="profile-row"><label>會員條碼值</label><div id="memberIdentityCodeValue" class="value">--</div></div>
+  </div>
+
+  <button class="profile-edit-btn" onclick="loadMemberIdentityFormal()">重新同步正式會員資料</button>
+</section>
+
 <section id="profile" class="view">
   <div class="header2"><button class="back" onclick="showView('me')">‹</button><h2>會員資料</h2></div>
 
@@ -2279,6 +2312,9 @@ function resolveAppViewId(id){
 }
 
 function showView(id){
+  if(id==='memberIdentity'){
+    setTimeout(()=>loadMemberIdentityFormal(),0);
+  }
   if(id==='yijiaPaySecurity'){
     setTimeout(()=>loadYijiaPaySecuritySettings(),0);
   }
@@ -2421,7 +2457,7 @@ function showView(id){
   if(target) target.classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>{
     const anybuyViews=['anybuyCenter','redeem','products','giftTransfer','orderManagement','subscriptionManagement','reservationManagement','subscriptionDetail','reservationDetail','productUsage','giftDetail','transferDetail','orderDetail','anybuyGuide','anybuyRights','cart','checkout','storeOrder','returnRequest','returnResult'];
-    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':((id==='notificationCenter'||id==='appInfo')?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger'||id==='paymentMethods'||id==='yijiaPaySecurity')?'pay':id)));
+    const activeView = anybuyViews.includes(id) ? 'anybuyCenter' : ((id==='coupons'||id==='activityCenter')?'home':((id==='notificationCenter'||id==='appInfo'||id==='memberIdentity')?'me':((id==='payHistory'||id==='payReload'||id==='walletLedger'||id==='paymentMethods'||id==='yijiaPaySecurity')?'pay':id)));
     b.classList.toggle('active',b.dataset.view===activeView);
   });
   window.scrollTo({top:0,behavior:'smooth'});
@@ -3139,11 +3175,17 @@ function phoneToInternalEmail(phone){
   return 'tw'+phone+'@auth.yijia.invalid';
 }
 function getOfficialMemberBarcodeCode(member=currentMember){
-  return String(
+  const code=String(
     member?.tmMemberNo ||
     member?.memberNo ||
     ''
   ).trim();
+
+  if(!code || /^(09\d{8}|YJ09\d{8})$/i.test(code)){
+    return '';
+  }
+
+  return code;
 }
 
 async function loadOfficialMemberNoFromHq(){
@@ -5469,6 +5511,78 @@ async function signOut(){
 }
 
 function valOrBlank(v){return v&&String(v).trim()?v:'未填寫'}
+
+
+async function loadMemberIdentityFormal(){
+  if(!currentUser) return null;
+
+  const status=document.getElementById('memberIdentityStatus');
+  if(status) status.textContent='正在同步總部正式會員資料…';
+
+  try{
+    const {data,error}=await sb.rpc('app_current_member_json');
+    if(error) throw error;
+
+    const member=(data && typeof data==='object')?data:{};
+    const formalCode=String(member?.tmMemberNo||member?.memberNo||'').trim();
+
+    if(!formalCode){
+      throw new Error('總部尚未回傳正式會員編號');
+    }
+
+    if(/^(09\d{8}|YJ09\d{8})$/i.test(formalCode)){
+      throw new Error('後端回傳的不是正式會員編號');
+    }
+
+    currentMember={
+      ...(currentMember||{}),
+      memberNo:member?.memberNo||formalCode,
+      tmMemberNo:member?.tmMemberNo||formalCode,
+      phone:member?.memberPhone||currentMember?.phone||'',
+      name:member?.memberName||currentMember?.name||''
+    };
+
+    const name=document.getElementById('memberIdentityName');
+    const no=document.getElementById('memberIdentityNo');
+    const phone=document.getElementById('memberIdentityPhone');
+    const codeValue=document.getElementById('memberIdentityCodeValue');
+
+    if(name) name.textContent=member?.memberName||currentMember?.name||'億家會員';
+    if(no) no.textContent=formalCode;
+    if(phone) phone.textContent=member?.memberPhone||currentMember?.phone||'--';
+    if(codeValue) codeValue.textContent=formalCode;
+
+    if(window.JsBarcode){
+      JsBarcode('#memberIdentityBarcode',formalCode,{
+        format:'CODE128',
+        displayValue:false,
+        height:92,
+        width:1.3,
+        margin:10
+      });
+    }
+
+    try{ renderBarcodes(); }catch(_){}
+    try{ renderReloadMemberBarcode(); }catch(_){}
+    try{ renderPointDiscountMemberCode(); }catch(_){}
+
+    if(status) status.textContent='已同步總部正式會員資料';
+    return {ok:true,member,formalCode};
+  }catch(e){
+    console.error('正式會員身份同步失敗',e);
+
+    const barcode=document.getElementById('memberIdentityBarcode');
+    if(barcode) barcode.innerHTML='';
+
+    const no=document.getElementById('memberIdentityNo');
+    const codeValue=document.getElementById('memberIdentityCodeValue');
+    if(no) no.textContent='尚未同步';
+    if(codeValue) codeValue.textContent='--';
+    if(status) status.textContent='正式會員資料同步失敗：'+(e?.message||e);
+
+    return {ok:false,error:e};
+  }
+}
 
 function renderProfile(){
   if(!currentMember)return;

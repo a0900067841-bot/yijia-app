@@ -1,26 +1,25 @@
-億家 App v0.10.15.3 YijiaPay Disable Formal Flow
+億家 App v0.10.15.4 Member Identity Formal Flow
 
-第十四個主功能 / 安全功能正式接通：
-停用 / 重新啟用億家Pay
+第十五個主功能正式接通：
+會員身份 / 會員條碼
 
-本版：
-- 新增億家Pay安全設定頁
-- 正式讀取 app_get_yijiapay_security_settings
-- 正式設定 app_set_yijiapay_enabled
-- 停用億家Pay：
-  - 後端記錄 enabled=false
-  - 取消此會員所有 pending 付款碼
-  - App 清除目前付款碼
-  - 後續禁止建立新付款碼
-- 重新啟用後才可再次建立付款碼
-- 錢包餘額、交易歷史不會因停用而刪除
+正式來源：
+- app_current_member_json()
+- HQ yj4_members
 
-Face ID / Passkey：
-- 仍不做假的前端開關
-- 等正式 WebAuthn 驗證後端再接
+規則：
+- 第一優先 tmMemberNo
+- 第二優先 memberNo
+- 禁止手機號碼當會員條碼
+- 禁止 YJ + 手機號碼當會員條碼
 
-付款限額：
-- 仍不提供假的前端設定
-- 必須與 TM 正式扣款 RPC 同步強制驗證後才可開放
+本版完成：
+- 我的 → 會員條碼
+- 顯示正式會員姓名 / 會員編號 / CODE128
+- 顯示手機登入帳號
+- 可重新同步正式會員資料
+- 同步後重繪首頁 / 放大會員條碼 / 儲值條碼 / 點數折抵會員碼
+- 會員條碼只做會員識別 / 累點，不能當億家Pay付款碼
 
-此版需要執行聊天中提供的 SQL。
+此版純前端，不用跑 SQL。
+只需要上傳新的 index.html。
