@@ -1715,7 +1715,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <span id="notificationUnreadBadge" class="notification-badge-v1080">0</span>
       <span>›</span>
     </div>
-    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.7 Activity History Formal Flow</small></div><span>›</span></div>
+    <div class="row"><div><strong>App 版本</strong><small>v0.10.14.8 Account Profile Formal Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -2006,11 +2006,33 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
   <div class="account-block">
     <div class="account-row"><div><strong>手機號碼</strong><small id="accountPhone">--</small></div></div>
-    <div class="account-row" onclick="alert('變更密碼功能下一版接入')"><div><strong>密碼</strong><small>點此變更密碼</small></div><span class="chev">›</span></div>
-    <div class="account-row"><div><strong>生物辨識登入</strong><small>Face ID／Touch ID</small></div><div class="switch on" onclick="this.classList.toggle('on')"></div></div>
+    <div class="account-row" onclick="togglePasswordForm(true)">
+      <div><strong>密碼</strong><small>變更登入密碼</small></div><span class="chev">›</span>
+    </div>
+    <div class="account-row">
+      <div><strong>裝置生物辨識</strong><small>網頁版不建立假的 Face ID 開關；之後改用正式裝置驗證再啟用</small></div>
+    </div>
   </div>
 
-  <button class="danger-wide" onclick="alert('取消會員屬高風險帳號操作，正式版會加二次確認與後端流程。')">取消會員</button>
+  <div id="passwordForm" class="profile-form">
+    <div class="auth-field">
+      <label>目前密碼</label>
+      <input id="pfCurrentPassword" type="password" autocomplete="current-password" placeholder="請輸入目前密碼">
+    </div>
+    <div class="auth-field">
+      <label>新密碼</label>
+      <input id="pfNewPassword" type="password" autocomplete="new-password" placeholder="8～16 位英數混合，至少 1 個大寫字母">
+    </div>
+    <div class="auth-field">
+      <label>再次輸入新密碼</label>
+      <input id="pfNewPasswordConfirm" type="password" autocomplete="new-password" placeholder="請再次輸入新密碼">
+    </div>
+    <button id="passwordSaveBtn" class="profile-save" onclick="changePasswordFormal()">變更密碼</button>
+    <button class="profile-edit-btn" style="margin-top:8px" onclick="togglePasswordForm(false)">取消</button>
+    <div id="passwordMsg" class="auth-msg"></div>
+  </div>
+
+  <button class="danger-wide" disabled style="opacity:.45">取消會員（待正式後端帳號註銷流程）</button>
 </section>
 
 <section id="anybuyProductDetail" class="view">
@@ -2093,7 +2115,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
       <input id="authPassword" type="password" autocomplete="current-password" placeholder="至少 6 個字元">
     </div>
     <button id="authSubmit" class="auth-submit" onclick="submitAuth()">登入</button>
-    <div id="authMsg" class="auth-msg">開發測試登入：輸入手機號碼＋密碼即可進入。</div><div class="dev-note">目前使用手機號碼＋密碼登入；系統內部以隱藏識別方式連接 Supabase，不需要 SMS 或 Twilio。</div>
+    <div id="authMsg" class="auth-msg">請使用手機號碼與密碼登入。</div>
   </div>
 </div>
 
@@ -2108,6 +2130,9 @@ let currentUser=null;
 let currentMember=null;
 
 function showView(id){
+  if(id==='profile'){
+    setTimeout(()=>reloadFormalMemberProfile(),0);
+  }
   if(['orderManagement','productUsage','notificationCenter','payHistory','walletLedger','points','coupons'].includes(id)){
     setTimeout(()=>refreshFormalActivityCenter(),0);
   }
@@ -2976,7 +3001,14 @@ async function submitAuth(){
   const phone=normalizePhone(document.getElementById('authPhone').value.trim());
   const password=document.getElementById('authPassword').value;
   if(!phone){setAuthMessage('請輸入正確的台灣手機號碼，例如 09xxxxxxxx。','error');return}
-  if(!password||password.length<6){setAuthMessage('密碼至少 6 個字元。','error');return}
+  if(authMode==='register' && !validFormalPassword(password)){
+    setAuthMessage('註冊密碼必須為 8～16 位英數混合，且至少包含 1 個大寫字母。','error');
+    return;
+  }
+  if(authMode==='login' && !password){
+    setAuthMessage('請輸入密碼。','error');
+    return;
+  }
 
   const email=phoneToInternalEmail(phone);
   const btn=document.getElementById('authSubmit');
@@ -5220,7 +5252,6 @@ async function signOut(){
   setAuthMessage('已登出。');
 }
 
-function demoBuy(name){alert(name+'：目前為選購流程。跨店取商品與訂單資料表接通後才會真的建立訂單。')}
 function valOrBlank(v){return v&&String(v).trim()?v:'未填寫'}
 
 function renderProfile(){
@@ -5237,8 +5268,154 @@ function toggleProfileForm(open){
   if(form)form.classList.toggle('open',!!open);
   if(open)renderProfile();
 }
+
+function validFormalPassword(password){
+  const s=String(password||'');
+  return s.length>=8 &&
+    s.length<=16 &&
+    /[A-Z]/.test(s) &&
+    /[A-Za-z]/.test(s) &&
+    /\d/.test(s);
+}
+
+function togglePasswordForm(show){
+  const form=document.getElementById('passwordForm');
+  if(!form) return;
+
+  form.classList.toggle('show',!!show);
+
+  if(!show){
+    ['pfCurrentPassword','pfNewPassword','pfNewPasswordConfirm'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.value='';
+    });
+
+    const msg=document.getElementById('passwordMsg');
+    if(msg){
+      msg.textContent='';
+      msg.className='auth-msg';
+    }
+  }
+}
+
+async function changePasswordFormal(){
+  if(!currentUser || !currentMember) return;
+
+  const currentPassword=document.getElementById('pfCurrentPassword')?.value||'';
+  const newPassword=document.getElementById('pfNewPassword')?.value||'';
+  const confirmPassword=document.getElementById('pfNewPasswordConfirm')?.value||'';
+  const msg=document.getElementById('passwordMsg');
+  const btn=document.getElementById('passwordSaveBtn');
+
+  const setMsg=(text,type='')=>{
+    if(!msg) return;
+    msg.textContent=text;
+    msg.className='auth-msg'+(type?' '+type:'');
+  };
+
+  if(!currentPassword){
+    setMsg('請輸入目前密碼。','error');
+    return;
+  }
+
+  if(!validFormalPassword(newPassword)){
+    setMsg('新密碼必須為 8～16 位英數混合，且至少包含 1 個大寫字母。','error');
+    return;
+  }
+
+  if(newPassword!==confirmPassword){
+    setMsg('兩次輸入的新密碼不一致。','error');
+    return;
+  }
+
+  if(newPassword===currentPassword){
+    setMsg('新密碼不可與目前密碼相同。','error');
+    return;
+  }
+
+  const phone=normalizePhone(currentMember.phone||'');
+  if(!phone){
+    setMsg('找不到正式登入手機號碼。','error');
+    return;
+  }
+
+  const internalEmail=phoneToInternalEmail(phone);
+
+  if(btn){
+    btn.disabled=true;
+    btn.textContent='驗證目前密碼中…';
+  }
+  setMsg('正在驗證目前密碼…');
+
+  try{
+    // 先以目前密碼重新驗證，不直接相信現有 session。
+    const {error:reauthError}=await sb.auth.signInWithPassword({
+      email:internalEmail,
+      password:currentPassword
+    });
+    if(reauthError){
+      throw new Error('目前密碼不正確');
+    }
+
+    if(btn) btn.textContent='更新新密碼中…';
+
+    const {data,error}=await sb.auth.updateUser({
+      password:newPassword
+    });
+    if(error) throw error;
+
+    if(!data?.user?.id || String(data.user.id)!==String(currentUser.id)){
+      throw new Error('密碼更新後無法確認登入帳號');
+    }
+
+    setMsg('密碼已正式更新。','ok');
+
+    ['pfCurrentPassword','pfNewPassword','pfNewPasswordConfirm'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.value='';
+    });
+
+    setTimeout(()=>togglePasswordForm(false),900);
+  }catch(err){
+    console.error('正式密碼變更失敗',err);
+    setMsg(err?.message||'密碼變更失敗，請稍後再試。','error');
+  }finally{
+    if(btn){
+      btn.disabled=false;
+      btn.textContent='變更密碼';
+    }
+  }
+}
+
+async function reloadFormalMemberProfile(){
+  if(!currentUser) return null;
+
+  try{
+    const {data,error}=await sb
+      .from('app_members')
+      .select('*')
+      .eq('auth_user_id',currentUser.id)
+      .single();
+
+    if(error) throw error;
+
+    currentMember=data;
+    renderProfile();
+
+    // 正式會員編號另從 HQ RPC 同步，不能用手機號碼代替。
+    try{ await loadOfficialMemberNoFromHq(); }catch(_){}
+    try{ renderBarcodes(); }catch(_){}
+
+    return data;
+  }catch(e){
+    console.warn('正式會員資料重新讀取失敗',e);
+    return null;
+  }
+}
+
 async function saveProfile(){
-  if(!currentUser||!currentMember)return;
+  if(!currentUser||!currentMember) return;
+
   const payload={
     name:document.getElementById('pfName').value.trim()||null,
     birthday:document.getElementById('pfBirthday').value||null,
@@ -5248,29 +5425,54 @@ async function saveProfile(){
     nationality:document.getElementById('pfNationality').value.trim()||null,
     updated_at:new Date().toISOString()
   };
+
   const msg=document.getElementById('profileMsg');
-  msg.textContent='儲存中…'; msg.className='auth-msg';
+  msg.textContent='正在儲存正式會員資料…';
+  msg.className='auth-msg';
 
-  const {data,error}=await sb
-    .from('app_members')
-    .update(payload)
-    .eq('auth_user_id',currentUser.id)
-    .select()
-    .single();
+  try{
+    const {error}=await sb
+      .from('app_members')
+      .update(payload)
+      .eq('auth_user_id',currentUser.id);
 
-  if(error){
-    msg.textContent=error.message||'儲存失敗';
+    if(error) throw error;
+
+    const verified=await reloadFormalMemberProfile();
+    if(!verified){
+      throw new Error('資料已送出，但重新讀取正式會員資料失敗');
+    }
+
+    const checks=[
+      ['name',payload.name],
+      ['birthday',payload.birthday],
+      ['gender',payload.gender],
+      ['email',payload.email],
+      ['address',payload.address],
+      ['nationality',payload.nationality]
+    ];
+
+    const mismatch=checks.find(([key,val])=>
+      String(verified?.[key]??'')!==String(val??'')
+    );
+
+    if(mismatch){
+      throw new Error('會員資料更新後驗證不一致');
+    }
+
+    const name=getDisplayName();
+    document.getElementById('memberName').textContent='您好，'+name;
+    (document.getElementById('meName')||{}).textContent=name;
+
+    msg.textContent='會員資料已正式更新';
+    msg.className='auth-msg ok';
+
+    setTimeout(()=>toggleProfileForm(false),700);
+  }catch(err){
+    console.error('會員資料更新失敗',err);
+    msg.textContent=err?.message||'儲存失敗';
     msg.className='auth-msg error';
-    return;
   }
-  currentMember=data;
-  renderProfile();
-  const name=getDisplayName();
-  document.getElementById('memberName').textContent='您好，'+name;
-  (document.getElementById('meName')||{}).textContent=name;
-  msg.textContent='會員資料已同步到 Supabase';
-  msg.className='auth-msg ok';
-  setTimeout(()=>toggleProfileForm(false),700);
 }
 
 

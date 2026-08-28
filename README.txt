@@ -1,35 +1,33 @@
-億家 App v0.10.14.7 Activity History Formal Flow
+億家 App v0.10.14.8 Account Profile Formal Flow
 
-第八個主功能正式接通：
-訂單紀錄 / 商品使用紀錄 / 點數紀錄 / 億家Pay紀錄 / 錢包帳本 / 優惠券 / 通知中心
+第九個主功能正式接通：
+會員資料 / 登入密碼 / 正式會員身份重新讀取
 
-正式資料來源：
-- app_get_anybuy_order_history
-- app_get_product_usage_history
-- app_get_my_point_history
-- app_get_my_yijiapay_pay_history
-- app_get_my_yijiapay_wallet_ledger
-- app_get_my_coupons
+會員資料：
+- 編輯姓名、生日、性別、Email、地址、國籍
+- 寫入 app_members 後不直接顯示成功
+- 重新從 app_members 讀回正式資料
+- 六個欄位全部與送出值一致後才顯示「正式更新」
+- 同時重新同步 HQ 正式會員編號與會員條碼
 
-新增正式活動中心比對：
-- 開啟訂單、使用紀錄、通知、付款歷史、錢包帳本、點數、優惠券時
-  都會重新比對正式資料
-- 正式資料有變化時，相關頁面會一起刷新
-- App 不自己建立交易歷史
-- App 不自己建立使用紀錄
-- App 不自己建立點數/錢包交易
-- 所有紀錄都由正式後端資料產生
+密碼：
+- 正式接入 Supabase Auth
+- 先用目前密碼重新驗證
+- 再呼叫 auth.updateUser() 更新密碼
+- 新密碼規則：
+  8～16 位
+  英文＋數字
+  至少 1 個大寫英文字母
+- 新密碼不可與目前密碼相同
+- 兩次新密碼必須一致
+- 註冊新會員也套用正式密碼規則
+- 已存在的舊會員登入不會因為舊密碼規則而被前端擋住
 
-通知中心現在會整合：
-- 訂單付款完成
-- 商品兌換
-- 轉贈 / 禮物
-- 退貨退款
-- 點數異動
-- 億家Pay付款
-- 億家Pay錢包帳本
-- 優惠券領取
-- 優惠券核銷
+另外：
+- 移除假的 Face ID / Touch ID 開關
+- 取消會員仍不亂接，因為需要正式帳號註銷後端規則
+- 移除「開發測試登入」文案
+- 移除已過時 demoBuy 假購買說明
 
 此版純前端，不用跑 SQL。
 只需要上傳新的 index.html。
