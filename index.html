@@ -1964,7 +1964,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.17.0 Return Request Record Fix</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.17.1 Existing Return Resume Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -10221,7 +10221,25 @@ function openReturnRequest(encoded){
     alert('退貨資料開啟失敗，請重新整理後再試。');
     return;
   }
-  if(!selectedReturnProduct?.returnEligible) return;
+  if(!selectedReturnProduct?.returnEligible){
+    const existingReturnCode=String(selectedReturnProduct?.returnCode||'').trim();
+    const existingReturnStatus=String(selectedReturnProduct?.returnRequestStatus||'').trim();
+
+    if(
+      existingReturnCode &&
+      existingReturnStatus &&
+      !['已退貨','退貨完成','退款完成','已退款','已取消','已駁回']
+        .some(s=>existingReturnStatus.includes(s))
+    ){
+      showExistingReturnBarcode(
+        existingReturnCode,
+        selectedReturnProduct?.paidStoreName||
+        selectedReturnProduct?.paidStoreCode||
+        '原付款門市'
+      );
+    }
+    return;
+  }
 
   document.getElementById('returnProductName').textContent=selectedReturnProduct.name||'商品';
 
@@ -10681,6 +10699,25 @@ async function submitReturnRequest(){
   }
 
   if(!latest.returnEligible){
+    const existingReturnCode=String(latest?.returnCode||'').trim();
+    const existingReturnStatus=String(latest?.returnRequestStatus||'').trim();
+    const isActiveExistingReturn=
+      !!existingReturnCode &&
+      !!existingReturnStatus &&
+      !['已退貨','退貨完成','退款完成','已退款','已取消','已駁回']
+        .some(s=>existingReturnStatus.includes(s));
+
+    // 如果上一筆申請其實已成功建立 YR，直接回到既有退貨條碼，
+    // 不再把它當成「不符合退貨條件」。
+    if(isActiveExistingReturn){
+      showExistingReturnBarcode(
+        existingReturnCode,
+        latest?.paidStoreName||latest?.paidStoreCode||'原付款門市'
+      );
+      alert('這筆商品已有退貨申請，已開啟既有 YR 退貨條碼。');
+      return;
+    }
+
     alert('這筆商品目前已不符合退貨條件。');
     await loadMyProducts();
     return;
