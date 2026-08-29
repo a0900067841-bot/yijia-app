@@ -1033,6 +1033,49 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 <meta name="apple-mobile-web-app-title" content="億家">
 <link rel="apple-touch-icon" href="./icons/icon-180.png">
 
+
+<style>
+/* v0.10.16.9 商品詳情購買區 */
+#anybuyDetailBuyBtn{
+  background:#1677ff !important;
+  color:#fff !important;
+  border:0 !important;
+  box-shadow:0 6px 16px rgba(22,119,255,.22);
+  font-weight:900;
+}
+#anybuyDetailBuyBtn:active{
+  background:#0d63d8 !important;
+  transform:translateY(1px);
+}
+#anybuyDetailBuyBtn:disabled{
+  background:#d8dde5 !important;
+  color:#8a929c !important;
+  box-shadow:none;
+}
+.anybuy-buybar .anybuy-qty-control button{
+  color:#1677ff !important;
+  background:#f4f9ff !important;
+  font-weight:900;
+}
+.anybuy-buybar .anybuy-qty-control button:active{
+  background:#e6f1ff !important;
+}
+</style>
+
+
+<style>
+#pdBuyBtn{
+  background:#1677ff !important;
+  color:#fff !important;
+  border:0 !important;
+  font-weight:900;
+}
+#pdBuyBtn:disabled{
+  background:#d8dde5 !important;
+  color:#8a929c !important;
+}
+</style>
+
 </head>
 <body>
 <div class="phone">
@@ -1921,7 +1964,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.8 Checkout Single Tap Flow</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.9 Cart Blue + Checkout Sync Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -7910,7 +7953,7 @@ async function syncCartWithCurrentCatalog({showNotice=false}={}){
       const saleState=getAnybuyProductSaleState(current);
       const latestPrice=Number(saleBundlePrice(current)||0);
       const latestOriginal=Number(originalBundlePrice(current)||0);
-      const latestBundleQty=Math.max(1,Number(bundleQuantity(current)||1));
+      const latestBundleQty=Math.max(1,Number(bundleQty(current)||1));
       const latestLimit=Math.max(0,Number(limitGroups(current)||0));
 
       let qty=Math.max(1,Number(item.cartQty||1));
