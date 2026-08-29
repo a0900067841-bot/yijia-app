@@ -1918,7 +1918,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.5 Return Barcode Resume Fix</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.6 Checkout Total RPC Ready</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -8994,7 +8994,12 @@ async function createYijiaPayOrder(source){
       notice.style.display='block';
       notice.textContent='購買尚未完整確認：'+(err?.message||err);
     }
-    alert('億家Pay購買尚未完整完成：'+(err?.message||err));
+    const message=String(err?.message||err||'');
+    if(message.includes('app_create_yijiapay_order')){
+      alert('億家Pay購買功能尚未完成後端啟用，請先完成系統更新後再付款。');
+    }else{
+      alert('億家Pay購買尚未完整完成：'+message);
+    }
   }finally{
     btn.disabled=false;
     selectPayMethod('wallet');
