@@ -1964,7 +1964,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.17.1 Existing Return Resume Flow</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.17.2 Online Return Mode Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -10129,8 +10129,12 @@ async function loadMyProducts(){
     const refundPreview = x.returnEligible && x.refundCalculationReady && x.refundAmount!=null
       ? `<div class="return-note">目前試算退款：${money(Number(x.refundAmount||0))}</div>`
       : '';
-    const returnBarcodeBtn = lifecycle.canOperate && x.returnCode && x.returnMode==='original_store' && x.returnRequestStatus && !String(x.returnRequestStatus).includes('已退貨')
-      ? `<button class="return-btn" onclick="showExistingReturnBarcode('${safeText(x.returnCode)}','${safeText(x.paidStoreName||x.paidStoreCode||'原付款門市')}')">退貨條碼</button>`
+    const returnBarcodeBtn = lifecycle.canOperate && x.returnCode && x.returnRequestStatus && !String(x.returnRequestStatus).includes('已退貨')
+      ? (
+          x.returnMode==='original_store'
+            ? `<button class="return-btn" onclick="showExistingReturnBarcode('${safeText(x.returnCode)}','${safeText(x.paidStoreName||x.paidStoreCode||'原付款門市')}')">退貨條碼</button>`
+            : `<button class="return-btn" onclick="showExistingOnlineReturn('${safeText(x.returnCode)}',${Number(x.refundAmount||0)},'${safeText(x.returnRequestStatus)}')">線上退貨狀態</button>`
+        )
       : '';
 
     return `
@@ -10231,12 +10235,20 @@ function openReturnRequest(encoded){
       !['已退貨','退貨完成','退款完成','已退款','已取消','已駁回']
         .some(s=>existingReturnStatus.includes(s))
     ){
-      showExistingReturnBarcode(
-        existingReturnCode,
-        selectedReturnProduct?.paidStoreName||
-        selectedReturnProduct?.paidStoreCode||
-        '原付款門市'
-      );
+      if(String(selectedReturnProduct?.returnMode||'')==='online'){
+        showExistingOnlineReturn(
+          existingReturnCode,
+          selectedReturnProduct?.refundAmount,
+          existingReturnStatus
+        );
+      }else{
+        showExistingReturnBarcode(
+          existingReturnCode,
+          selectedReturnProduct?.paidStoreName||
+          selectedReturnProduct?.paidStoreCode||
+          '原付款門市'
+        );
+      }
     }
     return;
   }
@@ -10283,6 +10295,36 @@ function openReturnRequest(encoded){
   showView('returnRequest');
 }
 
+
+
+function showExistingOnlineReturn(requestCode,refundAmount,statusText='待線上退款'){
+  const code=String(requestCode||'').trim();
+  if(!code) return;
+
+  const codeEl=document.getElementById('returnResultCode');
+  const wrap=document.getElementById('returnBarcodeWrap');
+  const text=document.getElementById('returnResultText');
+  const note=document.querySelector('#returnResult .return-card .note');
+
+  if(codeEl) codeEl.textContent=`線上退貨申請 ${code}`;
+  if(wrap) wrap.style.display='none';
+
+  if(text){
+    text.innerHTML=
+      `此筆為億家Pay／線上支付退貨，不需要到門市。<br>`+
+      (Number(refundAmount)>0?`退款金額：${money(Number(refundAmount))}<br>`:'')+
+      `目前狀態：${safeText(statusText||'待線上退款')}`;
+  }
+
+  if(note){
+    note.textContent='系統將依原付款方式進行線上退款，不需出示 YR 門市退貨條碼。';
+  }
+
+  activeReturnCode=code;
+  lastReturnStatus='';
+  showView('returnResult');
+  startReturnStatusMonitor(code);
+}
 
 function showExistingReturnBarcode(code,storeName){
   const c=String(code||'').trim();
@@ -10568,10 +10610,20 @@ async function verifyReturnRequestCreated(data,product){
     ''
   ).trim();
 
-  if(!/^YR/i.test(returnCode)){
+  const mode=String(
+    data?.returnMode ||
+    data?.return_mode ||
+    ''
+  ).trim();
+
+  const expectedPattern=mode==='online' ? /^RO/i : /^YR/i;
+
+  if(!expectedPattern.test(returnCode)){
     return {
       ok:false,
-      reason:'後端沒有回傳有效的 YR 退貨碼'
+      reason:mode==='online'
+        ? '後端沒有回傳有效的線上退貨申請碼'
+        : '後端沒有回傳有效的 YR 退貨碼'
     };
   }
 
@@ -10710,11 +10762,20 @@ async function submitReturnRequest(){
     // 如果上一筆申請其實已成功建立 YR，直接回到既有退貨條碼，
     // 不再把它當成「不符合退貨條件」。
     if(isActiveExistingReturn){
-      showExistingReturnBarcode(
-        existingReturnCode,
-        latest?.paidStoreName||latest?.paidStoreCode||'原付款門市'
-      );
-      alert('這筆商品已有退貨申請，已開啟既有 YR 退貨條碼。');
+      if(String(latest?.returnMode||'')==='online'){
+        showExistingOnlineReturn(
+          existingReturnCode,
+          latest?.refundAmount,
+          existingReturnStatus
+        );
+        alert('這筆商品已有線上退貨申請，已開啟目前處理狀態。');
+      }else{
+        showExistingReturnBarcode(
+          existingReturnCode,
+          latest?.paidStoreName||latest?.paidStoreCode||'原付款門市'
+        );
+        alert('這筆商品已有退貨申請，已開啟既有 YR 退貨條碼。');
+      }
       return;
     }
 
@@ -10761,33 +10822,62 @@ async function submitReturnRequest(){
     activeReturnCode=returnCode;
     lastReturnStatus='';
 
-    const codeEl=document.getElementById('returnCodeText');
-    if(codeEl) codeEl.textContent=returnCode;
-
-    const storeEl=document.getElementById('returnStoreText');
-    if(storeEl){
-      storeEl.textContent=
-        data?.returnMode==='original_store'
-          ? `請回原付款門市：${data?.paidStoreName||data?.paidStoreCode||latest.paidStoreName||latest.paidStoreCode||'原付款門市'}`
-          : '線上付款退貨將依正式退款流程處理';
-    }
-
+    const returnMode=String(data?.returnMode||'').trim();
+    const codeEl=document.getElementById('returnResultCode');
+    const storeEl=document.getElementById('returnResultText');
     const barcodeWrap=document.getElementById('returnBarcodeWrap');
-    if(barcodeWrap){
-      barcodeWrap.style.display=
-        data?.returnMode==='original_store' ? 'block' : 'none';
+    const noteEl=document.querySelector('#returnResult .return-card .note');
+
+    if(codeEl){
+      codeEl.textContent=
+        returnMode==='original_store'
+          ? returnCode
+          : `線上退貨申請 ${returnCode}`;
     }
 
-    if(data?.returnMode==='original_store' && window.JsBarcode){
-      try{
-        JsBarcode('#returnBarcode',returnCode,{
-          format:'CODE128',
-          displayValue:false,
-          margin:8,
-          height:82,
-          width:1.4
-        });
-      }catch(e){console.warn(e)}
+    if(returnMode==='original_store'){
+      if(barcodeWrap) barcodeWrap.style.display='block';
+
+      if(storeEl){
+        storeEl.innerHTML=
+          `請回原付款門市辦理退貨。<br>`+
+          `原付款門市：${safeText(
+            data?.paidStoreName||
+            data?.paidStoreCode||
+            latest.paidStoreName||
+            latest.paidStoreCode||
+            '原付款門市'
+          )}`;
+      }
+
+      if(noteEl){
+        noteEl.textContent='請到原付款門市出示此退貨條碼，TM 可直接掃描 YR 退貨碼。';
+      }
+
+      if(window.JsBarcode){
+        try{
+          JsBarcode('#returnResultBarcode',returnCode,{
+            format:'CODE128',
+            displayValue:false,
+            margin:8,
+            height:82,
+            width:1.4
+          });
+        }catch(e){console.warn(e)}
+      }
+    }else{
+      if(barcodeWrap) barcodeWrap.style.display='none';
+
+      if(storeEl){
+        storeEl.innerHTML=
+          `此筆為億家Pay／線上支付退貨，不需要到門市。<br>`+
+          `退款金額：${money(Number(data?.refundAmount??latest?.refundAmount??0))}<br>`+
+          `系統將依原付款方式進行線上退款。`;
+      }
+
+      if(noteEl){
+        noteEl.textContent='線上支付退貨不需要出示門市退貨條碼。';
+      }
     }
 
     selectedReturnProduct=latest;

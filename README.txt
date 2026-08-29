@@ -1,23 +1,17 @@
-億家 App v0.10.17.1 Existing Return Resume Flow
+億家 App v0.10.17.2 Online Return Mode Fix
 
-修正實機回報：
-上一筆退貨申請其實已成功建立 YR，因此 app_get_member_products
-會把 returnEligible 改為 false。使用者再次按「確認申請退貨」時，
-App 原本只顯示「這筆商品目前已不符合退貨條件」。
+修正：
+億家Pay／線上支付商品被錯誤顯示成「回原付款門市退貨」。
 
-本版修正：
-- 若 returnEligible=false，但商品已有有效 returnCode / returnRequestStatus
-  → 不再顯示不符合條件
-  → 直接開啟既有 YR 退貨條碼
-  → 繼續監控 TM 退貨狀態
-- 避免同一商品重複建立第二張退貨申請
-- 已退貨 / 已退款 / 已取消 / 已駁回不會誤開舊條碼
-- 退貨資格、7 天規則、原門市限制都不變
+正式規則：
+- 店舖結帳 → original_store → YR 條碼 → 回原付款門市
+- 億家Pay／線上支付 → online → RO 線上退貨申請 → 不顯示門市條碼
 
-此版不用跑 SQL。
+App：
+- 線上支付退貨不再顯示 YR barcode
+- 顯示「不需要到門市」
+- 顯示線上退貨申請碼與退款金額
+- 既有線上退貨申請可從我的商品重新查看狀態
+- 店舖結帳 YR 流程不變
 
-PWA 檔案需一起上傳：
-- index.html
-- manifest.webmanifest
-- service-worker.js
-- icons/
+此版需要執行聊天中提供的 SQL。
