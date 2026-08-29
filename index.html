@@ -1119,6 +1119,9 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
 
 <section id="checkout" class="view">
   <div class="header2"><button class="back" onclick="showView('cart')">‹</button><h2>付款資訊頁</h2></div>
+  <div id="checkoutSyncNotice" class="small-muted" style="margin:0 4px 10px;display:none">
+    正在核對最新商品資料…
+  </div>
 
   <div class="checkout-ref-head">請選擇結帳方式</div>
   <div class="checkout-ref-methods">
@@ -1918,7 +1921,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.7 YijiaPay Order Formal Ready</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.8 Checkout Single Tap Flow</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -8118,8 +8121,10 @@ function renderCart(){
 
 let selectedPayMethod=null;
 let latestStoreOrder=null;
+let checkoutOpening=false;
 
 async function openCheckout(){
+  if(checkoutOpening) return;
   if(!ensureCrossStoreOperationAllowed()) return;
 
   if(!cartItems.length){
@@ -8127,18 +8132,77 @@ async function openCheckout(){
     return;
   }
 
-  const result=await syncCartWithCurrentCatalog({showNotice:true});
+  checkoutOpening=true;
 
-  if(result?.blocked){
-    alert('購物車內有商品目前不可購買，請先刪除或調整後再結帳。');
-    showView('cart');
-    return;
+  const cartBtn=document.getElementById('cartCheckoutBtn');
+  const syncNotice=document.getElementById('checkoutSyncNotice');
+
+  if(cartBtn){
+    cartBtn.disabled=true;
+    cartBtn.textContent='正在前往結帳…';
   }
 
+  // 單次點擊後立即進入付款資訊頁，避免使用者誤以為沒有反應。
   selectedPayMethod=null;
   renderCheckout();
   selectPayMethod(null);
   showView('checkout');
+
+  if(syncNotice){
+    syncNotice.style.display='block';
+    syncNotice.textContent='正在核對最新商品資料…';
+  }
+
+  try{
+    const result=await syncCartWithCurrentCatalog({showNotice:false});
+
+    if(result?.blocked){
+      if(syncNotice){
+        syncNotice.textContent='購物車內有商品目前不可購買，請返回調整。';
+      }
+
+      alert('購物車內有商品目前不可購買，請先刪除或調整後再結帳。');
+      showView('cart');
+      return;
+    }
+
+    // 商品主檔若有更新，重新渲染付款頁金額與商品資訊。
+    renderCheckout();
+    selectPayMethod(null);
+
+    if(syncNotice){
+      syncNotice.textContent=result?.changed
+        ? '商品資料已更新，請確認最新價格後選擇付款方式。'
+        : '商品資料已確認。';
+
+      setTimeout(()=>{
+        if(syncNotice && !result?.changed){
+          syncNotice.style.display='none';
+        }
+      },900);
+    }
+
+    if(result?.changed){
+      alert('購物車商品資料已更新，請確認最新價格與數量。');
+    }
+  }catch(e){
+    console.error('前往結帳核對商品失敗',e);
+
+    if(syncNotice){
+      syncNotice.style.display='block';
+      syncNotice.textContent='商品資料核對失敗，請返回購物車後再試。';
+    }
+
+    alert('目前無法核對最新商品資料，請稍後再試。');
+  }finally{
+    checkoutOpening=false;
+
+    if(cartBtn){
+      const blocked=cartItems.some(x=>!!x.saleBlockedReason);
+      cartBtn.disabled=blocked;
+      cartBtn.textContent=blocked?'請先調整不可購買商品':'前往結帳';
+    }
+  }
 }
 
 function renderCheckout(){
@@ -8810,6 +8874,7 @@ function refreshCheckoutButton(){
 }
 
 function selectPayMethod(method){
+  if(checkoutOpening && method!==null) return;
   selectedPayMethod=method;
   const wallet=document.getElementById('methodWallet');
   const store=document.getElementById('methodStore');

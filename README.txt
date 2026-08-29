@@ -1,18 +1,24 @@
-億家 App v0.10.16.7 YijiaPay Order Formal Ready
+億家 App v0.10.16.8 Checkout Single Tap Flow
 
-本版配合新增後端：
-app_create_yijiapay_order(p_items jsonb, p_payment_source text)
+修正使用者實機回報：
+購物車「前往結帳」要按好幾下才會進下一頁。
 
-App 流程：
-- 後端重新核對商品主檔與價格
-- 億家Pay錢包扣款
-- 建立已付款隨買訂單
-- 發放商品到我的商品
-- 寫入億家Pay錢包帳本
-- App 再讀訂單 / 我的商品 / 錢包餘額做完成驗證
-- 任一後端步驟失敗時，SQL transaction rollback
+原因：
+原本 openCheckout() 會先 await Supabase / SC 商品主檔同步，
+同步完成後才 showView('checkout')。
+網路慢時畫面完全不動，使用者會誤以為沒按到而重複點擊。
 
-此版需要先執行聊天中提供的 SQL。
+本版修正：
+- 第一次點「前往結帳」就立即切到付款資訊頁
+- 按鈕立即變成「正在前往結帳…」
+- 新增 checkoutOpening 防重複點擊
+- 付款資訊頁顯示「正在核對最新商品資料…」
+- 同步完成後才開放選擇付款方式
+- 若商品價格 / 數量有更新，重新渲染付款頁並提醒
+- 若商品已下架或不可購買，自動返回購物車
+- 不降低後端商品價格重新核對的安全性
+
+此版不用跑 SQL。
 
 PWA 檔案需一起上傳：
 - index.html
