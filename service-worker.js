@@ -1,5 +1,5 @@
 
-const CACHE_NAME='yijia-app-shell-v0.10.16.9';
+const CACHE_NAME='yijia-app-shell-v0.10.17.0';
 const SHELL=[
   './',
   './index.html',

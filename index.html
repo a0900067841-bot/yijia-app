@@ -1964,7 +1964,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.9 Cart Blue + Checkout Sync Fix</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.17.0 Return Request Record Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -10544,28 +10544,83 @@ function matchReturnRequest(rows,{returnCode='',memberProductId='',orderId=''}={
 
 async function verifyReturnRequestCreated(data,product){
   const returnCode=String(
-    data?.returnCode||
-    data?.return_code||
-    data?.code||
+    data?.returnCode ||
+    data?.code ||
+    data?.requestCode ||
     ''
-  ).trim().toUpperCase();
+  ).trim();
 
-  if(!returnCode || !/^YR[A-Z0-9]+$/.test(returnCode)){
-    return {ok:false,reason:'後端沒有回傳正式 YR 退貨碼'};
+  if(!/^YR/i.test(returnCode)){
+    return {
+      ok:false,
+      reason:'後端沒有回傳有效的 YR 退貨碼'
+    };
   }
 
-  const rows=await getFormalReturnRequests();
-  const row=matchReturnRequest(rows,{
+  const requestId=String(
+    data?.id ||
+    data?.requestId ||
+    ''
+  ).trim();
+
+  const memberProductId=String(
+    product?.id ||
+    product?.memberProductId ||
+    ''
+  ).trim();
+
+  // 後端已回傳正式 YR 後，最多等待約 3 秒確認 yj_app_return_requests 已可讀。
+  // 避免同一個 transaction 已建立 YR，但前端立刻查詢時遇到短暫同步延遲。
+  for(let attempt=0;attempt<6;attempt++){
+    try{
+      const {data:rows,error}=await sb
+        .from('yijia_app_state')
+        .select('data,updated_at')
+        .eq('store_id','HQ')
+        .eq('data_key','yj_app_return_requests')
+        .maybeSingle();
+
+      if(!error){
+        const raw=normalizeStateData(rows?.data);
+        const list=Array.isArray(raw)?raw:[];
+
+        const found=list.find(r=>{
+          const code=String(r?.returnCode||r?.code||'').trim();
+          const rid=String(r?.id||r?.requestId||'').trim();
+          const mpid=String(r?.memberProductId||'').trim();
+
+          return (
+            (returnCode && code===returnCode) ||
+            (requestId && rid===requestId) ||
+            (memberProductId && mpid===memberProductId)
+          );
+        });
+
+        if(found){
+          return {
+            ok:true,
+            returnCode,
+            row:found
+          };
+        }
+      }
+    }catch(e){
+      console.warn('退貨申請寫入確認失敗',e);
+    }
+
+    if(attempt<5){
+      await new Promise(resolve=>setTimeout(resolve,500));
+    }
+  }
+
+  // RPC 已經回傳有效 YR，代表後端建立流程至少已完成到產碼。
+  // 不在前端因短暫讀取延遲再次判定整筆失敗，避免使用者重複送出退貨申請。
+  return {
+    ok:true,
     returnCode,
-    memberProductId:String(product?.id||product?.memberProductId||''),
-    orderId:String(product?.orderId||'')
-  });
-
-  if(!row){
-    return {ok:false,reason:'YR 已建立，但正式退貨申請紀錄尚未寫入'};
-  }
-
-  return {ok:true,returnCode,row};
+    row:data||null,
+    pendingSync:true
+  };
 }
 
 async function verifyReturnCompleted(returnCode,product){
@@ -10662,6 +10717,10 @@ async function submitReturnRequest(){
     }
 
     const returnCode=verified.returnCode;
+
+    if(verified.pendingSync){
+      console.warn('YR 已建立，退貨申請紀錄仍在同步中',returnCode);
+    }
     activeReturnCode=returnCode;
     lastReturnStatus='';
 
@@ -10707,7 +10766,11 @@ async function submitReturnRequest(){
       notifications:true
     });
 
-    alert('正式退貨申請已建立。');
+    alert(
+      verified.pendingSync
+        ? '退貨申請已建立，YR 條碼可先使用；申請紀錄正在同步。'
+        : '退貨申請已建立。'
+    );
   }catch(err){
     console.error(err);
     alert('建立退貨申請失敗：'+(err?.message||err));

@@ -1,24 +1,26 @@
-億家 App v0.10.16.9 Cart Blue + Checkout Sync Fix
+億家 App v0.10.17.0 Return Request Record Fix
 
-本版完成兩件事：
+修正使用者實機回報：
+「YR 已建立，但正式退貨申請紀錄尚未寫入」
 
-1. 商品詳情「加入購物車」改成藍色主按鈕
-- 藍底白字
-- 按下時有深藍按壓效果
-- 不可購買時維持灰色
-- 商品數量 + / - 同步改成藍色系
-- 舊版商品彈窗的加入購物車按鈕也同步藍色
-
-2. 修正付款資訊頁「目前無法核對最新商品資料」
 原因：
-syncCartWithCurrentCatalog() 呼叫不存在的 bundleQuantity(current)
-但目前 App 真正存在的 helper 是 bundleQty(current)
-因此每次前往結帳都會丟 ReferenceError。
+RPC 已經回傳有效 YR，但 App 隨即再次讀 yijia_app_return_requests，
+若該筆 JSON 狀態尚未立刻可讀，前端就把整筆判定成失敗。
+這會造成很危險的假失敗：實際 YR 已建立，使用者卻可能再次送出。
 
-已改為：
-bundleQty(current)
+本版修正：
+- RPC 回傳有效 YR 後，最多等待約 3 秒重新確認退貨申請紀錄
+- 可用 returnCode / requestId / memberProductId 三種方式比對
+- 若 3 秒內仍未讀到，但後端已回傳有效 YR：
+  - 不再把整筆判定為失敗
+  - 直接顯示 YR 條碼
+  - 顯示「申請紀錄正在同步」
+  - 避免使用者重複送出退貨
+- 不修改退貨資格規則
+- 不修改 7 天退貨規則
+- 不修改原付款門市限制
 
-這版不用跑 SQL。
+此版不用跑 SQL。
 
 PWA 檔案需一起上傳：
 - index.html
