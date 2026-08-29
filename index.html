@@ -1964,7 +1964,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.17.2 Online Return Mode Fix</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.17.3 Return Mode Source Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -10131,9 +10131,9 @@ async function loadMyProducts(){
       : '';
     const returnBarcodeBtn = lifecycle.canOperate && x.returnCode && x.returnRequestStatus && !String(x.returnRequestStatus).includes('已退貨')
       ? (
-          x.returnMode==='original_store'
-            ? `<button class="return-btn" onclick="showExistingReturnBarcode('${safeText(x.returnCode)}','${safeText(x.paidStoreName||x.paidStoreCode||'原付款門市')}')">退貨條碼</button>`
-            : `<button class="return-btn" onclick="showExistingOnlineReturn('${safeText(x.returnCode)}',${Number(x.refundAmount||0)},'${safeText(x.returnRequestStatus)}')">線上退貨狀態</button>`
+          isOnlinePaidProductOrReturn(x)
+            ? `<button class="return-btn" onclick="showExistingOnlineReturn('${safeText(x.returnCode)}',${Number(x.refundAmount||0)},'${safeText(x.returnRequestStatus)}')">線上退貨狀態</button>`
+            : `<button class="return-btn" onclick="showExistingReturnBarcode('${safeText(x.returnCode)}','${safeText(x.paidStoreName||x.paidStoreCode||'原付款門市')}')">退貨條碼</button>`
         )
       : '';
 
@@ -10235,7 +10235,7 @@ function openReturnRequest(encoded){
       !['已退貨','退貨完成','退款完成','已退款','已取消','已駁回']
         .some(s=>existingReturnStatus.includes(s))
     ){
-      if(String(selectedReturnProduct?.returnMode||'')==='online'){
+      if(isOnlinePaidProductOrReturn(selectedReturnProduct)){
         showExistingOnlineReturn(
           existingReturnCode,
           selectedReturnProduct?.refundAmount,
@@ -10296,6 +10296,28 @@ function openReturnRequest(encoded){
 }
 
 
+
+
+function isOnlinePaidProductOrReturn(x){
+  const mode=String(x?.returnMode||x?.return_mode||'').toLowerCase();
+  const paymentMethod=String(x?.paymentMethod||'').toLowerCase();
+  const paymentSource=String(x?.paymentSource||'').toLowerCase();
+  const source=String(x?.source||'').toLowerCase();
+  const code=String(x?.returnCode||'').toUpperCase();
+
+  return (
+    mode==='online' ||
+    code.startsWith('RO') ||
+    paymentSource==='wallet' ||
+    paymentSource==='online' ||
+    paymentSource==='credit_card' ||
+    paymentSource==='card' ||
+    paymentMethod.includes('億家pay') ||
+    paymentMethod.includes('線上') ||
+    source.includes('億家pay') ||
+    source.includes('線上支付')
+  );
+}
 
 function showExistingOnlineReturn(requestCode,refundAmount,statusText='待線上退款'){
   const code=String(requestCode||'').trim();
@@ -10762,7 +10784,7 @@ async function submitReturnRequest(){
     // 如果上一筆申請其實已成功建立 YR，直接回到既有退貨條碼，
     // 不再把它當成「不符合退貨條件」。
     if(isActiveExistingReturn){
-      if(String(latest?.returnMode||'')==='online'){
+      if(isOnlinePaidProductOrReturn(latest)){
         showExistingOnlineReturn(
           existingReturnCode,
           latest?.refundAmount,
