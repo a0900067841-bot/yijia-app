@@ -1257,7 +1257,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
   <div id="returnLiveStatusNotice" style="background:#f7f8fa;border:1px solid #e4e7eb;color:#5f6770;border-radius:14px;padding:11px 13px;margin:10px 0;font-weight:800;text-align:center">
     退貨狀態同步中…
   </div>
-  <div class="header2"><button class="back" onclick="showView('products')">‹</button><h2>退貨申請</h2></div>
+  <div class="header2"><button class="back" onclick="closeReturnResultView()">‹</button><h2>退貨申請</h2></div>
   <div class="return-card">
     <span class="store-status">已送出申請</span>
     <h2>退貨申請已建立</h2>
@@ -1267,7 +1267,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     </div>
     <div class="note" style="margin-bottom:10px">請到原付款門市出示此退貨條碼，TM 可直接掃描 YR 退貨碼。</div>
     <div id="returnResultText" class="note"></div>
-    <button class="pay-continue" onclick="showView('products');loadMyProducts()">回我的商品</button>
+    <button class="pay-continue" onclick="closeReturnResultView()">回我的商品</button>
   </div>
 </section>
 
@@ -1918,7 +1918,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.4 YijiaPay PIN iOS Input Fix</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.5 Return Barcode Resume Fix</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -10150,24 +10150,67 @@ function openReturnRequest(encoded){
 
 
 function showExistingReturnBarcode(code,storeName){
-  const c=String(code||'');
-  if(!c) return;
+  const c=String(code||'').trim();
+  if(!c){
+    alert('找不到退貨條碼，請重新整理我的商品後再試。');
+    return;
+  }
+
   const codeEl=document.getElementById('returnResultCode');
   const wrap=document.getElementById('returnBarcodeWrap');
   const text=document.getElementById('returnResultText');
+  const status=document.getElementById('returnLiveStatusNotice');
+  const svg=document.getElementById('returnResultBarcode');
+
   if(codeEl) codeEl.textContent=c;
   if(wrap) wrap.style.display='block';
-  if(text) text.innerHTML=`請回原付款門市辦理退貨。<br>原付款門市：${safeText(storeName||'原付款門市')}`;
-  if(window.JsBarcode){
-    try{JsBarcode('#returnResultBarcode',c,{format:'CODE128',displayValue:false,margin:6,height:80,width:1.3})}catch(e){console.warn(e)}
+  if(text){
+    text.innerHTML=
+      `請回原付款門市辦理退貨。<br>`+
+      `原付款門市：${safeText(storeName||'原付款門市')}`;
   }
-  showView('returnResult');
 
-  activeReturnCode=String(returnCode||'').trim();
+  if(status){
+    status.textContent='正在同步退貨申請狀態…';
+    status.style.background='#f7f8fa';
+    status.style.color='#5f6770';
+  }
+
+  if(svg) svg.innerHTML='';
+
+  if(window.JsBarcode){
+    try{
+      JsBarcode('#returnResultBarcode',c,{
+        format:'CODE128',
+        displayValue:false,
+        margin:8,
+        height:82,
+        width:1.4
+      });
+    }catch(e){
+      console.warn('既有退貨條碼繪製失敗',e);
+      if(svg){
+        svg.outerHTML=`<div id="returnResultBarcode" style="font-weight:900;letter-spacing:1px">${safeText(c)}</div>`;
+      }
+    }
+  }
+
+  activeReturnCode=c;
   lastReturnStatus='';
-  startReturnStatusMonitor(activeReturnCode);
+
+  showView('returnResult');
+  startReturnStatusMonitor(c);
 }
 
+
+
+function closeReturnResultView(){
+  stopReturnStatusMonitor();
+  activeReturnCode='';
+  lastReturnStatus='';
+  showView('products');
+  loadMyProducts();
+}
 
 function stopReturnStatusMonitor(){
   if(returnStatusMonitorTimer){

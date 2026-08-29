@@ -1,24 +1,21 @@
-億家 App v0.10.16.4 YijiaPay PIN iOS Input Fix
+億家 App v0.10.16.5 Return Barcode Resume Fix
 
-修正 iPhone Safari 實機回報：
-億家Pay 4 位數安全密碼視窗有出現，但無法叫出鍵盤輸入。
+延續條碼 / QR 顯示流程檢查，本版修正「既有退貨條碼」重新開啟流程。
 
-原因：
-原本 PIN input 被放到螢幕外（left:-9999px + opacity:0）。
-iOS Safari 對這種隱藏欄位常不會叫出軟體鍵盤。
+找到的問題：
+- showExistingReturnBarcode(code, storeName) 最後錯用不存在的 returnCode 變數。
+- 因此雖然 YR 條碼可能已經畫出來，但後續退貨狀態監控會發生 JavaScript 錯誤。
+- 返回我的商品時也沒有統一停止退貨狀態監控。
 
-本版修正：
-- 改成真正可點擊、可聚焦的 4 位數輸入框
-- type=tel + inputmode=numeric，iPhone 會顯示數字鍵盤
-- 仍用圓點 / 黑點方式遮蔽密碼
-- 點輸入框即可輸入
-- 自動聚焦時會先捲到畫面中央
-- 保留 4 位數限制
-- 保留兩次輸入確認
-- 保留 5 次錯誤鎖定 5 分鐘
-- 不改 PIN 後端 SQL
+修正：
+- 正確使用傳入的 code 作為 activeReturnCode
+- 正確重新繪製 YR CODE128
+- 重新開啟既有退貨條碼時立即啟動狀態同步
+- 返回 / 回我的商品時停止 monitor 並清除舊狀態
+- 找不到退貨碼時給使用者明確提示
+- 不修改後端退貨規則與 RPC
 
-此版不用再跑 SQL（若 v0.10.16.1 的 PIN SQL 已執行）。
+此版不用跑 SQL。
 
 PWA 檔案需一起上傳：
 - index.html
