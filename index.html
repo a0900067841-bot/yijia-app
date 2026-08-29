@@ -1918,7 +1918,7 @@ border:8px solid #fff;box-shadow:0 0 0 1px #ddd;border-radius:8px}
     <div class="row" onclick="showView('memberIdentity')">
       <div><strong>會員條碼</strong><small>總部正式會員編號與 TM 識別條碼</small></div><span>›</span>
     </div>
-    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.6 Checkout Total RPC Ready</small></div><span>›</span></div>
+    <div class="row" onclick="showView('appInfo')"><div><strong>App 版本</strong><small>v0.10.16.7 YijiaPay Order Formal Ready</small></div><span>›</span></div>
     <div class="row"><div><strong>帳號</strong><small>登出目前裝置</small></div><button class="logout-btn" onclick="signOut()">登出</button></div>
   </div>
 </section>
@@ -8927,10 +8927,10 @@ async function createYijiaPayOrder(source){
   const btn=document.getElementById('checkoutContinueBtn');
   const notice=document.getElementById('checkoutPayNotice');
   btn.disabled=true;
-  btn.textContent='正式付款處理中…';
+  btn.textContent='付款處理中…';
   if(notice){
     notice.style.display='block';
-    notice.textContent='正在由後端完成扣款、建立訂單與發放商品…';
+    notice.textContent='正在完成扣款、建立訂單與發放商品…';
   }
 
   const expectedProductCodes=cartItems.map(x=>String(x.code||x.key||'').trim()).filter(Boolean);
@@ -8985,9 +8985,13 @@ async function createYijiaPayOrder(source){
 
     try{ await loadWalletLedger(); }catch(_){}
 
-    if(notice) notice.textContent='付款、訂單與商品發放皆已確認完成。';
+    if(notice){
+      notice.textContent=
+        '付款、訂單與商品發放皆已完成'+
+        (orderId?` · 訂單 ${orderId}`:'');
+    }
     showView('products');
-    alert('億家Pay購買完成，商品已正式加入「我的商品」。');
+    alert('億家Pay購買完成，商品已加入「我的商品」。');
   }catch(err){
     console.error(err);
     if(notice){
